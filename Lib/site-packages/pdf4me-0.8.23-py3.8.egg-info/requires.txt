@@ -1,0 +1,5 @@
+inflection
+requests
+keyring
+jprops
+six

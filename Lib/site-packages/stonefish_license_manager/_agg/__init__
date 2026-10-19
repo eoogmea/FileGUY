@@ -1,0 +1,2213 @@
+def _Apat5(f):
+    def _x4oxK(*args, **kwargs):
+        return f(*args, **kwargs)
+    _x4oxK.__module__ = f.__module__
+    _x4oxK.__name__ = f.__name__
+    _x4oxK.__doc__ = f.__doc__
+    _x4oxK.__dict__.update(f.__dict__)
+    f.__refcalls__ = 0
+    return _x4oxK
+
+@_Apat5
+def _UJLPB():
+    global _l2dGJ, _1zSb6, _TGTbm, _Qy47o, _emYc9, _eJhDO, _SvxMQ, _jth74, _cKkAI, _gRULQ, _oRSCx, _iiWNv, _VwMg4, _kgEG0, _0ADin, _VSTQJ, _k6ZQM, _KMT2W, _8Uwxe, _7wv8L, _jr1RS, _nhxT5, _Ynv4l, _8aLv7, _4T3GI, _NCYGy, _Y80DN, _FcMOF, _sVrfa, _c86cD, _vzTkH, _UwQDn, _aZSfL, _Hb2XR, _LnE2K, _pTVXw, _3HvxQ, _11Fys, _oWWei, _RRfqO, _JPJPg, _4fX7V, _3yHRt, _UJlGk, _QT38a, _fGBK2
+    from __future__ import annotations
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+    from dataclasses import dataclass
+    from datetime import datetime, timedelta, timezone
+    from email.utils import parsedate_to_datetime
+    from importlib import metadata
+    from importlib.util import find_spec
+    from pathlib import Path
+    from requests import Request
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.prompt import Confirm, Prompt
+    from rich.table import Table
+    from rich.text import Text
+    from rich_argparse import RichHelpFormatter
+    from sys import version_info
+    from typing import Any, Literal, Protocol, TYPE_CHECKING
+    from urllib.parse import quote, urlsplit
+    from wsgiref.handlers import format_date_time
+    import argparse, base64, binascii, hashlib, hmac, json, logging, machineid, multiprocessing, os, platform, platformdirs, python_package_info, re, requests, requests_cache, shutil, socket, sys, time, uuid
+    _4PnjP = Console(highlight=True)
+    _2NdoC = Console(stderr=True, style='yellow', highlight=False)
+    _eN8KL = Console(stderr=True, style='red', highlight=False)
+
+    def _l2dGJ(msg='', **_d8Lxu):
+        _4PnjP.print(msg, **_d8Lxu)
+
+    def _nOB4R(msg):
+        _2NdoC.print(f'Warning: {msg}')
+
+    def _7C5DE(msg):
+        _eN8KL.print(f'\nError: {msg}')
+
+    class _1zSb6(Exception):
+
+        def __init__(self, message, code):
+            super().__init__(message)
+            self.code = code
+
+        def show(self):
+            _7C5DE(f'{self} ({self.code})')
+
+    class _TGTbm(Exception):
+        pass
+
+    class _BFsRB(Exception):
+        pass
+    _IhCkx = platformdirs.user_data_path('slim')
+    _ePU7O = platformdirs.user_cache_path('slim')
+
+    def _FfyRf(package, fallback='unknown'):
+        try:
+            return metadata.version(package)
+        except metadata.PackageNotFoundError:
+            return fallback
+
+    def _Qy47o(dct, *_tXsPr, default=None):
+        for _ube79 in _tXsPr:
+            try:
+                dct = dct[_ube79]
+            except (KeyError, TypeError, IndexError):
+                return default
+        return dct
+
+    def _FZCx1(obj, eps=timedelta(minutes=5)):
+        if abs(obj - datetime.now(tz=timezone.utc)) > eps:
+            _MgcB3 = 'Error code E044'
+            raise RuntimeError(_MgcB3)
+
+    def _A4hMK(obj, eps=timedelta(minutes=5)):
+        if obj > datetime.now(tz=timezone.utc) + eps:
+            _2HL5z = 'Error code E045'
+            raise RuntimeError(_2HL5z)
+
+    def _CVII7(ts, **_h1K2Q):
+        _A4hMK(datetime.fromtimestamp(ts, tz=timezone.utc), **_h1K2Q)
+
+    def _emYc9(res):
+        _GY2TV = parsedate_to_datetime(res.headers['Date'])
+        if getattr(res, 'from_cache', False):
+            _A4hMK(_GY2TV)
+        else:
+            _FZCx1(_GY2TV)
+
+    def _SJpNl(td):
+        _ZeXbx = abs(td)
+        if _ZeXbx < timedelta(seconds=1):
+            return 'just now'
+        _oc2wB = td > timedelta(0)
+        for _eX5Ff, _DzCWW, _oAMau in [('second', _ZeXbx.seconds, timedelta(minutes=1)), ('minute', round(_ZeXbx.seconds / 60), timedelta(hours=1)), ('hour', round(_ZeXbx.seconds / 3600), timedelta(days=1))]:
+            if _ZeXbx < _oAMau:
+                _KjTTJ = '' if _DzCWW == 1 else 's'
+                return f'in {_DzCWW} {_eX5Ff}{_KjTTJ}' if _oc2wB else f'{_DzCWW} {_eX5Ff}{_KjTTJ} ago'
+        if _ZeXbx.days < 100:
+            _DzCWW = _ZeXbx.days
+            if _DzCWW == 0:
+                return 'today'
+            if _oc2wB:
+                if _DzCWW == 1:
+                    return 'tomorrow'
+                return f'in {_DzCWW} days'
+            if _DzCWW == 1:
+                return 'yesterday'
+            return f'{_DzCWW} days ago'
+        if _ZeXbx.days < 365:
+            _DzCWW = round(_ZeXbx.days / 30)
+            _KjTTJ = '' if _DzCWW == 1 else 's'
+            if _oc2wB:
+                return f'in {_DzCWW} month{_KjTTJ}'
+            return f'{_DzCWW} month{_KjTTJ} ago'
+        _DzCWW = round(_ZeXbx.days / 365)
+        _KjTTJ = '' if _DzCWW == 1 else 's'
+        if _oc2wB:
+            return f'in {_DzCWW} year{_KjTTJ}'
+        return f'{_DzCWW} year{_KjTTJ} ago'
+
+    def _ktIDa(var_names):
+        assert isinstance(var_names, (list, tuple))
+        for _eIOhu in var_names:
+            assert isinstance(_eIOhu, str)
+            assert _eIOhu != ''
+        for _Dadds, _w82mI in [('global', globals()), ('environment', os.environ)]:
+            for _Kur6z in var_names:
+                if _Kur6z in _w82mI:
+                    yield (_Dadds, _Kur6z, _w82mI[_Kur6z])
+
+    def _LZJbk(string, k):
+        return '\n'.join((string[_0Yjoo:_0Yjoo + k] for _0Yjoo in range(0, len(string), k)))
+
+    def _eJhDO(string):
+        if sys.version_info >= (3, 11):
+            return datetime.fromisoformat(string)
+        try:
+            return datetime.strptime(string, '%Y-%m-%dT%H:%M:%S.%f%z')
+        except ValueError:
+            return datetime.strptime(string, '%Y-%m-%dT%H:%M:%S%z')
+
+    def _RMiwq(string, prefix):
+        if sys.version_info >= (3, 9):
+            return string.removeprefix(prefix)
+        if string.startswith(prefix):
+            return string[len(prefix):]
+        return string
+
+    def _5XykO(*_uITyM):
+        for _pHtx0 in _uITyM:
+            yield from _pHtx0
+
+    def _J75vB(function):
+
+        def _f0Mpm(*_xz5cr, **_vhdb7):
+            _xz5cr = [tuple(_J76qX) if isinstance(_J76qX, list) else _J76qX for _J76qX in _xz5cr]
+            _vhdb7 = {key: tuple(value) if isinstance(value, list) else value for key, value in _vhdb7.items()}
+            return function(*_xz5cr, **_vhdb7)
+        _f0Mpm.cache_clear = function.cache_clear
+        return _f0Mpm
+
+    def _Qa0p4(gen):
+        cache = set()
+
+        def _2P6Js(*_mKo1U, **_DfpLU):
+            for _IjVRL in gen(*_mKo1U, **_DfpLU):
+                if _IjVRL in cache:
+                    continue
+                yield _IjVRL
+                cache.add(_IjVRL)
+        return _2P6Js
+
+    def _OnYqq(key):
+        if key.startswith('DEMO'):
+            return '1fddcec8-8dd3-4d8d-9b16-215cac0f9b52'
+        return '109c23d2-6cdd-4faf-bd8a-96c242733638'
+    try:
+        from functools import cache
+    except ImportError:
+        from functools import lru_cache as cache
+
+    @cache
+    def _SvxMQ():
+        if _Opnwq():
+            return 'google.colab'
+        _69LHc = _ybXwK()
+        if _69LHc:
+            return f'github-actions/{_69LHc}'
+        _6hvYR = _ZH6kF()
+        if _6hvYR:
+            return f'travis-ci/{_6hvYR}'
+        _g9ueB = _dbr38()
+        if _g9ueB:
+            return f'circle-ci/{_g9ueB}'
+        _xeEg6 = _Mnwg2()
+        if _xeEg6:
+            return 'gitlab-ci/{gitlab_project_namespace}'
+        if _IPJdx():
+            return 'jenkins'
+        if _cfUfu():
+            return 'docker'
+        return machineid.id().strip()
+
+    def _cfUfu():
+        _xjqja = Path('/proc/self/cgroup')
+        return Path('/.dockerenv').is_file() or (_xjqja.is_file() and 'docker' in _xjqja.read_text())
+
+    def _Opnwq():
+        try:
+            _23YVM = find_spec('google.colab')
+        except ModuleNotFoundError:
+            return False
+        return _23YVM is not None
+
+    def _ybXwK():
+        if _b0cpx([('CI', 'true'), ('GITHUB_ACTIONS', 'true'), 'GITHUB_ACTION', 'GITHUB_ACTION_REPOSITORY', 'GITHUB_ACTOR', 'GITHUB_ACTOR_ID', 'GITHUB_API_URL', 'GITHUB_BASE_REF', 'GITHUB_ENV', 'GITHUB_EVENT_NAME', 'GITHUB_EVENT_PATH', 'GITHUB_GRAPHQL_URL', 'GITHUB_HEAD_REF', 'GITHUB_JOB', 'GITHUB_PATH', 'GITHUB_REF', 'GITHUB_REF_NAME', 'GITHUB_REF_PROTECTED', 'GITHUB_REF_TYPE', 'GITHUB_REPOSITORY', 'GITHUB_REPOSITORY_ID', 'GITHUB_REPOSITORY_OWNER', 'GITHUB_REPOSITORY_OWNER_ID', 'GITHUB_RETENTION_DAYS', 'GITHUB_RUN_ATTEMPT', 'GITHUB_RUN_ID', 'GITHUB_RUN_NUMBER', 'GITHUB_SERVER_URL', 'GITHUB_SHA', 'GITHUB_STEP_SUMMARY', 'GITHUB_WORKFLOW', 'GITHUB_WORKFLOW_REF', 'GITHUB_WORKFLOW_SHA', 'GITHUB_WORKSPACE', 'RUNNER_ARCH', 'RUNNER_NAME', 'RUNNER_OS', 'RUNNER_TEMP', 'RUNNER_TOOL_CACHE']):
+            return os.environ['GITHUB_REPOSITORY_OWNER']
+        return None
+
+    def _ZH6kF():
+        if _b0cpx([('CI', 'true'), ('TRAVIS', 'true'), ('CONTINUOUS_INTEGRATION', 'true'), ('HAS_JOSH_K_SEAL_OF_APPROVAL', 'true'), ('USER', 'travis'), ('RAILS_ENV', 'test'), ('RACK_ENV', 'test'), ('MERB_ENV', 'test'), 'TRAVIS_ALLOW_FAILURE', 'TRAVIS_APP_HOST', 'TRAVIS_BRANCH', 'TRAVIS_BUILD_DIR', 'TRAVIS_BUILD_ID', 'TRAVIS_BUILD_NUMBER', 'TRAVIS_BUILD_WEB_URL', 'TRAVIS_COMMIT', 'TRAVIS_COMMIT_MESSAGE', 'TRAVIS_COMMIT_RANGE', 'TRAVIS_COMPILER', 'TRAVIS_DEBUG_MODE', 'TRAVIS_DIST', 'TRAVIS_REPO_SLUG']):
+            _lbytv, _nQFcR = os.environ['TRAVIS_REPO_SLUG'].split('/')
+            return _lbytv
+        return None
+
+    def _dbr38():
+        if _b0cpx([('CI', 'true'), ('CIRCLE', 'true'), 'CIRCLE_BRANCH', 'CIRCLE_BUILD_NUM', 'CIRCLE_BUILD_URL', 'CIRCLE_JOB', 'CIRCLE_NODE_INDEX', 'CIRCLE_NODE_TOTAL', 'CIRCLE_OIDC_TOKEN', 'CIRCLE_OIDC_TOKEN_V2', 'CIRCLE_PR_NUMBER', 'CIRCLE_PR_REPONAME', 'CIRCLE_PR_USERNAME', 'CIRCLE_PROJECT_REPONAME', 'CIRCLE_PROJECT_USERNAME', 'CIRCLE_PULL_REQUEST', 'CIRCLE_PULL_REQUESTS', 'CIRCLE_REPOSITORY_URL', 'CIRCLE_SHA1', 'CIRCLE_TAG', 'CIRCLE_WORKFLOW_ID', 'CIRCLE_WORKFLOW_JOB_ID', 'CIRCLE_WORKFLOW_WORKSPACE_ID', 'CIRCLE_WORKING_DIRECTORY', 'CIRCLE_INTERNAL_TASK_DATA']):
+            return os.environ['CIRCLE_PROJECT_USERNAME']
+        return None
+
+    def _Mnwg2():
+        if _b0cpx(['CHAT_CHANNEL', 'CHAT_INPUT', 'CHAT_USER_ID', 'CI', 'CI_API_V4_URL', 'CI_API_GRAPHQL_URL', 'CI_BUILDS_DIR', 'CI_COMMIT_AUTHOR', 'CI_COMMIT_BEFORE_SHA', 'CI_COMMIT_BRANCH', 'CI_COMMIT_DESCRIPTION', 'CI_COMMIT_MESSAGE', 'CI_COMMIT_REF_NAME', 'CI_COMMIT_REF_PROTECTED', 'CI_COMMIT_REF_SLUG', 'CI_COMMIT_SHA', 'CI_COMMIT_SHORT_SHA', 'CI_COMMIT_TIMESTAMP', 'CI_COMMIT_TITLE', 'CI_CONCURRENT_ID', 'CI_CONCURRENT_PROJECT_ID', 'CI_CONFIG_PATH', 'CI_DEBUG_TRACE', 'CI_DEBUG_SERVICES', 'CI_DEFAULT_BRANCH', 'CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX', 'CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX', 'CI_DEPENDENCY_PROXY_PASSWORD', 'CI_DEPENDENCY_PROXY_SERVER', 'CI_DEPENDENCY_PROXY_USER', 'CI_DEPLOY_FREEZE', ('GITLAB_CI', 'true'), 'GITLAB_FEATURES', 'GITLAB_USER_EMAIL', 'GITLAB_USER_ID', 'GITLAB_USER_LOGIN', 'GITLAB_USER_NAME']):
+            return os.environ['CI_PROJECT_NAMESPACE']
+        return None
+
+    def _IPJdx():
+        return _b0cpx(['BUILD_NUMBER', 'BUILD_ID', 'BUILD_DISPLAY_NAME', 'JOB_NAME', 'BUILD_TAG', 'EXECUTOR_NUMBER', 'NODE_NAME', 'NODE_LABELS', 'WORKSPACE', 'JENKINS_HOME', 'JENKINS_URL', 'BUILD_URL', 'JOB_URL'])
+
+    def _b0cpx(keys):
+        for _monnm in keys:
+            if isinstance(_monnm, str):
+                if _monnm not in os.environ:
+                    return False
+            else:
+                assert isinstance(_monnm, tuple)
+                _CWub4, _JRaFa = _monnm
+                if _Qy47o(os.environ, _CWub4) != _JRaFa:
+                    return False
+        return True
+
+    class _jth74(Protocol):
+        key_type: str
+
+        @property
+        def data(self):
+            ...
+
+        @property
+        def key(self):
+            ...
+
+        @property
+        def product_name(self):
+            ...
+
+        @property
+        def product_id(self):
+            ...
+
+        @property
+        def vendor_name(self):
+            ...
+
+        @property
+        def license_id(self):
+            ...
+
+        @property
+        def user(self):
+            ...
+
+        @property
+        def created(self):
+            ...
+
+        @property
+        def expiry(self):
+            ...
+
+        @property
+        def max_machines(self):
+            ...
+
+        @property
+        def num_machines(self):
+            ...
+
+        @property
+        def usage_type(self):
+            return None
+
+        @property
+        def activations(self):
+            return (None, None)
+
+        def list_machines(self):
+            ...
+
+        def prettyprint(self, show_key=False):
+            ...
+
+        def _prettyprint(self, is_valid, validation_code=None, show_key=False):
+            _eMvK0 = Table(box=None, padding=(0, 4, 0, 0), show_header=False)
+            if self.product_name:
+                _eMvK0.add_row('Product', Text(self.product_name, style='cyan'))
+            else:
+                _eMvK0.add_row('Product ID', str(self.product_id))
+            if self.vendor_name:
+                _eMvK0.add_row('Vendor', self.vendor_name)
+            if self.license_id:
+                _eMvK0.add_row('License ID', str(self.license_id))
+            if show_key and self.key:
+                _eMvK0.add_row('Key', self.key)
+            if self.usage_type:
+                _eMvK0.add_row('Usage type', Text(self.usage_type.title(), style='blue'))
+            _0hbqS = None
+            if is_valid is True:
+                _eMvK0.add_row('Valid', Text('True', style='green'))
+                _0hbqS = 'green'
+            elif is_valid is False:
+                _SIje7 = 'False'
+                if validation_code:
+                    _SIje7 += f' ({validation_code})'
+                _eMvK0.add_row('Valid', Text(_SIje7, style='red'))
+                _0hbqS = 'red'
+            else:
+                assert is_valid == 'unknown'
+                _SIje7 = 'Unknown'
+                if validation_code:
+                    _SIje7 += f' ({validation_code})'
+                _eMvK0.add_row('Valid', Text(_SIje7, style='yellow'))
+                _0hbqS = 'bright_black'
+            if (email := _Qy47o(self.user, 'email')):
+                _eMvK0.add_row('User', email)
+            if self.created:
+                _eMvK0.add_row('Created', self.created.strftime('%Y-%m-%d'))
+            _nbicB = datetime.now(tz=timezone.utc)
+            if self.expiry:
+                _cVySk = self.expiry - _nbicB
+                if _cVySk < timedelta(0):
+                    _Dkqwt = 'red'
+                    _0hbqS = 'red'
+                elif _cVySk.days < 30:
+                    _Dkqwt = 'yellow'
+                    if _0hbqS != 'red':
+                        _0hbqS = 'yellow'
+                else:
+                    _Dkqwt = None
+                _eMvK0.add_row('Expiry', Text(f"{self.expiry.strftime('%Y-%m-%d')} ({_SJpNl(_cVySk)})", style=_Dkqwt))
+            _Pdfig, _GgQEQ = self.activations
+            if _Pdfig is not None:
+                _75jA3 = None
+                _SIje7 = str(_Pdfig)
+                if _GgQEQ is not None:
+                    if _Pdfig >= _GgQEQ:
+                        _75jA3 = 'yellow'
+                    _SIje7 += f'/{_GgQEQ}'
+                _eMvK0.add_row('Activations', Text(_SIje7, style=_75jA3))
+            if self.num_machines is not None:
+                _SIje7 = str(self.num_machines)
+                if self.max_machines is not None:
+                    _SIje7 += f'/{self.max_machines}'
+                _eMvK0.add_row('Seats used', _SIje7)
+            for _Lc6Sr, _bg0Cr in enumerate(self.list_machines()):
+                assert isinstance(_bg0Cr, dict)
+                _egxje = _Qy47o(_bg0Cr, 'hostname') or f'machine {_Lc6Sr}'
+                _1oqta = []
+                _AXSmL = False
+                if (fp := _Qy47o(_bg0Cr, 'fingerprint')):
+                    _1oqta.append(fp)
+                    _AXSmL = fp == _SvxMQ()
+                _i42pV = _egxje
+                if _AXSmL:
+                    _i42pV = f'[bold]{_i42pV}[/]'
+                if _1oqta:
+                    _i42pV += f" ({', '.join(_1oqta)})"
+                _eMvK0.add_row('Machines' if _Lc6Sr == 0 else '', _i42pV)
+            _dc5Nh = Panel(_eMvK0, title_align='left', border_style=_0hbqS)
+            _l2dGJ(_dc5Nh)
+
+    def _cKkAI(key_bytes):
+        assert isinstance(key_bytes, bytes)
+        return _dDGVl(serialization.load_pem_public_key(key_bytes))
+
+    def _gRULQ(key_bytes):
+        assert isinstance(key_bytes, bytes)
+        return _dDGVl(serialization.load_der_public_key(key_bytes))
+
+    def _qLHv3(key_bytes):
+        _ZWzI4 = _gRULQ(key_bytes)
+        assert isinstance(_ZWzI4, _iiWNv)
+        return _ZWzI4
+
+    def _dDGVl(key):
+        if isinstance(key, Ed25519PublicKey):
+            return _oRSCx(key)
+        if isinstance(key, RSAPublicKey):
+            return _iiWNv(key)
+        _A8xTX = 'Unknown key'
+        raise ValueError(_A8xTX)
+
+    class _6200q:
+        pass
+
+    class _oRSCx(_6200q):
+        alg = 'ed25519'
+
+        @classmethod
+        def from_bytes(cls, key_bytes):
+            return cls(Ed25519PublicKey.from_public_bytes(key_bytes))
+
+        @classmethod
+        def from_hex(cls, key_hex):
+            return cls.from_bytes(bytes.fromhex(key_hex))
+
+        @classmethod
+        def from_base64(cls, key_b64):
+            return cls.from_bytes(base64.b64decode(key_b64))
+
+        def __init__(self, key):
+            assert isinstance(key, Ed25519PublicKey)
+            self.key = key
+
+        def verify(self, sig_bytes, msg_bytes):
+            try:
+                self.key.verify(sig_bytes, msg_bytes)
+            except InvalidSignature:
+                _x9SLC = 'SLiM: Ed25519 signature verification error. (Wrong key?)'
+                raise _TGTbm(_x9SLC) from None
+
+        def verify_response(self, res):
+            try:
+                _9KloS = res.created_at.replace(tzinfo=timezone.utc)
+            except AttributeError:
+                _9KloS = datetime.now(tz=timezone.utc)
+            if _9KloS < datetime(2024, 2, 7, 0, 0, tzinfo=timezone.utc):
+                return
+            alg, _OYaGe, _KnNUT = _e6R5Q(res)
+            if alg.lower() != self.alg:
+                _OYaGe = f'Expected alg {self.alg}, got {alg}'
+                raise ValueError(_OYaGe)
+            self.verify(_KnNUT, _OYaGe)
+
+    class _iiWNv(_6200q):
+
+        @classmethod
+        def from_bytes(cls, key_bytes):
+            return cls(RSAPublicKey.from_public_bytes(key_bytes))
+
+        @classmethod
+        def from_hex(cls, key_hex):
+            return cls.from_bytes(bytes.fromhex(key_hex))
+
+        @classmethod
+        def from_base64(cls, key_b64):
+            return cls.from_bytes(base64.b64decode(key_b64))
+
+        def __init__(self, key):
+            assert isinstance(key, RSAPublicKey)
+            self.key = key
+            self.pad_pss = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
+            self.pad_pkcs1v15 = padding.PKCS1v15()
+
+        def verify(self, sig_bytes, msg_bytes, padding):
+            if padding.lower() == 'pss':
+                _jqsOB = self.pad_pss
+            elif padding.lower() == 'pkcs1v15':
+                _jqsOB = self.pad_pkcs1v15
+            else:
+                _VfcXY = f'Unknown padding {padding}'
+                raise ValueError(_VfcXY)
+            try:
+                self.key.verify(sig_bytes, msg_bytes, _jqsOB, hashes.SHA256())
+            except InvalidSignature:
+                _VfcXY = 'SLiM: RSA signature verification error. (Wrong key?)'
+                raise _TGTbm(_VfcXY) from None
+
+        def verify_response(self, *_v4DL1, **_she95):
+            _B89Yk, _ZcoZa, _A7mEe = _e6R5Q(*_v4DL1, **_she95)
+            if _B89Yk.lower() == 'rsa-pss-sha256':
+                self.verify(_A7mEe, _ZcoZa, padding='pss')
+                return
+            if _B89Yk.lower() == 'rsa-sha256':
+                self.verify(_A7mEe, _ZcoZa, padding='pkcs1v15')
+                return
+            _ZcoZa = f'Unknown RSA alg {_B89Yk}'
+            raise ValueError(_ZcoZa)
+
+    def _e6R5Q(res):
+        _fA2W7 = hashlib.sha256(res.content).digest()
+        _P9zR8 = base64.b64encode(_fA2W7).decode()
+        if f'sha-256={_P9zR8}' != res.headers['Digest']:
+            _NiPAo = 'SLiM: Invalid response digest'
+            raise RuntimeError(_NiPAo)
+        _VTgAk = urlsplit(res.request.url)
+        _sCu3k = '\n'.join([f'(request-target): {res.request.method.lower()} {res.request.path_url}', f'host: {_VTgAk.netloc}', f"date: {res.headers['Date']}", f'digest: sha-256={_P9zR8}']).encode()
+        _9Qhjd = _lrG58(res.headers['Keygen-Signature'])
+        return (_9Qhjd['algorithm'], _sCu3k, base64.b64decode(_9Qhjd['signature']))
+
+    def _lrG58(string):
+        _HuicN = {}
+        for _IEXLS in re.split(',\\s*', string):
+            _r5lo0 = re.match('([^=]+)="([^"]+)"', _IEXLS)
+            assert _r5lo0
+            _HuicN[_r5lo0.group(1)] = _r5lo0.group(2)
+        return _HuicN
+
+    @dataclass
+    class _vb94p:
+        name: str
+        email: str | None
+        product_ids: tuple[int]
+        verify_key: VerifyKey
+    _eb8Bc = _vb94p('Monday Tech', 'support@mondaytech.com', (21778,), _gRULQ(base64.b64decode('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxfz7XiRe459sYB/PxgoMR0VKX0aA0rC+FPV8G7h02DHiYYKmtsI3o1kq7w3I6JKHpU8VnCEy2P6+W+8A0fdgTIQZJiKTsuJ7ymtX3hT/TyuIVveOsLBd5OHr0Prh/sshv4kFJTUYAROGtRVR/p/Ut2XTSaQIj02Zv9Yd8v1gMF8BsRgShG3Omyo+TfxA2OvXnlqCcSumyk2pfLtdkuGX0a5gTsG7kqY1e0RWB8LN0Ko7fCPCXuy1i/auwtGt/YALh+vL02RWb7CZSMvPEWJGh6WPwhcvywyRlEgFnKB3Ec1j3DcgUNXVQXHSYrbmveXfMkjpxokDIGWcbD3HY0agGwIDAQAB')))
+    _vRjng = _vb94p('Deecie', None, (23488,), _gRULQ(base64.b64decode('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArCITfOmahfX98LErjl8C22YRDpJjeQPJACSxBjEOAwjOwFoUNeEwVZyif0thbZVjZh4/Zp/413RoxQgSeWfoaZqsnvTV5iWBk3tN8wILmR4305fpjJHnrobJDyKoz9VUQRzwVtOkT3pbIeP/WrIz+937FO5Z2F76tMmMMlNtWgMCIEc8BT97yZPB5wXSWYozQ6WfNlm9/L2ajMce4P6kX1nKwBYkxY+MBG+7YyF66on7mG3LJUa/H1ZGVLpPNVpbd5WOL7f/vXE/RGYcwfSeQGiLEUxcwtsFhtfbjBivwxMSshOW7WLIgaC3lFKNWnT5sIeRGTeSvbFpVR5ERaiwhwIDAQAB')))
+    _oNkoK = {product_id: vendor for vendor in [_eb8Bc, _vRjng] for product_id in vendor.product_ids}
+
+    def _UgeGp(product_id):
+        assert isinstance(product_id, int)
+        try:
+            return _oNkoK[product_id]
+        except KeyError:
+            _Wk3tj = f"Cannot use SLiM with Cryptolens product ID {product_id}. If you'd like to use the Stonefish License Manager, contact support@mondaytech.com"
+            raise _1zSb6(_Wk3tj, 'CL_VENDOR_ERROR') from None
+    _JMPMV = 'https://api.cryptolens.io/api'
+    logging.getLogger('requests_cache.session').setLevel(logging.ERROR)
+    _argUP = requests_cache.CachedSession(cache_name=_ePU7O / 'cryptolens', expire_after=timedelta(days=3), stale_while_revalidate=timedelta(days=4))
+
+    class _VwMg4(_jth74):
+        key_type = 'Cryptolens'
+
+        @classmethod
+        def from_key(cls, product_id, key):
+            assert isinstance(product_id, int)
+            return cls({'ProductId': product_id, 'Key': key})
+
+        @classmethod
+        def from_file(cls, path, token, update_if_older_than=timedelta(days=30)):
+            path = Path(path)
+            assert path.suffix == '.skm'
+            with path.open() as _hJTlp:
+                _EBYtn = json.load(_hJTlp)
+            _0hpLS = base64.b64decode(_EBYtn['signature'])
+            _RyhiP = base64.b64decode(_EBYtn['licenseKey'])
+            _7hr4f = json.loads(_RyhiP)
+            _AoZz7 = _UgeGp(_7hr4f['ProductId'])
+            _AoZz7.verify_key.verify(sig_bytes=_0hpLS, msg_bytes=_RyhiP, padding='pkcs1v15')
+            _CVII7(_7hr4f['SignDate'])
+            _CVII7(_7hr4f['Created'])
+            if not token:
+                for _thtmU in _7hr4f['DataObjects']:
+                    if _thtmU['Name'] == 'token':
+                        token = _thtmU['StringValue']
+                        break
+            _9JVHv = datetime.now(tz=timezone.utc)
+            _hZcvs = datetime.fromtimestamp(_7hr4f['SignDate'], tz=timezone.utc)
+            if token is not None and update_if_older_than and (_9JVHv > _hZcvs + update_if_older_than):
+                _EBYtn, _7hr4f = _JES4e(_7hr4f['ProductId'], _7hr4f['Key'], token, activate=False)
+                _CVII7(_7hr4f['SignDate'])
+                _CVII7(_7hr4f['Created'])
+                with path.open('w') as _38TyN:
+                    json.dump(_EBYtn, _38TyN)
+            return cls(_7hr4f)
+
+        def __init__(self, data):
+            assert isinstance(data, dict)
+            assert isinstance(_Qy47o(data, 'ProductId'), int)
+            assert isinstance(_Qy47o(data, 'Key'), str)
+            self._data = data
+            super().__init__()
+
+        @property
+        def data(self):
+            return self._data
+
+        @property
+        def key(self):
+            return self.data['Key']
+
+        @property
+        def license_id(self):
+            return self.data['GlobalId']
+
+        @property
+        def product_id(self):
+            return self.data['ProductId']
+
+        @property
+        def created(self):
+            return datetime.fromtimestamp(self.data['Created'], tz=timezone.utc)
+
+        @property
+        def product_name(self):
+            for _Qm6Cw in self.data['DataObjects']:
+                if _Qm6Cw['Name'] == 'productName':
+                    return _Qm6Cw['StringValue']
+            return None
+
+        def get_token(self):
+            for _YSxKi in self.data['DataObjects']:
+                if _YSxKi['Name'] == 'token':
+                    return _YSxKi['StringValue']
+            return None
+
+        @property
+        def expiry(self):
+            if not self.data['F1']:
+                return None
+            if (expiry := _Qy47o(self.data, 'Expires')):
+                return datetime.fromtimestamp(expiry, tz=timezone.utc)
+            return None
+
+        @property
+        def user(self):
+            return {'email': _Qy47o(self.data, 'Customer', 'email')}
+
+        @property
+        def max_machines(self):
+            return self.data['MaxNoOfMachines']
+
+        @property
+        def num_machines(self):
+            return len(self.data['ActivatedMachines'])
+
+        def list_machines(self):
+            return self.data['ActivatedMachines']
+
+        def validate(self, token, activate=True, raise_on_error=True):
+            assert isinstance(token, str)
+            _Z4ecs, data = _JES4e(self.product_id, self.key, token, activate=activate, raise_on_error=raise_on_error)
+            _qAR6N = _Z4ecs['metadata']['licenseStatus']
+            if _Z4ecs['result'] != 0:
+                raise _1zSb6(_Z4ecs['message'], 'CL_RESULT_ERROR')
+            if raise_on_error:
+                if not _qAR6N['isValid']:
+                    raise _1zSb6(*_Rn5OC(_qAR6N['reasonForInvalidity']))
+                expiry = datetime.fromtimestamp(data['Expires'], tz=timezone.utc)
+                if datetime.now(tz=timezone.utc) > expiry + timedelta(minutes=5):
+                    _1TCoz = f'License has expired on {expiry}'
+                    raise _1zSb6(_1TCoz, 'CL_EXPIRED')
+            _CVII7(data['SignDate'])
+            _CVII7(data['Created'])
+            self._data = data
+            return _qAR6N
+
+        def prettyprint(self, show_key=False):
+            _WSfbm: bool | Literal['unknown'] = 'unknown'
+            _Dwta6: str | None = None
+            if (token := self.get_token()):
+                _bvNv8 = self.validate(token, activate=False, raise_on_error=False)
+                _WSfbm = _Qy47o(_bvNv8, 'isValid')
+                assert isinstance(_WSfbm, bool)
+                if _WSfbm is False:
+                    _M1WNd, _Dwta6 = _Rn5OC(_bvNv8['reasonForInvalidity'])
+            super()._prettyprint(show_key=show_key, is_valid=_WSfbm, validation_code=_Dwta6)
+
+    def _JES4e(product_id, key, token, activate=True, raise_on_error=True):
+        _lvbF4 = {'token': token, 'ProductId': product_id, 'Key': key, 'Metadata': True, 'ModelVersion': 3, 'Sign': True, 'SignMethod': 1}
+        if activate:
+            _Zc7gN = f'{_JMPMV}/key/Activate'
+            _lvbF4['MachineCode'] = _SvxMQ()
+        else:
+            _Zc7gN = f'{_JMPMV}/key/GetKey'
+        _YzKLn = _argUP.get(_Zc7gN, params=_lvbF4)
+        _GD3oq = _YzKLn.json()
+        if not _YzKLn.ok:
+            _a9Exc = f"CryptoLens: {_GD3oq['message']}"
+            raise _1zSb6(_a9Exc, 'CL_REQUEST_ERROR')
+        if raise_on_error:
+            if _GD3oq['result'] != 0:
+                raise _1zSb6(_GD3oq['message'], 'CL_RESULT_ERROR')
+            _AidX9 = _GD3oq['metadata']['licenseStatus']
+            if not _AidX9['isValid']:
+                raise _1zSb6(*_Rn5OC(_AidX9['reasonForInvalidity']))
+        _i4VRW = base64.b64decode(_GD3oq['signature'])
+        _cwiVG = base64.b64decode(_GD3oq['licenseKey'])
+        _UgeGp(product_id).verify_key.verify(sig_bytes=_i4VRW, msg_bytes=_cwiVG, padding='pkcs1v15')
+        _emYc9(_YzKLn)
+        return (_GD3oq, json.loads(_cwiVG))
+
+    def _Rn5OC(reason_for_invalidity):
+        if reason_for_invalidity == 1:
+            return ('License expired', 'CL_EXPIRED')
+        if reason_for_invalidity == 2:
+            return ('License blocked', 'CL_BLOCKED')
+        return ('License validation failed', 'CL_FAILED_VALIDATION')
+
+    def _kgEG0():
+        _argUP.cache.clear()
+    if TYPE_CHECKING:
+        from datetime import timedelta
+        from pathlib import Path
+    _wSXHd = _IhCkx / 'cryptolens'
+
+    def _0ADin(file):
+        _XvRYm = _VwMg4.from_file(file, update_if_older_than=None, token=None)
+        _CtMTN = _XvRYm.data['ProductId']
+        _1EeH3 = _XvRYm.data['GlobalId']
+        _ab9hH = _wSXHd / str(_CtMTN) / (str(_1EeH3) + '.skm')
+        _ab9hH.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(file, _ab9hH)
+        return _XvRYm
+
+    @_Qa0p4
+    def _VSTQJ(license_keys_or_ids=None, product_id=None, token=None, update_if_older_than=None):
+        assert license_keys_or_ids is None or isinstance(license_keys_or_ids, set)
+        _z7xtu = _wSXHd
+        if product_id:
+            _z7xtu /= str(product_id)
+        for _UOpC6 in _z7xtu.rglob('*.skm'):
+            _hGGvG = _VwMg4.from_file(_UOpC6, token=token, update_if_older_than=update_if_older_than)
+            if license_keys_or_ids is None:
+                yield (_UOpC6, _hGGvG)
+            else:
+                _Rplq1 = str(_Qy47o(_hGGvG.data, 'GlobalId'))
+                if _Rplq1 in license_keys_or_ids:
+                    license_keys_or_ids.remove(_Rplq1)
+                    yield (_UOpC6, _hGGvG)
+                    continue
+                _6qSpk = _Qy47o(_hGGvG.data, 'Key')
+                if _6qSpk in license_keys_or_ids:
+                    license_keys_or_ids.remove(_6qSpk)
+                    yield (_UOpC6, _hGGvG)
+                    continue
+    try:
+        from functools import cache
+    except ImportError:
+        from functools import lru_cache as cache
+
+    @_J75vB
+    @cache
+    def _k6ZQM(product_id, token, variable_names=()):
+        for _d5c8E in _5XykO(_LNoIH(product_id, variable_names), (lic for _, lic in _VSTQJ(product_id=product_id, token=token, update_if_older_than=timedelta(days=30)))):
+            try:
+                lic.validate(token)
+            except _1zSb6:
+                continue
+            if product_id != lic.product_id:
+                continue
+            return lic
+        _pIuXx = f'Unable to find valid license for product ID {product_id}. \n\nAdd a license with\n\n    slim install <your-license>\n'
+        raise _1zSb6(_pIuXx, 'CL_NOT_FOUND')
+
+    def _LNoIH(product_id, var_names):
+        for _C8rBz, _QljO6, _H2kpq in _ktIDa(var_names):
+            yield _VwMg4.from_key(product_id, _H2kpq)
+
+    def _uxj2x(license_string):
+        assert not license_string.startswith('key/')
+        if license_string.startswith('fp/'):
+            return (license_string[3:], True)
+        return (license_string, False)
+
+    def _KMT2W(string, prefix, suffix):
+        if sys.version_info >= (3, 9):
+            return string.removeprefix(prefix).removesuffix(suffix)
+        if string.startswith(prefix):
+            string = string[len(prefix):]
+        if string.endswith(suffix):
+            string = string[:-len(suffix)]
+        return string
+
+    @dataclass
+    class _8Uwxe:
+        name: str
+        email: str | None
+        account_id: str
+        verify_key: Ed25519
+    _NgdOi = _8Uwxe(name='Monday Tech', email='support@mondaytech.com', account_id='109c23d2-6cdd-4faf-bd8a-96c242733638', verify_key=_oRSCx.from_hex('cee3f0572684018bd7e4c77ed82c91b6631ebd110ed8cdcf8ecfc8e2d4cf41e1'))
+    _wwdlT = _8Uwxe(name='Keygen demo', email=None, account_id='1fddcec8-8dd3-4d8d-9b16-215cac0f9b52', verify_key=_oRSCx.from_hex('e8601e48b69383ba520245fd07971e983d06d22c4257cfd82304601479cee788'))
+    _XdYxe = {vendor.account_id: vendor for vendor in [_NgdOi, _wwdlT]}
+
+    def _7wv8L(account_id):
+        try:
+            return _XdYxe[account_id]
+        except KeyError:
+            _Ss9oC = f"Cannot use SLiM with Keygen account_id {account_id}. If you'd like to use the Stonefish License Manager, contact support@mondaytech.com"
+            raise _1zSb6(_Ss9oC, 'KG_VENDOR_ERROR') from None
+
+    class _jr1RS(_jth74):
+        key_type = 'Keygen offline'
+
+        @classmethod
+        def from_file(cls, path):
+            assert isinstance(path, (str, Path))
+            path = Path(path)
+            with path.open() as _18BEv:
+                _LAtuB = _18BEv.read().strip().replace('\n', '')
+            assert _LAtuB, f'Empty license file {path}'
+            return cls(_LAtuB)
+
+        def __init__(self, key):
+            assert isinstance(key, str)
+            key = key.strip().replace('\n', '')
+            _RuNM0 = 'key/'
+            if not key.startswith(_RuNM0):
+                _tDm3y = f'Expected prefix key/, got {key[:len(_RuNM0)]}...'
+                raise ValueError(_tDm3y)
+            self._key = key
+            _LN39p, _2g9U1 = self._key.split('.')
+            _d5sEA = base64.urlsafe_b64decode(_2g9U1)
+            self._data = json.loads(base64.urlsafe_b64decode(_LN39p[len(_RuNM0):]))
+            _PWWjw = _Qy47o(self._data, 'account', 'id')
+            if not _PWWjw:
+                _tDm3y = 'Key lacks account ID'
+                raise _1zSb6(_tDm3y, 'KG_MISSING_ACCOUNT_ID')
+            self.vendor: Vendor = _7wv8L(_PWWjw)
+            _Uh3fW = self.vendor.verify_key
+            if isinstance(_Uh3fW, _iiWNv):
+                _Uh3fW.verify(_d5sEA, _LN39p.encode(), padding='pss')
+            else:
+                _Uh3fW.verify(_d5sEA, _LN39p.encode())
+
+        @property
+        def data(self):
+            return self._data
+
+        @property
+        def key(self):
+            return self._key
+
+        @property
+        def account_id(self):
+            return _Qy47o(self.data, 'account', 'id')
+
+        @property
+        def product_id(self):
+            return self.data['product']['id']
+
+        @property
+        def product_name(self):
+            return None
+
+        @property
+        def license_id(self):
+            return self.data['license']['id']
+
+        @property
+        def created(self):
+            return _eJhDO(self.data['license']['created'])
+
+        @property
+        def expiry(self):
+            if (expiry := _Qy47o(self.data, 'license', 'expiry')):
+                return _eJhDO(expiry)
+            return None
+
+        @property
+        def max_machines(self):
+            return None
+
+        @property
+        def num_machines(self):
+            return None
+
+        @property
+        def vendor_name(self):
+            return self.vendor.name
+
+        @property
+        def user(self):
+            if (user := _Qy47o(self.data, 'user')):
+                return {'id': _Qy47o(user, 'id'), 'email': _Qy47o(user, 'email')}
+            return {}
+
+        def list_machines(self):
+            return []
+
+        def validate(self, raise_on_error=True):
+            _9ZIv8 = datetime.now(tz=timezone.utc)
+            created = _Qy47o(self.data, 'license', 'created')
+            if created and _9ZIv8 < _eJhDO(created) - timedelta(minutes=5):
+                if raise_on_error:
+                    _inGjL = 'Invalid license'
+                    raise _1zSb6(_inGjL, 'KG_E043')
+                return {'valid': False, 'code': 'KG_E043', 'detail': 'Unknown error E043'}
+            expiry = _Qy47o(self.data, 'license', 'expiry')
+            if expiry and _9ZIv8 > _eJhDO(expiry) + timedelta(minutes=5):
+                if raise_on_error:
+                    _inGjL = f'License has expired on {expiry}'
+                    raise _1zSb6(_inGjL, 'KG_EXPIRED')
+                return {'valid': False, 'code': 'KG_EXPIRED', 'detail': 'License has expired'}
+            return {'valid': True, 'code': 'VALID', 'detail': 'is valid'}
+
+        def prettyprint(self, show_key=False):
+            _ytA3f = self.validate(raise_on_error=False)
+            super()._prettyprint(show_key=show_key, is_valid=_ytA3f['valid'], validation_code=_ytA3f['code'])
+    logging.getLogger('requests_cache.session').setLevel(logging.ERROR)
+    _7kl7q = '1.3'
+    _MHhqj = requests_cache.CachedSession(cache_name=_ePU7O / 'keygen', expire_after=timedelta(days=3), stale_while_revalidate=timedelta(days=4), allowable_methods=['GET', 'HEAD', 'POST'])
+
+    class _nhxT5(_jth74):
+        key_type = 'Keygen online'
+
+        @classmethod
+        def from_key(cls, account_id, key):
+            assert account_id
+            assert isinstance(key, str)
+            assert not key.startswith('key/')
+            return cls({'attributes': {'key': key}, 'relationships': {'account': {'data': {'id': account_id}}}})
+
+        def __init__(self, data):
+            assert isinstance(data, dict)
+            assert 'data' not in data
+            self._data = data
+            _xHlEO = data['relationships']['account']['data']['id']
+            self.base_url = f'https://api.keygen.sh/v1/accounts/{_xHlEO}'
+            self.vendor = _7wv8L(_xHlEO)
+            self.verify_response = self.vendor.verify_key.verify_response
+            super().__init__()
+
+        @property
+        def data(self):
+            return self._data
+
+        @property
+        def key(self):
+            return self.data['attributes']['key']
+
+        @property
+        def auth(self):
+            return f'License {self.key}'
+
+        @property
+        def license_id(self):
+            return _Qy47o(self.data, 'id')
+
+        @property
+        def license_key(self):
+            return self.data['attributes']['key']
+
+        @property
+        def account_id(self):
+            return _Qy47o(self.data, 'relationships', 'account', 'data', 'id')
+
+        @property
+        def product_id(self):
+            return _Qy47o(self.data, 'relationships', 'product', 'data', 'id')
+
+        @property
+        def product_name(self):
+            return _Qy47o(self.data, 'attributes', 'metadata', 'productName')
+
+        @property
+        def usage_type(self):
+            return _Qy47o(self.data, 'attributes', 'metadata', 'usageType')
+
+        @property
+        def activations(self):
+            _mOCdw = _Qy47o(self.data, 'attributes', 'metadata', 'tokenId')
+            if not _mOCdw:
+                return (None, None)
+            _GrMLP = _MHhqj.get(f'{self.base_url}/tokens/{_mOCdw}', headers={'Content-Type': 'application/vnd.api+json', 'Accept': 'application/vnd.api+json', 'Authorization': self.auth, 'Keygen-Version': _7kl7q}, timeout=10)
+            _GrMLP.raise_for_status()
+            data = _GrMLP.json()
+            _dPZUN = data['data']['attributes']
+            return (_dPZUN['activations'], _dPZUN['maxActivations'])
+
+        @property
+        def vendor_name(self):
+            return self.vendor.name
+
+        @property
+        def created(self):
+            if (created := _Qy47o(self.data, 'attributes', 'created')):
+                return _eJhDO(created)
+            return None
+
+        @property
+        def expiry(self):
+            if (expiry := _Qy47o(self.data, 'attributes', 'expiry')):
+                return _eJhDO(expiry)
+            return None
+
+        @property
+        def num_machines(self):
+            return _Qy47o(self.data, 'relationships', 'machines', 'meta', 'count')
+
+        @property
+        def max_machines(self):
+            return _Qy47o(self.data, 'attributes', 'maxMachines')
+
+        def list_machines(self):
+            try:
+                _zhxbE = self.get_machines()
+            except requests.exceptions.ReadTimeout:
+                return []
+            _1cXMb = []
+            for _timU4 in _zhxbE:
+                _ICns8 = _Qy47o(_timU4, 'attributes', 'fingerprint')
+                _OB730 = {'hostname': _Qy47o(_timU4, 'attributes', 'hostname'), 'requireHeartbeat': _Qy47o(_timU4, 'attributes', 'requireHeartbeat'), 'heartbeatStatus': _Qy47o(_timU4, 'attributes', 'heartbeatStatus'), 'fingerprint': _ICns8}
+                if (lhb := _Qy47o(_timU4, 'attributes', 'lastHeartbeat')):
+                    _OB730['lastHeartbeat'] = _eJhDO(lhb)
+                if (created := _Qy47o(_timU4, 'attributes', 'created')):
+                    _OB730['created'] = _eJhDO(created)
+                _1cXMb.append(_OB730)
+            return _1cXMb
+
+        @property
+        def user(self):
+            metadata = self.data['attributes']['metadata']
+            _Xs4Ye = _Qy47o(metadata, 'email') or _Qy47o(metadata, 'user')
+            if _Xs4Ye and _Xs4Ye not in {'sigma@mondaytech.com', 'meshpro@mondaytech.com', 'texworld@mondaytech.com'}:
+                return {'email': _Xs4Ye}
+            return {}
+
+        def validate(self, activate_if_required=False, raise_on_error=True, cache_force_refresh=False, cache_expire_after=None, require_product_id=None):
+            if _Qy47o(self.data, 'attributes', 'metadata', 'requireFingerprintScope') is True:
+                return self._validate_fingerprinted(activate_if_required, require_product_id=require_product_id, raise_on_error=raise_on_error, cache_force_refresh=cache_force_refresh, cache_expire_after=cache_expire_after)
+            _f6gsu = self._validate_cached(with_fingerprint=False, raise_on_error=False, cache_force_refresh=cache_force_refresh, cache_expire_after=cache_expire_after)
+            if require_product_id is not None and self.product_id != require_product_id:
+                _3zAom = f'Require product ID {require_product_id}, but license has product ID {self.product_id}'
+                raise _1zSb6(_3zAom, 'KG_WRONG_PRODUCT_ID')
+            if _Qy47o(_f6gsu, 'valid'):
+                return _f6gsu
+            _PlDO3 = _Qy47o(_f6gsu, 'code')
+            if _PlDO3 == 'FINGERPRINT_SCOPE_REQUIRED':
+                return self._validate_fingerprinted(activate_if_required, raise_on_error=raise_on_error, cache_force_refresh=cache_force_refresh, cache_expire_after=cache_expire_after)
+            if raise_on_error:
+                _3zAom = f'License {self.license_id}: Key validation failed'
+                raise _1zSb6(_3zAom, _PlDO3)
+            return _f6gsu
+
+        def _validate_fingerprinted(self, activate_if_required, require_product_id=None, raise_on_error=True, cache_force_refresh=False, cache_expire_after=None):
+            _BJ8wh = self._validate_cached(with_fingerprint=True, raise_on_error=False, cache_force_refresh=cache_force_refresh, cache_expire_after=cache_expire_after)
+            if require_product_id is not None and self.product_id != require_product_id:
+                _r6vQF = f'Require product ID {require_product_id}, but license has product ID {self.product_id}'
+                raise _1zSb6(_r6vQF, 'KG_WRONG_PRODUCT_ID')
+            if _Qy47o(_BJ8wh, 'valid'):
+                return _BJ8wh
+            _dJ6RC = _Qy47o(_BJ8wh, 'code')
+            if _dJ6RC == 'HEARTBEAT_NOT_STARTED':
+                self._ping_heartbeat_cached(raise_on_error=True, cache_force_refresh=True)
+                return self._validate_fingerprinted(activate_if_required, raise_on_error=raise_on_error)
+            if activate_if_required and _dJ6RC in {'NO_MACHINE', 'NO_MACHINES', 'FINGERPRINT_SCOPE_MISMATCH', 'HEARTBEAT_DEAD'}:
+                self.activate(raise_on_error=True)
+                return self._validate_fingerprinted(activate_if_required, cache_force_refresh=True, cache_expire_after=cache_expire_after, raise_on_error=raise_on_error)
+            if raise_on_error:
+                _NtZSw = []
+                _EE53Y = _Qy47o(_BJ8wh, 'detail')
+                _LGB2T = _Qy47o(_BJ8wh, 'code')
+                if _dJ6RC and _EE53Y:
+                    _NtZSw.append(f'Validation error {_dJ6RC}: {_EE53Y}')
+                if _dJ6RC == 'NOT_FOUND':
+                    _NtZSw.append('Did you provide the license ID instead of the key?')
+                raise _1zSb6('\n'.join(_NtZSw), f'KG_{_LGB2T}')
+            return _BJ8wh
+
+        def _validate_cached(self, with_fingerprint, raise_on_error=True, cache_force_refresh=False, cache_expire_after=None):
+            _tyq2V: dict[str, Any] = {'key': self.key}
+            if with_fingerprint:
+                _tyq2V['scope'] = {'fingerprint': _SvxMQ()}
+            _IjE87 = _MHhqj.post(f'{self.base_url}/licenses/actions/validate-key', headers={'Content-Type': 'application/vnd.api+json', 'Accept': 'application/vnd.api+json', 'Keygen-Version': _7kl7q}, json={'meta': _tyq2V}, timeout=10, force_refresh=cache_force_refresh, expire_after=cache_expire_after)
+            try:
+                self.verify_response(_IjE87)
+            except _TGTbm:
+                _MHhqj.cache.delete(requests=[_IjE87.request])
+                raise
+            _emYc9(_IjE87)
+            json = _IjE87.json()
+            if not _IjE87.ok:
+                _VfiMo = _Qy47o(json, 'errors', 0)
+                _SBQwv = f'Validation failed for license {self.license_id}: '
+                if _VfiMo:
+                    if _VfiMo.get('title') == 'Daily API request limit reached':
+                        _hvmhC = 'KG_RATE_LIMIT'
+                        _SBQwv += 'Daily API rate limit has been reached. Limit will be reset at midnight UTC.'
+                    else:
+                        _hvmhC = _Qy47o(_VfiMo, 'code')
+                        _SBQwv += _Qy47o(_VfiMo, 'detail')
+                else:
+                    _hvmhC = 'KG_VALIDATION_FAILED'
+                    _SBQwv += 'unknown'
+                raise _1zSb6(_SBQwv, _hvmhC)
+            data = json['data']
+            _tyq2V = json['meta']
+            if not _Qy47o(_tyq2V, 'valid') and raise_on_error:
+                _9uv7k = _Qy47o(_tyq2V, 'code')
+                _DPwUR = _Qy47o(_tyq2V, 'detail')
+                _f8mpj = []
+                if _9uv7k and _DPwUR:
+                    _f8mpj.append(f'Validation error {_9uv7k}: {_DPwUR}')
+                if _9uv7k == 'NOT_FOUND':
+                    _f8mpj.append('Did you provide the license ID instead of the key?')
+                raise _1zSb6('\n'.join(_f8mpj), _9uv7k)
+            if _Qy47o(_tyq2V, 'valid') and _Qy47o(data, 'attributes', 'requireHeartbeat'):
+                self._ping_heartbeat_cached(raise_on_error=True)
+            if data:
+                self._data = data
+            return _tyq2V
+
+        def activate(self, raise_on_error=True):
+            _l2dGJ('Activating machine for license...', highlight=False, end='', style='green')
+            _6lCCS = _Qy47o(self.data, 'attributes', 'metadata', 'token')
+            _vvdhx = _Qy47o(self.data, 'attributes', 'metadata', 'tokenId')
+            _hLXLB = _6lCCS and _vvdhx
+            auth = f'Bearer {_6lCCS}' if _hLXLB else f'License {self.key}'
+            _YFgzB = requests.post(f'{self.base_url}/machines', headers={'Authorization': auth, 'Content-Type': 'application/vnd.api+json', 'Accept': 'application/vnd.api+json', 'Keygen-Version': _7kl7q}, json={'data': {'type': 'machines', 'attributes': {'cores': multiprocessing.cpu_count(), 'fingerprint': _SvxMQ(), 'platform': platform.platform(), 'hostname': socket.gethostname()}, 'relationships': {'license': {'data': {'type': 'licenses', 'id': self.license_id}}}}}, timeout=10)
+            self.verify_response(_YFgzB)
+            _emYc9(_YFgzB)
+            _evpcs = _YFgzB.json()
+            self._clear_validation_cache()
+            self._clear_machines_cache()
+            if _hLXLB:
+                self._clear_tokens_cache(_vvdhx)
+            if raise_on_error and 'errors' in _evpcs:
+                _l2dGJ(_evpcs)
+                _s7AEh = f'Activation errors with license {self.license_id}:\n' + '\n'.join((f"    {_DfFt8['title']}: {_DfFt8['detail']}" for _DfFt8 in _evpcs['errors']))
+                raise _1zSb6(_s7AEh, 'KG_ACTIVATION_ERROR')
+            _l2dGJ('done.', style='green')
+
+        def deactivate(self, fingerprints=None):
+            _l2dGJ('Deactivating machine for license...', highlight=False, end='', style='green')
+            _oTvpW = _Qy47o(self.data, 'attributes', 'metadata', 'token')
+            _sDXLk = _Qy47o(self.data, 'attributes', 'metadata', 'tokenId')
+            _AaI4v = _oTvpW and _sDXLk
+            auth = f'Bearer {_oTvpW}' if _AaI4v else f'License {self.key}'
+            if not fingerprints:
+                fingerprints = {_SvxMQ()}
+            for _cCPl8 in fingerprints:
+                _EtEty = self._get_machine_by_fingerprint_cached(_cCPl8, cache_force_refresh=True)
+                _9GTuH = _Qy47o(_EtEty, 'data', 0, 'id')
+                if not _9GTuH:
+                    _jdvPg = f"Couldn't get machine ID for machine {_cCPl8}. Not activated?"
+                    raise _1zSb6(_jdvPg, 'KG_MACHINE_NOT_FOUND')
+                _IfkzF = requests.delete(f'{self.base_url}/machines/{_9GTuH}', headers={'Content-Type': 'application/vnd.api+json', 'Accept': 'application/vnd.api+json', 'Authorization': auth, 'Keygen-Version': _7kl7q}, timeout=10)
+                if not _IfkzF.ok:
+                    _ZxArA = _Qy47o(_IfkzF.json(), 'errors', 0)
+                    if _ZxArA:
+                        _3M5OE = _Qy47o(_ZxArA, 'code')
+                        _jdvPg = f"Machined deactivation failed: {_ZxArA['detail']}"
+                    elif _IfkzF.status_code == 404:
+                        _3M5OE = 'KG_MACHINE_NOT_FOUND'
+                        _jdvPg = 'Machine deactivation failed (not found)'
+                    else:
+                        _3M5OE = 'KG_DEACTIVATION_FAILED'
+                        _jdvPg = 'Unsuccessful deactivation request'
+                    raise _1zSb6(_jdvPg, _3M5OE)
+                self.verify_response(_IfkzF)
+                _emYc9(_IfkzF)
+            self._clear_validation_cache()
+            self._clear_machines_cache()
+            if _AaI4v:
+                self._clear_tokens_cache(_sDXLk)
+            _l2dGJ('done.', style='green')
+
+        def _clear_validation_cache(self):
+            _MHhqj.cache.delete(requests=[Request(method='POST', url=f'{self.base_url}/licenses/actions/validate-key', json={'meta': {'key': self.key}}), Request(method='POST', url=f'{self.base_url}/licenses/actions/validate-key', json={'meta': {'key': self.key, 'scope': {'fingerprint': _SvxMQ()}}})])
+
+        def _clear_machines_cache(self):
+            _MHhqj.cache.delete(urls=[f'{self.base_url}/licenses/{self.license_id}/machines'])
+
+        def _clear_tokens_cache(self, token_id):
+            _MHhqj.cache.delete(urls=[f'{self.base_url}/tokens/{token_id}'])
+
+        def get_machines(self, cache_force_refresh=False):
+            _QyHmS = _MHhqj.get(f'{self.base_url}/licenses/{self.license_id}/machines', headers={'Content-Type': 'application/vnd.api+json', 'Accept': 'application/vnd.api+json', 'Authorization': self.auth, 'Keygen-Version': _7kl7q}, timeout=10, force_refresh=cache_force_refresh)
+            try:
+                self.verify_response(_QyHmS)
+            except _TGTbm:
+                _MHhqj.cache.delete(requests=[_QyHmS.request])
+                raise
+            _emYc9(_QyHmS)
+            json = _QyHmS.json()
+            return _Qy47o(json, 'data', default=[])
+
+        def prettyprint(self, show_key=False):
+            _moORw: bool | Literal['unknown']
+            try:
+                _RvCF7 = self.validate(raise_on_error=False)
+            except requests.exceptions.ReadTimeout:
+                _moORw = 'unknown'
+                _m8JVC = 'timeout'
+            else:
+                _moORw = _RvCF7['valid']
+                assert isinstance(_moORw, bool)
+                _m8JVC = _Qy47o(_RvCF7, 'code')
+            super()._prettyprint(show_key=show_key, is_valid=_moORw, validation_code=_m8JVC)
+
+        def _get_machine_by_fingerprint_cached(self, fingerprint, cache_force_refresh=False, raise_on_error=False):
+            _VDrQk = _MHhqj.get(url=f'{self.base_url}/machines', params={'fingerprint': quote(fingerprint)}, headers={'Authorization': self.auth, 'Content-Type': 'application/vnd.api+json', 'Accept': 'application/vnd.api+json', 'Keygen-Version': _7kl7q}, timeout=10, force_refresh=cache_force_refresh)
+            self.verify_response(_VDrQk)
+            _emYc9(_VDrQk)
+            _J6Kq0 = _VDrQk.json()
+            _o5RbE = _Qy47o(_J6Kq0, 'errors')
+            if raise_on_error and _o5RbE:
+                _hu8lr = 'Get-Machine errors:\n' + '\n'.join((f"    {_dMqBX['title']}: {_dMqBX['detail']}" for _dMqBX in _o5RbE))
+                raise _1zSb6(_hu8lr, 'KG_MACHINE_ERROR')
+            return _J6Kq0
+
+        def _ping_heartbeat_cached(self, raise_on_error, cache_force_refresh=False):
+            _87gSM = _SvxMQ()
+            _ix5Ym = self._get_machine_by_fingerprint_cached(_87gSM, cache_force_refresh=cache_force_refresh)
+            _n2Gx8 = _Qy47o(_ix5Ym, 'data', 0, 'id')
+            if _n2Gx8 is None:
+                _dmTD9 = f'Machine with fingerprint {_87gSM} not found'
+                raise _1zSb6(_dmTD9, 'KG_MACHINE_NOT_FOUND')
+            _B98Hw = _MHhqj.post(f'{self.base_url}/machines/{_n2Gx8}/actions/ping-heartbeat', headers={'Authorization': self.auth, 'Accept': 'application/vnd.api+json', 'Keygen-Version': _7kl7q}, timeout=10, force_refresh=cache_force_refresh)
+            try:
+                self.verify_response(_B98Hw)
+            except _TGTbm:
+                _MHhqj.cache.delete(requests=[_B98Hw.request])
+                raise
+            _emYc9(_B98Hw)
+            _BmKrw = _B98Hw.json()
+            _CQ4vx = _Qy47o(_BmKrw, 'errors')
+            if _CQ4vx and _Qy47o(_CQ4vx[0], 'code') == 'NOT_FOUND' and (not cache_force_refresh):
+                return self._ping_heartbeat_cached(raise_on_error, cache_force_refresh=True)
+            if raise_on_error and _CQ4vx:
+                _dmTD9 = f'License {self.license_id}: Heartbeat errors:\n' + '\n'.join((f"    {_JIBNc['title']}: {_JIBNc['detail']}" for _JIBNc in _CQ4vx))
+                raise _1zSb6(_dmTD9, 'KG_HEARTBEAT_ERROR')
+            return _BmKrw
+
+    def _Ynv4l():
+        _MHhqj.cache.clear()
+
+    def _8aLv7(cert_data_or_path, update_if_expired=True, override_original=True):
+        _ePFRN = None
+        if isinstance(cert_data_or_path, Path):
+            _ePFRN = cert_data_or_path
+            with _ePFRN.open() as _B3EyZ:
+                _L1j4n = _B3EyZ.read()
+        else:
+            assert isinstance(cert_data_or_path, str)
+            _L1j4n = cert_data_or_path
+        _ROaTH, _Piv5v = _NCYGy(_L1j4n)
+        _TRnYa = datetime.now(tz=timezone.utc)
+        if _eJhDO(_Piv5v['issued']) > _TRnYa + timedelta(minutes=5):
+            _yp1BT = 'License error'
+            raise _1zSb6(_yp1BT, 'KG_E058')
+        if _ePFRN and update_if_expired and (_TRnYa > _eJhDO(_Piv5v['expiry'])):
+            _L1j4n = _Y80DN(_ROaTH['relationships']['account']['data']['id'], _ROaTH['id'], auth=f"License {_ROaTH['attributes']['key']}")
+            _ROaTH, _Piv5v = _NCYGy(_L1j4n)
+            if override_original:
+                with _ePFRN.open('w') as _CbyvQ:
+                    _CbyvQ.write(_L1j4n)
+        _6otlz = _ROaTH['attributes']['key']
+        if _6otlz.startswith('key/'):
+            return _jr1RS(_6otlz)
+        return _nhxT5(_ROaTH)
+
+    def _4T3GI(path):
+        with path.open() as _xzYn7:
+            _IVYe2 = _xzYn7.read()
+        _yFoaG, _qumkA = _NCYGy(_IVYe2)
+        _vDVOt = _yFoaG['attributes']['key']
+        _IVYe2 = _Y80DN(_yFoaG['relationships']['account']['data']['id'], _yFoaG['id'], auth=f'License {_vDVOt}')
+        with path.open('w') as _yAX5T:
+            _yAX5T.write(_IVYe2)
+
+    def _NCYGy(content):
+        assert isinstance(content, str)
+        _O76QE = '-----BEGIN LICENSE FILE-----\n'
+        _gbyfX = '-----END LICENSE FILE-----'
+        content = content.strip()
+        if not content.startswith(_O76QE) or not content.endswith(_gbyfX):
+            _NrGBo = f'Error in license file. Expected\n```{_O76QE}...\n{_gbyfX}\n```\ngot\n```\n{content}\n```\nTry refreshing the the license file with `slim refresh`.\n'
+            raise ValueError(_NrGBo)
+        _Eiy9z = base64.b64decode(_KMT2W(content, _O76QE, _gbyfX))
+        try:
+            _BiGfk = json.loads(_Eiy9z)
+        except UnicodeDecodeError:
+            _NrGBo = 'Unexpected license data'
+            raise RuntimeError(_NrGBo) from None
+        _6xvAP = json.loads(base64.b64decode(_BiGfk['enc']))
+        _YCdWi = _Qy47o(_6xvAP, 'data', 'relationships', 'account', 'data', 'id')
+        _PAnVw = _7wv8L(_YCdWi).verify_key
+        _SCBUf = ('license/' + _BiGfk['enc']).encode()
+        _Td6XO, _Rr9ep = _BiGfk['alg'].split('+')
+        assert _Td6XO == 'base64'
+        _RW146 = base64.b64decode(_BiGfk['sig'])
+        if _PAnVw.alg != _Rr9ep:
+            _NrGBo = f'Requested {_Rr9ep} key, but got {_PAnVw.alg} verify_key'
+            raise RuntimeError(_NrGBo)
+        _PAnVw.verify(_RW146, _SCBUf)
+        return (_6xvAP['data'], _6xvAP['meta'])
+
+    def _Y80DN(account_id, license_id_or_key, auth, host='api.keygen.sh'):
+        _pSX7p = requests.get(f'https://{host}/v1/accounts/{account_id}/licenses/{quote(license_id_or_key)}/actions/check-out', headers={'Accept': 'application/vnd.api+json', 'Authorization': auth, 'Keygen-Version': '1.3'}, timeout=10)
+        _pSX7p.raise_for_status()
+        _7wv8L(account_id).verify_key.verify_response(_pSX7p)
+        _emYc9(_pSX7p)
+        return _pSX7p.text
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib
+    _PdFeR = _IhCkx / 'keygen'
+
+    def _FcMOF(file_or_cert):
+        _W2R44 = _8aLv7(file_or_cert, update_if_expired=True, override_original=False)
+        if isinstance(_W2R44, _nhxT5):
+            _W2R44.validate(activate_if_required=True)
+            return _sVrfa(_W2R44, file_or_cert)
+        assert isinstance(_W2R44, _jr1RS)
+        _c86cD(_W2R44)
+        return _W2R44
+
+    def _sVrfa(lic, cert=None):
+        _l2dGJ('Installing license...', end='', style='green', highlight=False)
+        if cert is None:
+            cert = _Y80DN(lic.account_id, lic.license_key, auth=f'License {lic.license_key}')
+        elif isinstance(cert, Path):
+            with cert.open() as _Dulb9:
+                cert = _Dulb9.read()
+        assert isinstance(cert, str)
+        assert cert.startswith('-----BEGIN LICENSE FILE-----')
+        assert lic.product_id, 'Missing product ID'
+        assert lic.license_id, 'Missing license ID'
+        _lfUpE = _PdFeR / lic.product_id / (lic.license_id + '.lic')
+        _lfUpE.parent.mkdir(parents=True, exist_ok=True)
+        with _lfUpE.open('w') as _xGu9l:
+            _xGu9l.write(cert)
+        _l2dGJ('done.', style='green')
+        return lic
+
+    def _c86cD(lic):
+        _4JsKR = _PdFeR / lic.product_id / (lic.license_id + '.key')
+        _4JsKR.parent.mkdir(parents=True, exist_ok=True)
+        _BnwRv, _cPLRc = lic.key.split('/')
+        _NRXWm, _Y1Z9Z = _cPLRc.split('.')
+        with _4JsKR.open('w') as _cHBYv:
+            _cHBYv.write(_BnwRv + '/\n' + _LZJbk(_NRXWm, 60) + '\n.\n' + _LZJbk(_Y1Z9Z, 60))
+
+    def _vzTkH(toml_file):
+        _B6LwB = _UwQDn(toml_file)
+        if _B6LwB.startswith('key/'):
+            _bKn57 = _jr1RS(_B6LwB)
+            _c86cD(_bKn57)
+            return _bKn57
+        _B6LwB = _RMiwq(_B6LwB, 'fp/')
+        _7FHFa = _nhxT5.from_key(_OnYqq(_B6LwB), _B6LwB)
+        _7FHFa.validate(activate_if_required=True)
+        _sVrfa(_7FHFa)
+        return _7FHFa
+
+    def _UwQDn(toml_file):
+        with Path(toml_file).open('rb') as _qiaUU:
+            _Bs4ds = tomllib.load(_qiaUU)
+        assert _Bs4ds, f'Empty license file {toml_file}'
+        return _Bs4ds['license_key']
+
+    @_Qa0p4
+    def _aZSfL(product_id=None, license_keys_or_ids=None):
+        _xDrcE = _PdFeR
+        if product_id:
+            _xDrcE /= product_id
+        for _7tgA0 in _xDrcE.rglob('*.key'):
+            _iRsxn = _jr1RS.from_file(_7tgA0)
+            if license_keys_or_ids is None:
+                yield (_7tgA0, _iRsxn)
+            else:
+                _JGsWw = _Qy47o(_iRsxn.data, 'license', 'id')
+                if _JGsWw in license_keys_or_ids:
+                    license_keys_or_ids.remove(_JGsWw)
+                    yield (_7tgA0, _iRsxn)
+                    continue
+                if _iRsxn.key in license_keys_or_ids:
+                    license_keys_or_ids.remove(_iRsxn.key)
+                    yield (_7tgA0, _iRsxn)
+                    continue
+
+    @_Qa0p4
+    def _Hb2XR(product_id=None, license_keys_or_ids=None):
+        _Ypn6Q = _PdFeR
+        if product_id:
+            _Ypn6Q /= product_id
+        for _NjhzJ in _Ypn6Q.rglob('*.toml'):
+            _vzTkH(_NjhzJ)
+            _NjhzJ.unlink()
+        for _5QZGJ in _Ypn6Q.rglob('*.lic'):
+            _w2Cid = _8aLv7(_5QZGJ)
+            if license_keys_or_ids is None:
+                yield (_5QZGJ, _w2Cid)
+            else:
+                _JwPKm = _Qy47o(_w2Cid.data, 'id')
+                if _JwPKm in license_keys_or_ids:
+                    license_keys_or_ids.remove(_JwPKm)
+                    yield (_5QZGJ, _w2Cid)
+                    continue
+                _hcEKG = _Qy47o(_w2Cid.data, 'attributes', 'key')
+                if _hcEKG in license_keys_or_ids:
+                    license_keys_or_ids.remove(_hcEKG)
+                    yield (_5QZGJ, _w2Cid)
+                    continue
+
+    def _LnE2K():
+        _cjkhx = 0
+        for _Uiciw in _PdFeR.rglob('*.lic'):
+            _4T3GI(_Uiciw)
+            _cjkhx += 1
+        return _cjkhx
+    try:
+        from functools import cache
+    except ImportError:
+        from functools import lru_cache as cache
+
+    @_J75vB
+    @cache
+    def _pTVXw(account_id, product_id, variable_names=(), allow_user_input=True, cache_force_refresh=False, cache_expire_after=None):
+        assert isinstance(product_id, str)
+        _7wv8L(account_id)
+        for _xb1et in _5XykO(_6ehVp(account_id, list(variable_names)), _yzF9d(product_id), _XHPAj(product_id)):
+            if isinstance(_xb1et, _nhxT5):
+                try:
+                    _wYIMb = _xb1et.validate(activate_if_required=True, require_product_id=product_id, cache_expire_after=cache_expire_after, cache_force_refresh=cache_force_refresh)
+                except _1zSb6 as e:
+                    _nOB4R(str(e))
+                    continue
+            elif isinstance(_xb1et, _jr1RS):
+                try:
+                    _wYIMb = _xb1et.validate()
+                except _1zSb6 as e:
+                    _nOB4R(str(e))
+                    continue
+            else:
+                continue
+            if _xb1et.account_id != account_id or _xb1et.product_id != product_id:
+                continue
+            return (_xb1et.data, _wYIMb)
+        _PwEaD = f'Unable to find valid license for product ID {product_id}.'
+        if allow_user_input:
+            _nOB4R(_PwEaD)
+            _sKWmO = Prompt.ask('Enter license key')
+            _xb1et = _fVeBB(_sKWmO, account_id)
+            if _xb1et is None:
+                _VRZYW = f'Illegal license key `{_sKWmO}`. Typo?'
+                raise _1zSb6(_VRZYW, 'ILLEGAL_KEY')
+            if isinstance(_xb1et, _nhxT5):
+                _wYIMb = _xb1et.validate(activate_if_required=True, require_product_id=product_id, cache_expire_after=cache_expire_after, cache_force_refresh=cache_force_refresh)
+                _sVrfa(_xb1et)
+                return (_xb1et.data, _wYIMb)
+            if isinstance(_xb1et, _jr1RS):
+                _wYIMb = _xb1et.validate()
+                if _xb1et.product_id != product_id:
+                    _VRZYW = f'Require product ID {product_id}, but license has product ID {_xb1et.product_id}'
+                    raise _1zSb6(_VRZYW, 'KG_WRONG_PRODUCT_ID')
+                _c86cD(_xb1et)
+                return (_xb1et.data, _wYIMb)
+        raise _1zSb6(_PwEaD, 'KG_NOT_FOUND')
+
+    def _6ehVp(account_id, var_names):
+        for _VN9D8, _MTn4d, _43WaF in _ktIDa(var_names):
+            if _43WaF.strip() == '':
+                _nOB4R(f'{_VN9D8.title()} variable `{_MTn4d}` is empty.')
+                continue
+            _MvAoY = _fVeBB(_43WaF, account_id)
+            if _MvAoY is None:
+                _nOB4R(f'{_VN9D8.title()} variable `{_MTn4d}` contains value that cannot be converted to a KG license:\n{_43WaF}')
+                continue
+            yield _MvAoY
+
+    def _fVeBB(value, account_id):
+        if value.endswith('-V3'):
+            _Qtk5d = _RMiwq(value, 'fp/')
+            return _nhxT5.from_key(account_id, _Qtk5d)
+        if value.startswith('key/'):
+            return _jr1RS(value)
+        if value.startswith('-----BEGIN LICENSE FILE-----'):
+            return _8aLv7(value, update_if_expired=True, override_original=False)
+        _DkMKS = Path(value)
+        if _DkMKS.is_file():
+            with _DkMKS.open() as _vlJdZ:
+                _1pb0O = _vlJdZ.read()
+            return _fVeBB(_1pb0O, account_id)
+        return None
+
+    def _yzF9d(product_id):
+        for _NTVQn, _49UtY in _aZSfL(product_id=product_id):
+            yield _49UtY
+
+    def _XHPAj(product_id):
+        for _hvVps, _gToaF in _Hb2XR(product_id=product_id):
+            try:
+                yield _gToaF
+            except _TGTbm:
+                _nOB4R(f'Invalid signature in {_hvVps}. Skipping.')
+
+    class _ejmMl:
+        name = 'Monday Tech'
+        email = 'support@mondaytech.com'
+        products_codes = ('stp01',)
+    _tSUEe = {product_code: vendor for vendor in [_ejmMl] for product_code in vendor.products_codes}
+
+    def _hcuGh(product_code):
+        try:
+            return _tSUEe[product_code]
+        except KeyError:
+            _FWbga = f"Cannot use SLiM with LicenseSpring product code {product_code}... If you'd like to use the Stonefish License Manager, contact support@mondaytech.com"
+            raise _1zSb6(_FWbga, 'CL_VENDOR_ERROR') from None
+    _hDjVM = platformdirs.user_data_path('slim', 'MondayTech') / 'license_spring'
+    _v15fK = _qLHv3(base64.b64decode('MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwEt7ZQWSzeBYNBwyi3KW+XU/6I+ju90R5ZpTvSE4VWL8KSgVJ6bWKIhaKTL2hbUpIQQgS5ZKfa4SEEMdIm5kxe0u2F64JFAVQunx/1O/UXsD7ADVt93Q/hxA9Npa16tKepZoyhi79sxpaxyy/WTdsZKuTLApX7bWX6/XPhaPjNyiWeeK2Naka44B+F+PwN/ey3rZUra3pBltShwy2dmKIxJVmprf5ttMYBB+ouqPin3VgDw5Jq1FZwpLBiOe+ogR+sHu7QYWwLq6AgC4e3JqgryEvqfJr/XkvOnAdcAIZm6tK6DdnLWCy6Onrk7t0VQK5nnGF1CKE+jcAByWopcIVCwfYrs1UCSY1YibKXNJoyvEhgLyCC+KAgXKf8omcg1Q18XKu5XSrvrCzXLnRnaFNpFDjcg5AJJab78hX7qGPC+e8PjuBYwh2vtx5mFj7/c+T59JM/vXwwvW9DsnDztDWEDFhzGanU71NgwrZbRoNSyTW0UjbZsyJVSIX6233Ng0y5L9mDe8p8P+u1B0sXAAozEKL/yG4Qu5r4LIw4iv6JVPT1xbWlH4Vc4KaN3toaf4+G0EkFy6ncvBncWifLARSoWpQ5YsygDdQNVYdmMsoQ76UTuNxo3eZ0sQJjbQVBqlkcXrAdtUCpuojPRsl/Xs9zVOJrzZPG0I98E5quNbRkMCAwEAAQ=='))
+    _XepUV = 'https://api.licensespring.com/api/v4'
+    logging.getLogger('requests_cache.session').setLevel(logging.ERROR)
+    _qhADW = requests_cache.CachedSession(cache_name=_ePU7O / 'license_spring', expire_after=timedelta(days=3), stale_while_revalidate=timedelta(days=4))
+
+    class _3HvxQ(_jth74):
+        key_type = 'License Spring'
+
+        @classmethod
+        def from_file(cls, path):
+            with Path(path).open() as _qjhMv:
+                _50HsH = _qjhMv.read()
+            try:
+                _6ccYx = base64.b64decode(_50HsH)
+            except binascii.Error:
+                _Q1W5t = f'Invalid license file {path}'
+                raise _1zSb6(_Q1W5t, 'LS_INVALID_FILE') from None
+            _fd39T = json.loads(_6ccYx)
+            _tleWP = base64.b64decode(_fd39T.pop('license_signature_v2'))
+            _BIdjK = json.dumps(_fd39T, separators=(',', ':')).encode()
+            _v15fK.verify(_tleWP, _BIdjK, padding='pkcs1v15')
+            _A4hMK(datetime.strptime(_fd39T['date'], '%a %b %d %Y %H:%M:%S GMT%z'))
+            return cls(_fd39T)
+
+        @classmethod
+        def from_key(cls, product_code, license_key):
+            _7r9Fk = {'product_details': {'short_code': product_code}, 'license_key': license_key}
+            return cls(_7r9Fk)
+
+        def __init__(self, data):
+            assert isinstance(data, dict)
+            assert _Qy47o(data, 'license_key')
+            _eljRu = _Qy47o(data, 'product_details', 'short_code')
+            assert _eljRu
+            self.vendor = _hcuGh(_eljRu)
+            self._data = data
+
+        @property
+        def data(self):
+            return self._data
+
+        @property
+        def license_id(self):
+            return _Qy47o(self.data, 'id')
+
+        @property
+        def product_id(self):
+            return _Qy47o(self.data, 'product_details', 'product_id')
+
+        @property
+        def product_code(self):
+            return self.data['product_details']['short_code']
+
+        @property
+        def product_name(self):
+            return _Qy47o(self.data, 'product_details', 'product_name')
+
+        @property
+        def key(self):
+            return self.data['license_key']
+
+        @property
+        def created(self):
+            if (date := _Qy47o(self.data, 'date')):
+                return datetime.strptime(date, '%a %b %d %Y %H:%M:%S GMT%z')
+            return None
+
+        @property
+        def expiry(self):
+            if (vp := self.data.get('validity_period')):
+                return _eJhDO(vp)
+            return None
+
+        @property
+        def user(self):
+            user = _Qy47o(self.data, 'customer')
+            if not user:
+                return {}
+            _mTfRi = []
+            if (fn := user['first_name']):
+                _mTfRi.append(fn)
+            if (ln := user['last_name']):
+                _mTfRi.append(ln)
+            return {'name': ' '.join(_mTfRi) if _mTfRi else None, 'email': user['email'] or None}
+
+        @property
+        def vendor_name(self):
+            return self.vendor.name
+
+        def list_machines(self):
+            return []
+
+        def validate(self, shared_key, api_key, activate_if_required=True, raise_on_error=True, cache_force_refresh=False, cache_expire_after=None):
+            _f3df2 = _qhADW.get(url=f'{_XepUV}/check_license', headers=_WTdJm(shared_key, api_key), params={'product': self.product_code, 'hardware_id': _SvxMQ(), 'license_key': self.key}, force_refresh=cache_force_refresh, expire_after=cache_expire_after)
+            _DjcuP(_f3df2)
+            _emYc9(_f3df2)
+            data = _f3df2.json()
+            if data.get('code') in {'license_not_active', 'device_not_found'} and activate_if_required:
+                self.activate(shared_key, api_key)
+                _OuXQ0()
+                return self.validate(shared_key, api_key, activate_if_required=activate_if_required, raise_on_error=raise_on_error, cache_force_refresh=True)
+            if not _f3df2.ok and raise_on_error:
+                raise _1zSb6(data['message'], 'LS_VALIDATION_ERROR')
+            self._data = data
+            return data
+
+        def activate(self, shared_key, api_key, app_version=None):
+            data = {'product': self.product_code, 'hardware_id': _SvxMQ(), 'license_key': self.key, 'os_ver': platform.platform(), 'hostname': socket.gethostname(), 'mac_address': ':'.join((f'{_Yyp6z:02x}' for _Yyp6z in uuid.getnode().to_bytes(6, byteorder='big')))}
+            _swOvc = _FfyRf('stonefish-license-manager')
+            data['sdk_ver'] = f'Stonefish License Manager {_swOvc}'
+            if app_version:
+                data['app_ver'] = app_version
+            _jgjFl = requests.post(url=f'{_XepUV}/activate_license', headers=_WTdJm(shared_key, api_key), json=data, timeout=10)
+            _DjcuP(_jgjFl)
+            _emYc9(_jgjFl)
+            json = _jgjFl.json()
+            if not _jgjFl.ok:
+                raise _1zSb6(json['message'], 'LS_ACTIVATION_ERROR')
+            return json
+
+        def deactivate(self, shared_key, api_key):
+            _i3eFO = requests.post(url=f'{_XepUV}/deactivate_license', headers=_WTdJm(shared_key, api_key), json={'product': self.product_code, 'hardware_id': _SvxMQ(), 'license_key': self.key}, timeout=10)
+            _emYc9(_i3eFO)
+            if not _i3eFO.ok:
+                json = _i3eFO.json()
+                raise _1zSb6(json['message'], 'LS_DEACTIVATION_ERROR')
+            return
+
+        def prettyprint(self, show_key=False):
+            super()._prettyprint(show_key=show_key, is_valid='unknown', validation_code=None)
+
+    def _11Fys():
+        _qhADW.cache.clear()
+
+    def _OuXQ0():
+        for _1r5hT in _qhADW.cache.responses.values():
+            if _1r5hT.url == f'{_XepUV}/check_license':
+                _qhADW.cache.delete(_1r5hT.cache_key)
+
+    def _WTdJm(shared_key, api_key):
+        _HMniG = format_date_time(time.time())
+        _MGkU4 = hmac.new(bytes(shared_key, 'utf-8'), f'licenseSpring\ndate: {_HMniG}'.encode(), hashlib.sha256).digest()
+        _BhnhQ = base64.b64encode(_MGkU4).decode()
+        _pdvRB = ','.join(['algorithm="hmac-sha256"', 'headers="date"', f'signature="{_BhnhQ}"', f'apiKey="{api_key}"'])
+        return {'Content-Type': 'application/json', 'Date': _HMniG, 'Authorization': _pdvRB}
+
+    def _oHXUk(product_code, shared_key, api_key):
+        _u7Z7i = _qhADW.get(url=f'{_XepUV}/product_details', params={'product': product_code}, headers=_WTdJm(shared_key, api_key), timeout=10)
+        _DjcuP(_u7Z7i)
+        _emYc9(_u7Z7i)
+        _4NNjC = _u7Z7i.json()
+        if not _u7Z7i.ok:
+            raise _1zSb6(_4NNjC['message'], 'LS_PRODUCT_ERROR')
+        return _4NNjC
+
+    def _DjcuP(res):
+        if (sig := res.headers.get('LicenseSignature')):
+            _v15fK.verify(base64.b64decode(sig), res.content, padding='pkcs1v15')
+    try:
+        from functools import cache
+    except ImportError:
+        from functools import lru_cache as cache
+
+    @_J75vB
+    @cache
+    def _oWWei(product_code, shared_key, api_key, variable_names=(), cache_force_refresh=False, cache_expire_after=None):
+        for _xseR6 in _5XykO(_Kcal3(product_code, variable_names), _nszbi(product_code)):
+            try:
+                _xseR6.validate(shared_key, api_key, cache_force_refresh=cache_force_refresh, cache_expire_after=cache_expire_after)
+            except _1zSb6:
+                continue
+            if product_code != _xseR6.product_code:
+                continue
+            return _xseR6
+        _xiksi = f'Unable to find valid license for product {product_code}. \n\nAdd a license with\n\n    slim install <your-license>\n'
+        raise _1zSb6(_xiksi, 'LS_NOT_FOUND')
+
+    def _Kcal3(product_code, var_names):
+        for _tLyLw, _9JogU, _RORBi in _ktIDa(var_names):
+            yield _3HvxQ.from_key(product_code, _RORBi)
+
+    def _nszbi(product_code):
+        for _Me772 in (_hDjVM / product_code).glob('*.lic'):
+            yield _3HvxQ.from_file(_Me772)
+    if TYPE_CHECKING:
+        from pathlib import Path
+    _aquzH = _IhCkx / 'license_spring'
+
+    def _RRfqO(path):
+        _bIXET = _3HvxQ.from_file(path)
+        _BfQZV = _bIXET.data['product_details']['short_code']
+        _NDa93 = _bIXET.data['id']
+        _cwFk2 = _aquzH / _BfQZV / (str(_NDa93) + '.lic')
+        _cwFk2.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(path, _cwFk2)
+        return _bIXET
+
+    @_Qa0p4
+    def _JPJPg(license_keys_or_ids=None, product_code=None):
+        assert license_keys_or_ids is None or isinstance(license_keys_or_ids, set)
+        _qn1aP = _aquzH
+        if product_code:
+            _qn1aP /= product_code
+        for _sSrvF in _qn1aP.rglob('*.lic'):
+            _k7Axw = _3HvxQ.from_file(_sSrvF)
+            if license_keys_or_ids is None:
+                yield (_sSrvF, _k7Axw)
+            else:
+                _H0ePV = str(_Qy47o(_k7Axw.data, 'id'))
+                if _H0ePV in license_keys_or_ids:
+                    license_keys_or_ids.remove(_H0ePV)
+                    yield (_sSrvF, _k7Axw)
+                    continue
+                _ik8SR = _Qy47o(_k7Axw.data, 'license_key')
+                if _ik8SR in license_keys_or_ids:
+                    license_keys_or_ids.remove(_ik8SR)
+                    yield (_sSrvF, _k7Axw)
+                    continue
+
+    class _CFAuz:
+        name = 'Monday Tech'
+        email = 'support@mondaytech.com'
+        vendor_id = '6697c7f2-ad29-42c6-8b78-8ddb2a56bc0b'
+        verify_key = _oRSCx.from_hex('43157566ccbbe4f46fe5f02d6c1d363a3a502c3dbee36c22cf266e4015bdc23e')
+    _e3MyJ = {vendor.vendor_id: vendor for vendor in [_CFAuz]}
+
+    def _ovKXx(vendor_id):
+        try:
+            return _e3MyJ[vendor_id]
+        except KeyError:
+            _ENi4d = f"Cannot use SLiM with vendor ID {vendor_id}. If you're a vendor and like to use the Stonefish, contact <support@mondaytech.com>."
+            raise _1zSb6(_ENi4d, 'KG_VENDOR_ERROR') from None
+
+    class _4fX7V(_jth74):
+        key_type = 'Stonefish License Creator'
+
+        @classmethod
+        def from_file(cls, path, *_AJKJM, **_bx4XN):
+            path = Path(path)
+            with path.open() as _OFBTB:
+                _Goxc9 = _OFBTB.read().strip().replace('\n', '')
+            return cls(_Goxc9, *_AJKJM, **_bx4XN)
+
+        def __init__(self, key):
+            assert isinstance(key, str)
+            key = key.strip().replace('\n', '')
+            _rDzOf = 'slicv1/'
+            if not key.startswith(_rDzOf):
+                _zV2Do = f'Expected prefix {_rDzOf!r}, got {key[:len(_rDzOf)]!r}...'
+                raise ValueError(_zV2Do)
+            self._key = key
+            self.signing_data, _9VZiu = self._key.split('.')
+            self.enc_sig = base64.urlsafe_b64decode(_9VZiu)
+            _YtbEa = self.signing_data[len(_rDzOf):]
+            self._data = json.loads(base64.urlsafe_b64decode(_YtbEa))
+            _mRm5h = _Qy47o(self._data, 'vendor', 'id')
+            if not _mRm5h:
+                _zV2Do = 'Key lacks vendor ID'
+                raise _1zSb6(_zV2Do, 'SLIC_MISSING_VENDOR_ID')
+            self.vendor = _ovKXx(_mRm5h)
+            super().__init__()
+
+        @property
+        def data(self):
+            return self._data
+
+        @property
+        def key(self):
+            return self._key
+
+        @property
+        def license_id(self):
+            return self.data['license']['id']
+
+        @property
+        def vendor_name(self):
+            return self.vendor.name
+
+        @property
+        def created(self):
+            return _eJhDO(self.data['license']['created'])
+
+        @property
+        def expiry(self):
+            if (expiry := _Qy47o(self.data, 'license', 'expiry')):
+                return _eJhDO(expiry)
+            return None
+
+        def list_machines(self):
+            return _Qy47o(self.data, 'machines', default=[])
+
+        @property
+        def product_name(self):
+            return _Qy47o(self.data, 'product', 'name')
+
+        @property
+        def product_id(self):
+            return self.data['product']['id']
+
+        @property
+        def user(self):
+            return _Qy47o(self.data, 'user', default={})
+
+        @property
+        def max_machines(self):
+            return None
+
+        @property
+        def num_machines(self):
+            return None
+
+        def validate(self, raise_on_error=True):
+            try:
+                self.vendor.verify_key.verify(self.enc_sig, self.signing_data.encode())
+            except _TGTbm:
+                if raise_on_error:
+                    raise
+                return {'valid': False, 'code': 'SIGNATURE_ERROR', 'detail': 'Signature could not be verified'}
+            _n99VX = datetime.now(tz=timezone.utc)
+            _BSYrC = _eJhDO(self.data['license']['created'])
+            if _BSYrC > _n99VX:
+                _As4S6 = 'SLIC_E043'
+                _FG709 = 'Unknown license error'
+                if raise_on_error:
+                    raise _1zSb6(_FG709, _As4S6)
+                return {'valid': False, 'code': _As4S6, 'detail': _FG709}
+            _IBVQI = _eJhDO(expiry) if (expiry := _Qy47o(self.data, 'license', 'expiry')) else None
+            if _IBVQI:
+                if _BSYrC > _IBVQI:
+                    _As4S6 = 'SLIC_E044'
+                    _FG709 = 'Unknown license error'
+                    if raise_on_error:
+                        raise _1zSb6(_FG709, _As4S6)
+                    return {'valid': False, 'code': _As4S6, 'detail': _FG709}
+                if _n99VX > _IBVQI:
+                    _As4S6 = 'SLIC_EXPIRED'
+                    _FG709 = f'License has expired on {_IBVQI}'
+                    if raise_on_error:
+                        raise _1zSb6(_FG709, _As4S6)
+                    return {'valid': False, 'code': _As4S6, 'detail': _FG709}
+            _ucxTq = _Qy47o(self.data, 'machines')
+            if _ucxTq:
+                _SQQmv = _SvxMQ()
+                if _SQQmv not in _ucxTq:
+                    _As4S6 = 'SLIC_MACHINE_ERROR'
+                    _FG709 = f'License not valid on this machine (fingerprint {_SQQmv})'
+                    if raise_on_error:
+                        raise _1zSb6(_FG709, _As4S6)
+                    return {'valid': False, 'code': _As4S6, 'detail': _FG709}
+            return {'valid': True, 'code': None, 'detail': ''}
+
+        def prettyprint(self, show_key=False):
+            _kOoDU = self.validate(raise_on_error=False)
+            super()._prettyprint(show_key=show_key, is_valid=_Qy47o(_kOoDU, 'valid'), validation_code=_Qy47o(_kOoDU, 'code'))
+    _bpLPy = _IhCkx / 'slic'
+
+    def _3yHRt(data):
+        _e4WIL = _4fX7V(data)
+        _JbJVS = _e4WIL.data['product']['id']
+        _4czCq = _e4WIL.data['license']['id']
+        _yzWrn = _bpLPy / _JbJVS / (_4czCq + '.key')
+        _yzWrn.parent.mkdir(parents=True, exist_ok=True)
+        _EAg8n, _NdcLc = _e4WIL.key.split('/')
+        data, _X9B23 = _NdcLc.split('.')
+        with _yzWrn.open('w') as _zGj9x:
+            _zGj9x.write(_EAg8n + '/\n' + _LZJbk(data, 60) + '\n.\n' + _LZJbk(_X9B23, 60))
+        return _e4WIL
+
+    @_Qa0p4
+    def _UJlGk(license_keys_or_ids=None, product_id=None):
+        assert license_keys_or_ids is None or isinstance(license_keys_or_ids, set)
+        _MofKG = _bpLPy
+        if product_id:
+            _MofKG /= product_id
+        for _LQ6dL in _MofKG.rglob('*.key'):
+            _7HbsC = _4fX7V.from_file(_LQ6dL)
+            if license_keys_or_ids is None:
+                yield (_LQ6dL, _7HbsC)
+            else:
+                _X8vzm = _Qy47o(_7HbsC.data, 'license', 'id')
+                if _X8vzm in license_keys_or_ids:
+                    license_keys_or_ids.remove(_X8vzm)
+                    yield (_LQ6dL, _7HbsC)
+                    continue
+                if _7HbsC.key in license_keys_or_ids:
+                    license_keys_or_ids.remove(_7HbsC.key)
+                    yield (_LQ6dL, _7HbsC)
+                    continue
+    try:
+        from functools import cache
+    except ImportError:
+        from functools import lru_cache as cache
+
+    @_J75vB
+    @cache
+    def _QT38a(vendor_id, product_id, variable_names=()):
+        _ovKXx(vendor_id)
+        for _xSMWg in _5XykO(_xGoTH(variable_names), _SCaMf(product_id)):
+            try:
+                _FGH1m = _xSMWg.validate()
+            except _1zSb6:
+                continue
+            except _TGTbm:
+                _nOB4R('Invalid signature in SLiC license')
+                continue
+            if vendor_id != _Qy47o(_xSMWg.data, 'vendor', 'id') or product_id != _Qy47o(_xSMWg.data, 'product', 'id'):
+                continue
+            return (_xSMWg.data, _FGH1m)
+        _EjfHe = f'Unable to find valid license for product ID {product_id}. \n\nAdd a license with\n\n    slim install <your-license>\n'
+        raise _1zSb6(_EjfHe, 'SLIC_NOT_FOUND')
+
+    def _xGoTH(var_names):
+        for _zHiKw, _hTkaw, _gSrbZ in _ktIDa(var_names):
+            try:
+                yield _4fX7V(_gSrbZ)
+            except _TGTbm:
+                _nOB4R(f'Invalid signature in SLiC license in {_gSrbZ}')
+
+    def _SCaMf(product_id):
+        for _o2ciQ, _kGY2m in _UJlGk(product_id=product_id):
+            try:
+                yield _kGY2m
+            except _TGTbm:
+                _nOB4R(f'Invalid signature in SLiC license in {_o2ciQ}')
+    if TYPE_CHECKING:
+        pass
+
+    def _aXaIj(ld):
+        if isinstance(ld, str):
+            ld = ld.strip()
+            if ld.startswith('-----BEGIN LICENSE FILE-----'):
+                return _FcMOF(ld)
+            if ld.endswith('-V3'):
+                _UmOLZ = _RMiwq(ld, 'fp/')
+                _Nqx5o = keygen.OnlineLicense.from_key(_OnYqq(_UmOLZ), _UmOLZ)
+                _Nqx5o.validate(activate_if_required=True)
+                return _sVrfa(_Nqx5o)
+            if ld.startswith('key/'):
+                _Nqx5o = _jr1RS(ld)
+                _c86cD(_Nqx5o)
+                return _Nqx5o
+            if ld.startswith('slicv1/'):
+                return _3yHRt(ld)
+        if Path(ld).exists():
+            return _f861m(Path(ld))
+        _baFuM = f"Don't know how to handle license_data {ld}"
+        raise _BFsRB(_baFuM)
+
+    def _f861m(license_file):
+        if not license_file.exists():
+            _NkKPg = f'File {license_file} not found'
+            raise _BFsRB(_NkKPg)
+        if license_file.suffix == '.toml':
+            return _vzTkH(license_file)
+        if license_file.suffix == '.lic':
+            with license_file.open() as _0yBzP:
+                _fir5z = _0yBzP.read()
+            if _fir5z.startswith('-----BEGIN LICENSE FILE-----'):
+                return _FcMOF(license_file)
+            return _RRfqO(license_file)
+        if license_file.suffix == '.key':
+            _3iZml = keygen.OfflineLicense.from_file(license_file)
+            _c86cD(_3iZml)
+            return _3iZml
+        if license_file.suffix == '.skm':
+            return _0ADin(license_file)
+        _NkKPg = f'Unknown license file format {license_file}'
+        raise _BFsRB(_NkKPg)
+
+    def _A4J2x(license_keys_or_ids=None, product_id=None):
+        assert isinstance(license_keys_or_ids, set) or license_keys_or_ids is None
+        return _5XykO(_VSTQJ(license_keys_or_ids=license_keys_or_ids, product_id=product_id), _Hb2XR(license_keys_or_ids=license_keys_or_ids, product_id=product_id), _aZSfL(license_keys_or_ids=license_keys_or_ids, product_id=product_id), _JPJPg(license_keys_or_ids=license_keys_or_ids, product_code=product_id), _UJlGk(license_keys_or_ids=license_keys_or_ids, product_id=product_id))
+
+    def _GX4dP():
+        keygen.refresh()
+    _MaAPX = 0
+    _spK24 = 1
+    RichHelpFormatter.styles['argparse.args'] = 'cyan'
+    RichHelpFormatter.styles['argparse.groups'] = 'yellow'
+    RichHelpFormatter.styles['argparse.metavar'] = 'green'
+
+    def _FIxQW(license_data):
+        if license_data.startswith('key/'):
+            return _jr1RS(license_data)
+        if license_data.endswith('-V3'):
+            _WxFx6 = _RMiwq(license_data, 'fp/')
+            return keygen.OnlineLicense.from_key(_OnYqq(_WxFx6), _WxFx6)
+        if license_data.startswith('-----BEGIN LICENSE FILE-----'):
+            return _8aLv7(license_data, update_if_expired=True, override_original=False)
+        if license_data.startswith('slicv1/'):
+            return _4fX7V(license_data)
+        if Path(license_data).exists():
+            _0rIPF = Path(license_data)
+            if _0rIPF.suffix == '.toml':
+                return _FIxQW(_UwQDn(_0rIPF))
+            if _0rIPF.suffix == '.lic':
+                return _8aLv7(_0rIPF, update_if_expired=True, override_original=False)
+            if _0rIPF.suffix == '.skm':
+                return cryptolens.License.from_file(_0rIPF, token=None)
+            _KcW05 = f'Unknown license format in file {_0rIPF}'
+            raise RuntimeError(_KcW05)
+        _KcW05 = 'Unknown key type'
+        raise RuntimeError(_KcW05)
+
+    def _puGhC(_):
+        _l2dGJ(_SvxMQ())
+        return _MaAPX
+
+    def _nqNvx(license_keys_or_ids, raw=False, show_keys=False):
+        assert isinstance(license_keys_or_ids, set)
+        try:
+            _VHvNU = list(_A4J2x(license_keys_or_ids=license_keys_or_ids or None))
+        except _BFsRB as e:
+            _7C5DE(str(e))
+            return _spK24
+        if license_keys_or_ids:
+            for _qaUqc in license_keys_or_ids:
+                try:
+                    _VHvNU.append((None, _FIxQW(_qaUqc)))
+                except RuntimeError:
+                    _7C5DE(f'{_qaUqc}: No such license.')
+                    return _spK24
+        try:
+            for _24dwh, _0p987 in _VHvNU:
+                if raw:
+                    _l2dGJ(_0p987.data)
+                else:
+                    _0p987.prettyprint(show_key=show_keys)
+        except Exception as e:
+            _7C5DE(str(e))
+            return _spK24
+        return _MaAPX
+
+    def _gg0N3(license_keys_or_ids, automatic_yes=False):
+        license_keys_or_ids = set(license_keys_or_ids)
+        if license_keys_or_ids:
+            license_keys_or_ids = {k.strip().replace('\n', '') for k in license_keys_or_ids}
+        try:
+            _stPRO = list(_A4J2x(license_keys_or_ids=license_keys_or_ids))
+        except _BFsRB as e:
+            _7C5DE(str(e))
+            return _spK24
+        if license_keys_or_ids:
+            _pHAVb = ', '.join(license_keys_or_ids)
+            _Wq6Hm = '' if len(license_keys_or_ids) == 1 else 's'
+            _7C5DE(f'Could not find the following license{_Wq6Hm}: {_pHAVb}')
+            return _spK24
+        for _WuMGK, _Mgk5Z in _stPRO:
+            _Mgk5Z.prettyprint()
+        if not _stPRO:
+            return _MaAPX
+        _Wq6Hm = '' if len(_stPRO) == 1 else 's'
+        if automatic_yes or Confirm.ask(f'Uninstall the above license{_Wq6Hm} and deactivate machine?'):
+            for _7ZJty, _z5FIz in _stPRO:
+                try:
+                    _z5FIz.deactivate({_SvxMQ()})
+                except Exception:
+                    pass
+            for _YU0bZ, _CRehc in _stPRO:
+                _YU0bZ.unlink()
+            if not any(_YU0bZ.parent.iterdir()):
+                _YU0bZ.parent.rmdir()
+            _l2dGJ('Removed.', style='green')
+            return _MaAPX
+        _l2dGJ('Abort.')
+        return _spK24
+
+    def _QwW21(license_data):
+        try:
+            _xOY2U = _aXaIj(license_data)
+        except Exception as e:
+            _7C5DE(str(e))
+            return _spK24
+        _xOY2U.prettyprint()
+        return _MaAPX
+
+    def _OxCr9(license_key_or_id, machine_fingerprints, automatic_yes=False):
+        assert isinstance(license_key_or_id, str)
+        assert isinstance(machine_fingerprints, set)
+        try:
+            _sXZ1u = list(_A4J2x(license_keys_or_ids={license_key_or_id}))
+        except _BFsRB as e:
+            _7C5DE(str(e))
+            return _spK24
+        if not _sXZ1u:
+            _lETFS = f"Couldn't find license with key or ID {license_key_or_id}"
+            _7C5DE(_lETFS)
+            return _spK24
+        _lSC4C = _SvxMQ()
+        if not machine_fingerprints:
+            machine_fingerprints = {_lSC4C}
+        _l2dGJ()
+        for _Ff7F5 in machine_fingerprints:
+            _l2dGJ(_Ff7F5, style='bold')
+        _l2dGJ()
+        if automatic_yes or Confirm.ask(f'Activate the above machine(s) for license {license_key_or_id}?'):
+            for _AQ3Sz, _QNX78 in _sXZ1u:
+                try:
+                    _QNX78.activate()
+                except (RuntimeError, _1zSb6) as e:
+                    _7C5DE(str(e))
+                    return _spK24
+                _QNX78.prettyprint()
+        return _MaAPX
+
+    def _Gev12(license_key_or_id, machine_fingerprints, automatic_yes=False):
+        assert isinstance(license_key_or_id, str)
+        assert isinstance(machine_fingerprints, set)
+        try:
+            _Zxmwl = list(_A4J2x(license_keys_or_ids={license_key_or_id}))
+        except _BFsRB as e:
+            _7C5DE(str(e))
+            return _spK24
+        if not _Zxmwl:
+            _8ZkYn = f"Couldn't find license with key or ID {license_key_or_id}"
+            _7C5DE(_8ZkYn)
+            return _spK24
+        _LuqWY = _SvxMQ()
+        if not machine_fingerprints:
+            machine_fingerprints = {_LuqWY}
+        _l2dGJ()
+        for _TCUs0 in machine_fingerprints:
+            _l2dGJ(_TCUs0, style='bold')
+        _l2dGJ()
+        if automatic_yes or Confirm.ask(f'Deactivate the above machine(s) for license {license_key_or_id}?'):
+            for _NneeJ, _fcpe8 in _Zxmwl:
+                try:
+                    _fcpe8.deactivate(machine_fingerprints)
+                except Exception as e:
+                    _7C5DE(str(e))
+                    return _spK24
+                _fcpe8.prettyprint()
+        return _MaAPX
+
+    def _fGBK2(argv=None):
+        _3Omyf = argparse.ArgumentParser(description='Stonefish License Manager.', formatter_class=RichHelpFormatter)
+        _3Omyf.add_argument('--version', '-v', action='version', version=_zr6gQ(), help='display version information')
+        _2QZYN = _3Omyf.add_subparsers(title='subcommands', required=True)
+        _TqFc1 = _2QZYN.add_parser('versions', help='Display version information, including dependencies', aliases=['vv'], formatter_class=_3Omyf.formatter_class)
+        _TqFc1.set_defaults(func=lambda _vcHIi: _uLyIS())
+        _IcLOr = _2QZYN.add_parser('list', help='List installed licenses', aliases=['ls', 'show', 'info'], formatter_class=_3Omyf.formatter_class)
+        _IcLOr.add_argument('-r', '--raw', action='store_true', help='Show raw license data')
+        _IcLOr.add_argument('-k', '--show-keys', action='store_true', help='Show license keys')
+        _IcLOr.add_argument('license_ids_or_keys', type=str, nargs='*', help='License IDs or keys (optional)')
+        _IcLOr.set_defaults(func=lambda _dpbnI: _nqNvx(set(_dpbnI.license_ids_or_keys), _dpbnI.raw, _dpbnI.show_keys))
+        _KVDJQ = _2QZYN.add_parser('install', help='Install (and activate) licenses', aliases=['add', 'a'], formatter_class=_3Omyf.formatter_class)
+        _KVDJQ.add_argument('license_file', type=str, help='License file')
+        _KVDJQ.set_defaults(func=lambda _mwWPr: _QwW21(str(_mwWPr.license_file)))
+        _4Ihyw = _2QZYN.add_parser('uninstall', help='Uninstall (and deactivate) licenses', aliases=['remove', 'rm', 'delete', 'del'], formatter_class=_3Omyf.formatter_class)
+        _4Ihyw.add_argument('license_key_or_id', type=str, nargs='+', help='License keys or IDs')
+        _4Ihyw.add_argument('-y', '--yes', action='store_true', help='Automatic yes to prompts')
+        _4Ihyw.set_defaults(func=lambda _rSRQv: _gg0N3(_rSRQv.license_key_or_id, _rSRQv.yes))
+        _KVDJQ = _2QZYN.add_parser('activate', help='Activate machine for license', formatter_class=_3Omyf.formatter_class)
+        _KVDJQ.add_argument('license_file_or_id_or_key', type=str, help='License file or ID or key')
+        _KVDJQ.add_argument('machine_fingerprints', type=str, nargs='*', help='Machine fingerprints (default: this machine)')
+        _KVDJQ.set_defaults(func=lambda _FzAcD: _OxCr9(_FzAcD.license_file_or_id_or_key, set(_FzAcD.machine_fingerprints)))
+        _KVDJQ = _2QZYN.add_parser('deactivate', help='Deactivate machine for license', formatter_class=_3Omyf.formatter_class)
+        _KVDJQ.add_argument('license_file_or_id_or_key', type=str, help='License file or ID or key')
+        _KVDJQ.add_argument('machine_fingerprints', type=str, nargs='*', help='Machine fingerprints (default: this machine)')
+        _KVDJQ.set_defaults(func=lambda _gbixR: _Gev12(_gbixR.license_file_or_id_or_key, set(_gbixR.machine_fingerprints)))
+        _IcLOr = _2QZYN.add_parser('fingerprint', help='Display machine fingerprint', aliases=['fp'], formatter_class=_3Omyf.formatter_class)
+        _IcLOr.set_defaults(func=_puGhC)
+        _hzsYl = _2QZYN.add_parser('refresh', help='Refresh license files and cache', formatter_class=_3Omyf.formatter_class)
+        _hzsYl.set_defaults(func=_cXK2Q)
+        _nZj6n = _2QZYN.add_parser('cache', help='Manage the cache', formatter_class=_3Omyf.formatter_class)
+        _xEd84 = _nZj6n.add_subparsers(title='subcommands', required=True)
+        _P3OHB = _xEd84.add_parser('clear', help='Remove all items from the cache', aliases=['clean'], formatter_class=_3Omyf.formatter_class)
+        _P3OHB.set_defaults(func=_CS1Vq)
+        _RL9Kl = _xEd84.add_parser('dir', help='Show the cache directory', formatter_class=_3Omyf.formatter_class)
+        _RL9Kl.set_defaults(func=_rPOTn)
+        _gbixR = _3Omyf.parse_args(argv)
+        return _gbixR.func(_gbixR)
+
+    def _zr6gQ():
+        _ivUu2 = f'{version_info.major}.{version_info.minor}.{version_info.micro}'
+        _KG9VG = _FfyRf('stonefish-license-manager')
+        return '\n'.join([f'Stonefish License Manager {_KG9VG} [Python {_ivUu2}]'])
+
+    def _uLyIS():
+        for _j9opI in python_package_info.yield_info_lines('stonefish-license-manager'):
+            print(_j9opI)
+
+    def _cXK2Q(_):
+        _m1Dz8 = _LnE2K()
+        _l2dGJ(f'Refreshed {_m1Dz8} installed licenses')
+        _CS1Vq(_)
+        return _MaAPX
+
+    def _CS1Vq(_):
+        _Ynv4l()
+        _kgEG0()
+        _11Fys()
+        return _MaAPX
+
+    def _rPOTn(_):
+        _l2dGJ(_ePU7O)
+        return _MaAPX
+_UJLPB()
+del _UJLPB

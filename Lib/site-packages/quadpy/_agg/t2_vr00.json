@@ -1,0 +1,10 @@
+{
+  "name": "Vioreanu-Rokhlin 0",
+  "domain": "T2",
+  "degree": 1,
+  "test_tolerance": 7.85e-17,
+  "weight factor": 0.5,
+  "data": {
+    "centroid": [[2.0]]
+  }
+}

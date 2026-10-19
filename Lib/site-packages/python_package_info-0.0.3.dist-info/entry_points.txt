@@ -1,0 +1,2 @@
+[console_scripts]
+ppi = python_package_info:main

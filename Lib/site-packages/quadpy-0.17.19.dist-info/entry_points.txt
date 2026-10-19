@@ -1,0 +1,2 @@
+[console_scripts]
+quadpy = quadpy.cli:main

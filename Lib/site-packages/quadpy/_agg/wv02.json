@@ -1,0 +1,9 @@
+{
+  "name": "Witherden-Vincent 2",
+  "domain": "T2",
+  "degree": 2,
+  "test_tolerance": 3.331e-16,
+  "data": {
+    "d3_aa": [[3.3333333333333331e-1], [1.6666666666666669e-1]]
+  }
+}

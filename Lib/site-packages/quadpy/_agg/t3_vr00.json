@@ -1,0 +1,10 @@
+{
+  "name": "Vioreanu-Rokhlin 0",
+  "domain": "T3",
+  "degree": 1,
+  "test_tolerance": 2.379e-17,
+  "weight factor": 0.75,
+  "data": {
+    "s4": [[1.3333333333333333]]
+  }
+}

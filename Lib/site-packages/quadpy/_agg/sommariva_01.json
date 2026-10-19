@@ -1,0 +1,10 @@
+{
+  "name": "Sommariva 1",
+  "domain": "C2",
+  "degree": 1,
+  "test_tolerance": 1.0e-100,
+  "weight factor": 2.5e-1,
+  "data": {
+    "plain": [[4.0], [0.0], [0.0]]
+  }
+}

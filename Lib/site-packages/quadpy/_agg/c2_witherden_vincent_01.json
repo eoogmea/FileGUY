@@ -1,0 +1,10 @@
+{
+  "name": "Witherden-Vincent 1",
+  "domain": "C2",
+  "degree": 1,
+  "test_tolerance": 1.0e-100,
+  "weight factor": 0.25,
+  "data": {
+    "zero2": [[4.0]]
+  }
+}

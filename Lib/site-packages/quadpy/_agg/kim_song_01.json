@@ -1,0 +1,9 @@
+{
+  "name": "Kim-Song 1",
+  "domain": "S2",
+  "degree": 1,
+  "test_tolerance": 1.0e-100,
+  "data": {
+    "zero2": [[1.0]]
+  }
+}
