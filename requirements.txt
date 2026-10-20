@@ -1,0 +1,14 @@
+# Dipendenze di SingleGUY / FileGUY1 / ConfigManager
+# Le versioni fissate servono perché il codice usa API vecchie:
+# PyPDF2 3.x ha rimosso PdfFileReader/PdfFileWriter, fpdf2 cambia la gestione dei font (uni=True, .pkl)
+PyPDF2==1.26.0
+fpdf==1.7.2
+python-docx
+openpyxl
+pandas
+python-barcode
+pillow
+PyMuPDF
+pywin32
+requests
+telepot

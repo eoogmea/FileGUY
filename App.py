@@ -1,6 +1,9 @@
 # SUBPROCESS (EXE)
 import subprocess
 
+# CONFIGURAZIONE CIFRATA
+from config_sicuro import carica_config
+
 # EMAIL
 import email
 import smtplib
@@ -16,8 +19,6 @@ from os.path import isfile, join
 
 import pandas as pd
 
-import numpy as np
-
 # INTERNET (TELEGRAM)
 import requests
 
@@ -30,7 +31,6 @@ from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Pt, Cm
 
-
 # EXCEL
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -39,7 +39,7 @@ from openpyxl.utils import get_column_letter
 def main(name, config):
     #Sostituisce al file .txt la terminazione .gui per vedere se esiste
     name_gui = name.replace(".txt", ".gui")
-    path_gui = config[1].replace("\n", "") + "\\" + name_gui
+    path_gui = config["cartella_lavoro"] + "\\" + name_gui
     if name_gui[len(name_gui) - 3:len(name_gui)] != "gui":
         return
     if not os.path.isfile(path_gui):
@@ -75,7 +75,7 @@ def main(name, config):
     #Rimuove i file dopo l'uso
     os.remove(path_gui)
     if guida[1].replace("\n", "") != "exe":
-        os.remove(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""))
+        os.remove(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""))
 
 def exe(guida, config) :
     path = guida[0].replace("\n", "")
@@ -87,7 +87,7 @@ def exe(guida, config) :
 def telegram(guida, config):
     #Legge il token del bot
     #Per creare un bot si usa TheBotFather su telegram
-    bot_token = config[6].replace("\n", "")
+    bot_token = config["telegram_token"]
     #Quando si manda un messaggio al bot da queso link se ne ottengono i dati
     # https://api.telegram.org/bot<bot_token>/getUpdates
     i = 0
@@ -148,19 +148,19 @@ def email(guida, config):
         if x[0:4] == "fine":
             i += 1
 
-    port = 465  # For SSL
+    port = int(config["email_smtp_porta"])  # For SSL
 
     #passord della mail
-    password = config[5].replace("\n", "")
+    password = config["email_password"]
 
     # Create a secure SSL context
     context = ssl.create_default_context()
 
     #L'email che spedisce
-    sender_email = config[4].replace("\n", "")
+    sender_email = config["email_mittente"]
 
     #L'allegato generato dalla funzione pdf
-    filename = config[3].replace("\n", "") + "\\" + guida[2].replace("\n", "")
+    filename = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
 
     if receiver_email == "":
         return
@@ -213,13 +213,13 @@ def email(guida, config):
     text = message.as_string()
 
     #invia la mail
-    with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+    with smtplib.SMTP_SSL(config["email_smtp_server"], port, context=context) as server:
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, text)
 
 def docx(guida, config):
     #Apre il file di testo
-    f = open(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""), 'r')
+    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
     content = f.readlines()
     f.close()
 
@@ -379,12 +379,12 @@ def docx(guida, config):
             i += 1
 
     #Salva il documento
-    document.save(config[3].replace("\n", "") + "\\" + guida[2].replace("\n", ""))
+    document.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
 
 def pdf(guida, config):
 
     #Apre il documento di testo
-    f = open(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""), 'r')
+    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
     content = f.readlines()
     f.close()
 
@@ -530,15 +530,15 @@ def pdf(guida, config):
         i += 1
 
     #Salva il pdf temporaneo
-    pdf.output(config[1].replace("\n", "") + "\\" + "systemgen.pdf")
+    pdf.output(config["cartella_lavoro"] + "\\" + "systemgen.pdf")
     pdf.close()
 
     #Prepara i pdf overlay template e result
     nome_templ = guida[3].replace("\n", "")
     if nome_templ != "":
-        overlay_pdf_file_name = config[1].replace("\n", "") + "\\" + "systemgen.pdf"
-        pdf_template_file_name = config[2].replace("\n", "") + "\\" + nome_templ
-        result_pdf_file_name = config[3].replace("\n", "") + "\\" + guida[2].replace("\n", "")
+        overlay_pdf_file_name = config["cartella_lavoro"] + "\\" + "systemgen.pdf"
+        pdf_template_file_name = config["cartella_template"] + "\\" + nome_templ
+        result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
 
         # Open your overlay PDF that was created earlier
         overlay_pdf = PdfFileReader(open(overlay_pdf_file_name, 'rb'))
@@ -563,8 +563,8 @@ def pdf(guida, config):
             os.startfile(result_pdf_file_name)
             resultPdf.close()
     else:
-        overlay_pdf_file_name = config[1].replace("\n", "") + "\\" + "systemgen.pdf"
-        result_pdf_file_name = config[3].replace("\n", "") + "\\" + guida[2].replace("\n", "")
+        overlay_pdf_file_name = config["cartella_lavoro"] + "\\" + "systemgen.pdf"
+        result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
         output_pdf = PdfFileWriter()
         # Open your overlay PDF that was created earlier
         overlay_pdf = PdfFileReader(open(overlay_pdf_file_name, 'rb'))
@@ -586,13 +586,13 @@ def pdf(guida, config):
 
     #Prova a eliminare il file temporaneo
     try:
-        os.remove(config[1].replace("\n", "") + "\\" + "systemgen.pdf")
+        os.remove(config["cartella_lavoro"] + "\\" + "systemgen.pdf")
     except:
         print("Can't remove systemgen.pdf")
 
 def excel(guida, config):
     #Salva in content il contenuto del file di testo
-    f = open(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""), 'r')
+    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
     content = f.readlines()
     f.close()
 
@@ -757,7 +757,7 @@ def excel(guida, config):
                    sheet1.column_dimensions[get_column_letter(i + 1)].width = column_width
 
 
-               wb.save(config[3].replace("\n", "") + "\\" + guida[2].replace("\n", ""))
+               wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
                return
             i += 1
     sheet1.delete_cols(1, 1)
@@ -773,15 +773,13 @@ def excel(guida, config):
 
     # Salva il file Excel
 
-    wb.save(config[3].replace("\n", "") + "\\" + guida[2].replace("\n", ""))
+    wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
 
-#Apre il file di configurazione mette il contenuto in config
-f = open("config.txt", "r")
-config = f.readlines()
-f.close()
+# Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
+config = carica_config()
 
 #Cartella con i file di testo e i .gui
-folder = config[1].replace("\n", "")
+folder = config["cartella_lavoro"]
 
 #Legge i file in questa cartella
 onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]

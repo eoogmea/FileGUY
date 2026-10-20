@@ -1,13 +1,11 @@
 import os
 from os import listdir
 from os.path import isfile, join
-path = os.getcwd()
-import sys
-#sys.path.append(path +"\\Lib")
-#sys.path.append(path +"\\Lib\\site-packages")
-#print(sys.path)
 # SUBPROCESS (EXE)
 import subprocess
+
+# CONFIGURAZIONE CIFRATA
+from config_sicuro import carica_config
 
 # EMAIL
 import email
@@ -20,23 +18,20 @@ from email.mime.text import MIMEText
 
 import pandas as pd
 
-import numpy as np
-
 # INTERNET (TELEGRAM)
 import requests
-from telegram_upload import *
 import telepot
 
 #import cookie
-from telepot.loop import MessageLoop
-import pdb
+
+# WHATSAPP (API Cloud di Meta)
+from whatsapp_meta import WhatsApp, WhatsAppError
 
 # PDF
 from PyPDF2 import PdfFileWriter, PdfFileReader
 from fpdf import FPDF
-import win32print
-import locale
-import ghostscript
+# Stampa senza Ghostscript (PyMuPDF + stampante di Windows)
+from stampa_pdf import stampa_pdf
 
 # DOCX
 from docx import Document
@@ -56,16 +51,12 @@ import fitz
 
 import time
 
-
-
 def process(filesprec):
-    # Apre il file di configurazione mette il contenuto in config
-    f = open("config.txt", "r")
-    config = f.readlines()
-    f.close()
+    # Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
+    config = carica_config()
 
     # Cartella con i file di testo e i .gui
-    folder = config[1].replace("\n", "")
+    folder = config["cartella_lavoro"]
 
     # Legge i file in questa cartella
     onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
@@ -77,7 +68,7 @@ def process(filesprec):
 def main(name, config):
     # Sostituisce al file .txt la terminazione .gui per vedere se esiste
     name_gui = name.replace(".txt", ".gui")
-    path_gui = config[1].replace("\n", "") + "\\" + name_gui
+    path_gui = config["cartella_lavoro"] + "\\" + name_gui
     if name_gui[len(name_gui) - 3:len(name_gui)] != "gui":
         return
     if not os.path.isfile(path_gui):
@@ -108,22 +99,28 @@ def main(name, config):
             email_send(guida, config)
         if guida[5].replace("\n", "") == "telegram":
             telegram(guida, config)
+        if guida[5].replace("\n", "") == "whatsapp":
+            whatsapp(guida, config)
     if guida[1].replace("\n", "") == "excel":
         excel(guida, config)
         if guida[5].replace("\n", "") == "email":
             email_send(guida, config)
         if guida[5].replace("\n", "") == "telegram":
             telegram(guida, config)
+        if guida[5].replace("\n", "") == "whatsapp":
+            whatsapp(guida, config)
     if guida[1].replace("\n", "") == "docx":
         docx(guida, config)
         if guida[5].replace("\n", "") == "email":
             email_send(guida, config)
         if guida[5].replace("\n", "") == "telegram":
             telegram(guida, config)
+        if guida[5].replace("\n", "") == "whatsapp":
+            whatsapp(guida, config)
 
     # Rimuove i file dopo l'uso
     os.remove(path_gui)
-    os.remove(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""))
+    os.remove(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""))
 
 
 def barcode_add(guida, config):
@@ -133,7 +130,7 @@ def barcode_add(guida, config):
         codice = guida[3 + i].replace("\n", "")
         cab = barcode.get_barcode_class(guida[4 + i].replace("\n", ""))
         codicino = cab(codice, writer=ImageWriter())
-        percorso = config[1].replace("\n", "") + "\\" + "barcode" + str(codice)
+        percorso = config["cartella_lavoro"] + "\\" + "barcode" + str(codice)
         codicino.save(percorso)
 
         # la posizione è data da due vertici opposti partendo da quello alto a sx
@@ -147,7 +144,7 @@ def barcode_add(guida, config):
 
         # add the image
         page.insert_image(image_rectangle, filename=percorso + ".png")
-        doc.save(config[1].replace("\n", "") + "\\" + guida[7 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
+        doc.save(config["cartella_lavoro"] + "\\" + guida[7 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
 
 def image_add(guida,config):
     numero_image = int(guida[2].replace("\n", ""))
@@ -165,13 +162,13 @@ def image_add(guida,config):
 
         # add the image
         page.insert_image(image_rectangle, filename= percorso)
-        doc.save(config[1].replace("\n", "") + "\\" + guida[6 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
+        doc.save(config["cartella_lavoro"] + "\\" + guida[6 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
 
 
 
 def exe(guida, config) :
 
-    path = config[1].replace("\n", "") + "\\" + guida[0].replace("\n", "")
+    path = config["cartella_lavoro"] + "\\" + guida[0].replace("\n", "")
     if not os.path.isfile(path):
         path = guida[0].replace("\n", "")
     if not os.path.isfile(path):
@@ -184,7 +181,7 @@ def exe(guida, config) :
 def telegram(guida, config):
     #Legge il token del bot
     #Per creare un bot si usa TheBotFather su telegram
-    bot_token = config[6].replace("\n", "")
+    bot_token = config["telegram_token"]
     #Quando si manda un messaggio al bot da queso link se ne ottengono i dati
     # https://api.telegram.org/bot<bot_token>/getUpdates
     i = 0
@@ -209,7 +206,7 @@ def telegram(guida, config):
             i += 1
     bot_message = body
     bot_chatID = guida[6].replace("\n", "").replace("telegram ", "")
-    doc_path = config[3].replace("\n", "") + "\\" + document
+    doc_path = config["cartella_output"] + "\\" + document
 
     #manda il messaggio
     bot.sendMessage(bot_chatID, bot_message)
@@ -217,10 +214,60 @@ def telegram(guida, config):
     if document != "":
         bot.sendDocument(chat_id=bot_chatID, document=open(doc_path, 'rb'))
 
+def whatsapp(guida, config):
+    #Usa le API Cloud di Meta: token e Phone number ID si impostano con ConfigManager.py
+    #La settima linea del .gui è "whatsapp <numero> [<template> [<lingua>]]"
+    #il numero va con il prefisso internazionale (es. 393331234567 o +39 333 1234567)
+    #legge le ultime linee del file dopo "fine"
+    #la prima linea è il nome del documento nella cartella di output (vuota = nessun documento)
+    #la seconda e seguenti sono il testo del messaggio
+    #Senza template il messaggio arriva solo se il destinatario ha scritto al numero
+    #aziendale nelle ultime 24 ore (regola di Meta).
+    #Con il template le linee di testo diventano i parametri {{1}}, {{2}}, ... del template
+    #e il documento diventa l'intestazione (il template deve avere un'intestazione Documento)
+    parti = guida[6].replace("\n", "").split()[1:]
+    #il numero può essere scritto con spazi: prende tutte le parti fatte solo di cifre e +-./()
+    numero = ""
+    while len(parti) > 0 and parti[0].strip("+-./()0123456789") == "":
+        numero += parti.pop(0)
+    if numero == "":
+        print("WhatsApp: numero del destinatario mancante nella linea 7 del .gui")
+        return
+    template = parti[0] if len(parti) > 0 else ""
+    lingua = parti[1] if len(parti) > 1 else config["whatsapp_lingua"]
+
+    #cerca la linea "fine" e prende le linee successive
+    fine = len(guida)
+    for n in range(linea_inizio_format_pdf, len(guida)):
+        if guida[n][0:4] == "fine":
+            fine = n
+            break
+    coda = [x.replace("\n", "") for x in guida[fine + 1:]]
+    document = coda[0].strip() if len(coda) > 0 else ""
+    righe = coda[1:]
+    doc_path = config["cartella_output"] + "\\" + document if document != "" else None
+
+    try:
+        messenger = WhatsApp(config["whatsapp_token"], config["whatsapp_phone_number_id"],
+                             config["whatsapp_versione_api"])
+        if template != "":
+            parametri = [r for r in righe if r.strip() != ""]
+            messenger.invia_template(numero, template, lingua, parametri, doc_path)
+        else:
+            testo = "\n".join(righe).strip()
+            #manda il messaggio
+            if testo != "":
+                messenger.invia_testo(numero, testo)
+            #se esiste manda il documento
+            if doc_path is not None:
+                messenger.invia_documento(numero, doc_path)
+    except (WhatsAppError, requests.RequestException, OSError) as e:
+        print("Errore invio WhatsApp a " + numero + ": " + str(e))
+
 def pdf(guida, config):
 
     #Apre il documento di testo
-    f = open(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""), 'r')
+    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
     content = f.readlines()
     f.close()
 
@@ -371,17 +418,17 @@ def pdf(guida, config):
         i += 1
 
     #Salva il pdf temporaneo
-    pdf.output(config[1].replace("\n", "") + "\\" + "systemgen.pdf")
+    pdf.output(config["cartella_lavoro"] + "\\" + "systemgen.pdf")
     pdf.close()
 
     #Prepara i pdf overlay template e result
     nome_templ = guida[3].replace("\n", "")
-    overlay_pdf_file_name = config[1].replace("\n", "") + "\\" + "systemgen.pdf"
+    overlay_pdf_file_name = config["cartella_lavoro"] + "\\" + "systemgen.pdf"
 
     with open(overlay_pdf_file_name, 'rb') as Pdf_overlay:
         if nome_templ != "":
-            pdf_template_file_name = config[2].replace("\n", "") + "\\" + nome_templ
-            result_pdf_file_name = config[3].replace("\n", "") + "\\" + guida[2].replace("\n", "")
+            pdf_template_file_name = config["cartella_template"] + "\\" + nome_templ
+            result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
 
             # Open your overlay PDF that was created earlier
 
@@ -405,7 +452,7 @@ def pdf(guida, config):
             output_pdf.write(resultPdf)
 
         else:
-            result_pdf_file_name = config[3].replace("\n", "") + "\\" + guida[2].replace("\n", "")
+            result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
             output_pdf = PdfFileWriter()
             # Open your overlay PDF that was created earlier
 
@@ -427,28 +474,18 @@ def pdf(guida, config):
         os.startfile(result_pdf_file_name)
         resultPdf.close()
     if guida[1].replace("\n", "") == "stampa":
-        args = [
-            "-dPrinted", "-dBATCH", "-dNOSAFER", "-dNOPAUSE", "-dNOPROMPT"
-                                                              "-q",
-            "-dNumCopies#1",
-            "-sDEVICE#mswinpr2",
-            f'-sOutputFile#"%printer%{win32print.GetDefaultPrinter()}"',
-            f'"{result_pdf_file_name}"'
-        ]
-
-        encoding = locale.getpreferredencoding()
-        args = [a.encode(encoding) for a in args]
-        ghostscript.Ghostscript(*args)
+        #Chiude il file prima di stamparlo, così è scritto del tutto
         resultPdf.close()
+        stampa_pdf(result_pdf_file_name)
     #Prova a eliminare il file temporaneo
     try:
-        os.remove(config[1].replace("\n", "") + "\\" + "systemgen.pdf")
+        os.remove(config["cartella_lavoro"] + "\\" + "systemgen.pdf")
     except:
         print("Can't remove systemgen.pdf")
 
 def docx(guida, config):
     #Apre il file di testo
-    f = open(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""), 'r')
+    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
     content = f.readlines()
     f.close()
 
@@ -635,11 +672,11 @@ def docx(guida, config):
 
 
     #Salva il documento
-    document.save(config[3].replace("\n", "") + "\\" + guida[2].replace("\n", ""))
+    document.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
 
 def excel(guida, config):
     #Salva in content il contenuto del file di testo
-    f = open(config[1].replace("\n", "") + "\\" + guida[0].replace("\n", ""), 'r')
+    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
     content = f.readlines()
     f.close()
 
@@ -804,7 +841,7 @@ def excel(guida, config):
                    sheet1.column_dimensions[get_column_letter(i + 1)].width = column_width
 
 
-               wb.save(config[3].replace("\n", "") + "\\" + guida[2].replace("\n", ""))
+               wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
                return
             i += 1
     sheet1.delete_cols(1, 1)
@@ -820,7 +857,7 @@ def excel(guida, config):
 
     # Salva il file Excel
 
-    wb.save(config[3].replace("\n", "") + "\\" + guida[2].replace("\n", ""))
+    wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
 
 def email_send(guida, config):
     i = 0
@@ -852,19 +889,19 @@ def email_send(guida, config):
         if x[0:4] == "fine":
             i += 1
 
-    port = 465  # For SSL
+    port = int(config["email_smtp_porta"])  # For SSL
 
     #passord della mail
-    password = config[5].replace("\n", "")
+    password = config["email_password"]
 
     # Create a secure SSL context
     context = ssl.create_default_context()
 
     #L'email che spedisce
-    sender_email = config[4].replace("\n", "")
+    sender_email = config["email_mittente"]
 
     #L'allegato generato dalla funzione pdf
-    filename = config[3].replace("\n", "") + "\\" + guida[2].replace("\n", "")
+    filename = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
 
     if receiver_email == "":
         return
@@ -917,18 +954,16 @@ def email_send(guida, config):
     text = message.as_string()
 
     #invia la mail
-    with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+    with smtplib.SMTP_SSL(config["email_smtp_server"], port, context=context) as server:
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, text)
 
 def start():
-    # Apre il file di configurazione mette il contenuto in config
-    f = open("config.txt", "r")
-    config = f.readlines()
-    f.close()
+    # Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
+    config = carica_config()
 
     # Cartella con i file di testo e i .gui
-    folder = config[1].replace("\n", "")
+    folder = config["cartella_lavoro"]
 
     # Legge i file in questa cartella
     onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]

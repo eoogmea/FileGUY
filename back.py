@@ -1,18 +1,19 @@
 import time
 import subprocess
+
+# CONFIGURAZIONE CIFRATA
+from config_sicuro import carica_config
 from os import listdir
 from os.path import isfile, join
 
 #Controlla se è cambiato qualcosa nella cartella
 #Se sì fa partire App.exe o App.py
 def process(filesprec):
-    # Apre il file di configurazione mette il contenuto in config
-    f = open("config.txt", "r")
-    config = f.readlines()
-    f.close()
+    # Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
+    config = carica_config()
 
     # Cartella con i file di testo e i .gui
-    folder = config[1].replace("\n", "")
+    folder = config["cartella_lavoro"]
 
     # Legge i file in questa cartella
     onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]

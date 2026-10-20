@@ -1,0 +1,5 @@
+# Configurazione: contiene credenziali
+config.txt
+config.dat
+config.dat.tmp
+__pycache__/

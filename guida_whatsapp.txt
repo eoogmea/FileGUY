@@ -1,0 +1,14 @@
+a.txt
+pdf
+exit.pdf
+Prova1.pdf
+0
+whatsapp
+whatsapp +39 333 1234567
+001	sn13
+002	tnn11
+003
+fine
+exit.pdf
+Buongiorno,
+in allegato il documento richiesto.
