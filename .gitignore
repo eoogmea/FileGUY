@@ -3,3 +3,6 @@ config.txt
 config.dat
 config.dat.tmp
 __pycache__/
+
+# Cartelle create dai test
+test/_run/

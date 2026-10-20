@@ -1,4 +1,8 @@
+import datetime
 import os
+import sys
+import traceback
+import tempfile
 from os import listdir
 from os.path import isfile, join
 # SUBPROCESS (EXE)
@@ -16,8 +20,6 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import pandas as pd
-
 # INTERNET (TELEGRAM)
 import requests
 import telepot
@@ -30,6 +32,7 @@ from whatsapp_meta import WhatsApp, WhatsAppError
 # PDF
 from PyPDF2 import PdfFileWriter, PdfFileReader
 from fpdf import FPDF
+import fpdf.fpdf
 # Stampa senza Ghostscript (PyMuPDF + stampante di Windows)
 from stampa_pdf import stampa_pdf
 
@@ -41,7 +44,6 @@ from docx.shared import Pt, Cm
 
 # EXCEL
 from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.utils import get_column_letter
 
 #BARCODE
@@ -145,6 +147,9 @@ def barcode_add(guida, config):
         # add the image
         page.insert_image(image_rectangle, filename=percorso + ".png")
         doc.save(config["cartella_lavoro"] + "\\" + guida[7 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
+        doc.close()
+        #L'immagine del barcode non serve più
+        os.remove(percorso + ".png")
 
 def image_add(guida,config):
     numero_image = int(guida[2].replace("\n", ""))
@@ -154,7 +159,7 @@ def image_add(guida,config):
         percorso = guida[3 + i].replace("\n", "")
         x0, y0 = guida[4 + i].replace("\n", "").split(",")
         x1, y1 = guida[5 + i].replace("\n", "").split(",")
-        image_rectangle = fitz.Rect(int(x0), int(y0), int(x0) + 100, int(y0) + 100)
+        image_rectangle = fitz.Rect(int(x0), int(y0), int(x1), int(y1))
 
         # retrieve the page of the PDF
         doc = fitz.open(guida[6 + i].replace("\n", ""))
@@ -163,6 +168,7 @@ def image_add(guida,config):
         # add the image
         page.insert_image(image_rectangle, filename= percorso)
         doc.save(config["cartella_lavoro"] + "\\" + guida[6 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
+        doc.close()
 
 
 
@@ -174,7 +180,8 @@ def exe(guida, config) :
     if not os.path.isfile(path):
         return
     try:
-        os.system(path)
+        #Tra virgolette, così funzionano anche i percorsi con spazi
+        os.system('"' + path + '"')
     except:
         subprocess.call(path)
 
@@ -275,44 +282,34 @@ def pdf(guida, config):
     rotazione = int(guida[4])
 
     #Dichiara il documento
-    pdf = FPDF()
+    #Se il template è orizzontale anche il testo va su una pagina orizzontale,
+    #altrimenti le prime righe finiscono fuori dal foglio
+    orientamento = "P"
+    nome_templ = guida[3].replace("\n", "")
+    if nome_templ != "":
+        with fitz.open(config["cartella_template"] + "\\" + nome_templ) as doc_templ:
+            if doc_templ[0].mediabox.width > doc_templ[0].mediabox.height:
+                orientamento = "L"
+    pdf = FPDF(orientation=orientamento)
 
-    #Aggiunge i Font
-    #Se non sono nella cartella dell'eseguibile li va a cercare in Windows/Font
-    try:
-        pdf.add_font('Times', '', 'Font\\times.ttf', uni=True)
-        pdf.add_font('TimesBold', '', 'Font\\timesbd.ttf', uni=True)
-        pdf.add_font('TimesBoldIt', '', 'Font\\timesbi.ttf', uni=True)
-        pdf.add_font('TimesIt', '', 'Font\\timesi.ttf', uni=True)
-    except:
-        pdf.add_font('Times', '', 'C:\Windows\Fonts\\times.ttf', uni=True)
-        pdf.add_font('TimesBold', '', 'C:\Windows\Fonts\\timesbd.ttf', uni=True)
-        pdf.add_font('TimesBoldIt', '', 'C:\Windows\Fonts\\timesbi.ttf', uni=True)
-        pdf.add_font('TimesIt', '', 'C:\Windows\Fonts\\timesi.ttf', uni=True)
-    try:
-        pdf.add_font('Helvetica', '', 'Font\\Helvetica.ttf', uni=True)
-        pdf.add_font('HelveticaBold', '', 'Font\\Helvetica-Bold.ttf', uni=True)
-        pdf.add_font('HelveticaBoldIt', '', 'Font\\Helvetica-BoldOblique.ttf', uni=True)
-        pdf.add_font('HelveticaIt', '', 'Font\\Helvetica-Oblique.ttf', uni=True)
-    except:
-        pdf.add_font('Times', '', 'C:\Windows\Fonts\\times.ttf', uni=True)
-        pdf.add_font('TimesBold', '', 'C:\Windows\Fonts\\timesbd.ttf', uni=True)
-        pdf.add_font('TimesBoldIt', '', 'C:\Windows\Fonts\\timesbi.ttf', uni=True)
-        pdf.add_font('TimesIt', '', 'C:\Windows\Fonts\\timesi.ttf', uni=True)
-    try:
-        pdf.add_font('Courier', '', 'Font\\cour.ttf', uni=True)
-        pdf.add_font('CourierBold', '', 'Font\\courbd.ttf', uni=True)
-        pdf.add_font('CourierBoldIt', '', 'Font\\courbi.ttf', uni=True)
-        pdf.add_font('CourierIt', '', 'Font\\couri.ttf', uni=True)
-    except:
-        pdf.add_font('Courier', '', 'C:\Windows\Fonts\\cour.ttf', uni=True)
-        pdf.add_font('CourierBold', '', 'C:\Windows\Fonts\\courbd.ttf', uni=True)
-        pdf.add_font('CourierBoldIt', '', 'C:\Windows\Fonts\\courbi.ttf', uni=True)
-        pdf.add_font('CourierIt', '', 'C:\Windows\Fonts\\couri.ttf', uni=True)
+    #Imposta font, dimensione e colore. Il font viene aggiunto al pdf solo la prima volta che serve
+    #(ogni font aggiunto finisce dentro il file). Lo cerca nella cartella Fonts del programma,
+    #se manca usa quello di Windows (Helvetica in Windows non c'è: al suo posto usa Arial)
+    def usa_font(nome_font, dimensione, colore="n"):
+        if nome_font != "" and nome_font.lower() not in pdf.fonts:
+            file_font, file_windows = FONT_PDF[nome_font]
+            percorso_font = os.path.join(CARTELLA_FONT, file_font)
+            if not os.path.isfile(percorso_font):
+                percorso_font = os.path.join(CARTELLA_FONT_WINDOWS, file_windows)
+            pdf.add_font(nome_font, '', percorso_font, uni=True)
+        pdf.set_font(family=nome_font, size=dimensione)
+        pdf.set_text_color(*COLORI_TESTO.get(colore, (0, 0, 0)))
 
     #Aggiunge la prima pagina al pdf
     pdf.alias_nb_pages()
     pdf.add_page()
+    #Font predefinito per le righe senza formato (stesso del codice iniziale "tnn10")
+    usa_font("Times", 10)
 
     i = linea_inizio_format_pdf
     index = 0
@@ -325,17 +322,22 @@ def pdf(guida, config):
         arrcodici = []
         riga = x
         car1prec = 0
+        #Il testo prima del formato va azzerato a ogni riga, altrimenti si ripete nelle righe dopo
+        testopasprec = ""
         if guida[i][0:4] == "fine":
             i = linea_inizio_format_pdf
             index = 0
 
         codicecompleto = guida[i].replace("\n", "")[4:]
-        if guida[i][10:12] != "":
-            lung = len(guida[i].replace("\n", "")) - 3
-            times = int(lung/12)
+        #Il codice ha 5 caratteri (es. tsn12) o 6 con il colore (es. tsn12r)
+        lunghezza_codice = 6 if codicecompleto[5:6] in COLORI_TESTO else 5
+        if len(codicecompleto.rstrip()) > lunghezza_codice:
+            #Più formati sulla riga: "<codice> <da> <a>" separati da un carattere
+            passo = lunghezza_codice + 7
+            times = int((len(codicecompleto) + 1) / passo)
             for h in range(0, times):
-                primochar = 12*h
-                ultimochar = 12*h + 11
+                primochar = passo*h
+                ultimochar = passo*h + lunghezza_codice + 6
                 arrcodici.append(codicecompleto[primochar: ultimochar])
         else:
             arrcodici.append(codicecompleto)
@@ -343,50 +345,25 @@ def pdf(guida, config):
         index += 1
         testo_tot = ""
         def controllacodice(codice):
+                #Font (es. Times, TimesBold, TimesBoldIt, TimesIt), dimensione e colore
                 font = ""
-                if codice[0:1].lower()  == "h":
-                    if codice[1:2].lower()  == "s":
-                        if codice[2:3].lower()  == "s":
-                            font = "HelveticaBoldIt"
-                        else:
-                            font = "HelveticaBold"
-                    else:
-                        if codice[2:3].lower()  == "s":
-                            font = "HelveticaIt"
-                        else:
-                            font = "Helvetica"
-                if codice[0:1].lower()  == "t":
-                    if codice[1:2].lower()  == "s":
-                        if codice[2:3].lower()  == "s":
-                            font = "TimesBoldIt"
-                        else:
-                            font = "TimesBold"
-                    else:
-                        if codice[2:3] == "s":
-                            font = "TimesIt"
-                        else:
-                            font = "Times"
-                if codice[0:1].lower() == "c":
-                    if codice[1:2].lower()  == "s":
-                        if codice[2:3].lower()  == "s":
-                            font = "CourierBoldIt"
-                        else:
-                            font = "CourierBold"
-                    else:
-                        if codice[2:3] == "s":
-                            font = "CourierIt"
-                        else:
-                            font = "Courier"
-                size = codice[-2:]
-                array = [font, size]
+                if codice[0:1].lower() in FONT_CODICI:
+                    font = FONT_CODICI[codice[0:1].lower()][0]
+                    if codice[1:2].lower() == "s":
+                        font += "Bold"
+                    if codice[2:3].lower() == "s":
+                        font += "It"
+                size = codice[3:5]
+                colore = codice[5:6] if codice[5:6] in COLORI_TESTO else "n"
+                array = [font, size, colore]
                 return array
 
         if arrcodici[0] != "" and arrcodici[0] != " ":
             for codici in arrcodici:
-                codice2 = codici[0:5]
-                if codici[6:] != "":
-                    car1 = int(codici[6:9])
-                    car2 = int(codici[9:])
+                codice2 = codici[0:lunghezza_codice]
+                if codici[lunghezza_codice + 1:] != "":
+                    car1 = int(codici[lunghezza_codice + 1:lunghezza_codice + 4])
+                    car2 = int(codici[lunghezza_codice + 4:])
                     testopass = riga[car1: car2]
                     testo_tot += testopass
                     if codici == arrcodici[0]:
@@ -401,17 +378,21 @@ def pdf(guida, config):
                     testo_tot += testopass
                 if testopasprec != "":
                     testoarr = controllacodice(codice)
-                    codice = guida[i][4:9]
+                    codice = guida[i][4:4 + lunghezza_codice]
                     testo = testopasprec.replace("\n", "")
-                    pdf.set_font(family=testoarr[0], size=int(testoarr[1]))
-                    pdf.cell(len(testo) + 6, 6, testo, border=0, ln=0)
+                    usa_font(testoarr[0], int(testoarr[1]), testoarr[2])
+                    #Larghezza della cella = larghezza reale del testo, così i pezzi non si sovrappongono
+                    pdf.cell(pdf.get_string_width(testo), 6, testo, border=0, ln=0)
                 testoarr2 = controllacodice(codice2)
                 testo = testopass.replace("\n", "")
-                pdf.set_font(family=testoarr2[0], size=int(testoarr2[1]))
+                usa_font(testoarr2[0], int(testoarr2[1]), testoarr2[2])
                 if codici == arrcodici[len(arrcodici) - 1]:
-                    pdf.cell(len(testo) + 6, 6, testo, border=0, ln=1)
+                    #Il testo dopo l'ultimo pezzo formattato prende lo stesso formato
+                    if codici[lunghezza_codice + 1:] != "":
+                        testo += riga[car1prec:].replace("\n", "")
+                    pdf.cell(0, 6, testo, border=0, ln=1)
                 else:
-                    pdf.cell(len(testo) + 6, 6, testo, border=0, ln=0)
+                    pdf.cell(pdf.get_string_width(testo), 6, testo, border=0, ln=0)
         else:
             testo = x.replace("\n", "")
             pdf.cell(0, 6, testo, border=0, ln=1)
@@ -437,8 +418,11 @@ def pdf(guida, config):
 
             # Merge the overlay page onto the template page
             output_pdf = PdfFileWriter()
+            #Il template resta aperto finché il risultato non è scritto (PyPDF2 lo legge in quel momento)
+            file_template = []
             for intero in range(0, numpag):
-                pdf_template = PdfFileReader(open(pdf_template_file_name, 'rb'))
+                file_template.append(open(pdf_template_file_name, 'rb'))
+                pdf_template = PdfFileReader(file_template[-1])
                 template_page = pdf_template.getPage(0)
                 template_page.rotateClockwise(rotazione)
                 overlay_page = overlay_pdf.getPage(intero)
@@ -448,8 +432,10 @@ def pdf(guida, config):
                 output_pdf.addPage(template_page)
 
             # Salva tutto nel result
-            resultPdf = open(result_pdf_file_name, 'wb')
-            output_pdf.write(resultPdf)
+            with open(result_pdf_file_name, 'wb') as resultPdf:
+                output_pdf.write(resultPdf)
+            for f in file_template:
+                f.close()
 
         else:
             result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
@@ -460,22 +446,20 @@ def pdf(guida, config):
             numpag = overlay_pdf.getNumPages()
 
             for intero in range(0, numpag):
-                over_page = overlay_pdf.getPage(0)
+                over_page = overlay_pdf.getPage(intero)
                 over_page.rotateClockwise(rotazione)
 
                 # Write the result to a new PDF file
                 output_pdf.addPage(over_page)
 
             # Salva tutto nel result
-            resultPdf = open(result_pdf_file_name, 'wb')
-            output_pdf.write(resultPdf)
+            with open(result_pdf_file_name, 'wb') as resultPdf:
+                output_pdf.write(resultPdf)
 
+    #Il risultato è già chiuso (scritto del tutto) prima di aprirlo o stamparlo
     if guida[1].replace("\n", "") == "pdf":
         os.startfile(result_pdf_file_name)
-        resultPdf.close()
     if guida[1].replace("\n", "") == "stampa":
-        #Chiude il file prima di stamparlo, così è scritto del tutto
-        resultPdf.close()
         stampa_pdf(result_pdf_file_name)
     #Prova a eliminare il file temporaneo
     try:
@@ -504,6 +488,12 @@ def docx(guida, config):
     index = 0
     testo_tot = ""
     testopasprec = ""
+    #Formato delle righe senza codice prima del primo formato
+    lastfont = "Times New Roman"
+    lastsize = Pt(10)
+    lastbold = False
+    lastit = False
+    lastcolor = "n"
     #for presente anche nella funzione pdf
     #per ogni linea del file di testo va a leggere la corrispondente linea del file guida
     #se è presente applica una formattazione
@@ -512,9 +502,20 @@ def docx(guida, config):
         riga = x
         car1prec = 0
         arrcodici = []
+        #Il testo prima del formato va azzerato a ogni riga, altrimenti si ripete nelle righe dopo
+        testopasprec = ""
+        #Finiti i formati riparte dal primo, come nel pdf
         if guida[i][0:4] == "fine":
-            i = linea_inizio_format_pdf - 1
+            i = linea_inizio_format_pdf
             index = 0
+        if guida[i][0:4] == "fine":
+            #Il .gui non ha formati: la riga mantiene l'ultimo formato
+            run = par.add_run(riga)
+            run.font.name = lastfont
+            run.font.size = lastsize
+            run.font.bold = lastbold
+            run.font.italic = lastit
+            run.font.color.rgb = RGBColor(*COLORI_TESTO.get(lastcolor, (0, 0, 0)))
         else:
             codicecompleto = guida[i].replace("\n", "")[4:]
             if guida[i][11:13] != "":
@@ -531,67 +532,13 @@ def docx(guida, config):
             index += 1
 
             def controllacodice(codice):
-                font = ""
-                bold = False
-                italic = False
-                if codice[0] == "t":
-                    if codice[1] == "s":
-                        if codice[2] == "s":
-                            font = "TimesBoldIt"
-                            bold = True
-                            italic = True
-                        else:
-                            font = "TimesBold"
-                            bold = True
-                            italic = False
-                    else:
-                        if codice[2] == "s":
-                            font = "TimesIt"
-                            bold = False
-                            italic = True
-                        else:
-                            font = "Times"
-                            bold = False
-                            italic = False
-
-                if codice[0] == "h":
-                    if codice[1] == "s":
-                        if codice[2] == "s":
-                            font = "HelveticaBoldIt"
-                            bold = True
-                            italic = True
-                        else:
-                            font = "HelveticaBold"
-                            bold = True
-                            italic = False
-                    else:
-                        if codice[2] == "s":
-                            font = "HelveticaIt"
-                            bold = False
-                            italic = True
-                        else:
-                            font = "Helvetica"
-                            bold = False
-                            italic = False
-                if codice[0].lower() == "c":
-                    if codice[1] == "s":
-                        if codice[2] == "s":
-                            font = "CourierBoldIt"
-                            bold = True
-                            italic = True
-                        else:
-                            font = "CourierBold"
-                            bold = True
-                            italic = False
-                    else:
-                        if codice[2] == "s":
-                            font = "CourierIt"
-                            bold = False
-                            italic = True
-                        else:
-                            font = "Courier"
-                            bold = False
-                            italic = False
+                #Nome del font come lo conosce Word (es. Times New Roman), dimensione, grassetto,
+                #corsivo e colore
+                font = None
+                if codice[0:1].lower() in FONT_CODICI:
+                    font = FONT_CODICI[codice[0:1].lower()][1]
+                bold = codice[1:2].lower() == "s"
+                italic = codice[2:3].lower() == "s"
                 size = codice[3:5]
                 colore = codice[5:6]
                 array = [font, size, bold, italic, colore]
@@ -617,7 +564,7 @@ def docx(guida, config):
                             testo_tot += testopass
                         if testopasprec != "":
                             testoarr = controllacodice(codice)
-                            codice = guida[i][5:10]
+                            codice = guida[i][4:10]
                             testo = testopasprec
                             run = par.add_run(testo)
                             font = run.font
@@ -625,20 +572,13 @@ def docx(guida, config):
                             font.size = Pt(int(testoarr[1]))
                             font.bold = testoarr[2]
                             font.italic = testoarr[3]
-                            color = testoarr[4]
-                            if color == "n":
-                                font.color.rgb = RGBColor(0,0,0)
-                            elif color == "r":
-                                font.color.rgb = RGBColor(255,0,0)
-                            elif color == "b":
-                                font.color.rgb = RGBColor(0,0,255)
-                            elif color == "b":
-                                font.color.rgb = RGBColor(0,255,0)
-                            else:
-                                font.color.rgb = RGBColor(0, 0, 0)
+                            font.color.rgb = RGBColor(*COLORI_TESTO.get(testoarr[4], (0, 0, 0)))
 
                         testoarr2 = controllacodice(codice2)
                         testo = testopass
+                        #Il testo dopo l'ultimo pezzo formattato prende lo stesso formato
+                        if codici == arrcodici[len(arrcodici) - 1] and codici[7:] != "":
+                            testo += riga[car1prec:]
                         run = par.add_run(testo)
                         font = run.font
                         font.name = testoarr2[0]
@@ -649,17 +589,8 @@ def docx(guida, config):
                         lastsize = Pt(int(testoarr2[1]))
                         lastbold = testoarr2[2]
                         lastit = testoarr2[3]
-                        color = testoarr2[4]
-                        if color == "n":
-                            font.color.rgb = RGBColor(0, 0, 0)
-                        elif color == "r":
-                            font.color.rgb = RGBColor(255, 0, 0)
-                        elif color == "b":
-                            font.color.rgb = RGBColor(0, 0, 255)
-                        elif color == "b":
-                            font.color.rgb = RGBColor(0, 255, 0)
-                        else:
-                            font.color.rgb = RGBColor(0, 0, 0)
+                        lastcolor = testoarr2[4]
+                        font.color.rgb = RGBColor(*COLORI_TESTO.get(lastcolor, (0, 0, 0)))
             else:
                 testo = riga
                 run = par.add_run(testo)
@@ -668,6 +599,7 @@ def docx(guida, config):
                 font.size = lastsize
                 font.bold = lastbold
                 font.italic = lastit
+                font.color.rgb = RGBColor(*COLORI_TESTO.get(lastcolor, (0, 0, 0)))
             i += 1
 
 
@@ -680,17 +612,16 @@ def excel(guida, config):
     content = f.readlines()
     f.close()
 
-    #Dichiara l'array delle colonne e il dizionario che le conterrà
+    #Dichiara l'array delle colonne
     colonne = []
-    d = {}
 
     primo_char = 0
-    first_chk = 1
-    second_chk = 1
 
     # Create new workbook
     wb = Workbook()
     sheet1 = wb.create_sheet('sheet1', 0)
+    #Toglie il foglio vuoto "Sheet" che Workbook crea da solo
+    wb.remove(wb['Sheet'])
     active = wb['sheet1']
     ws = wb.active
     foglio = []
@@ -715,148 +646,99 @@ def excel(guida, config):
             i += 1
         colonne.append(riga)
 
-    #Trasforma le righe in colonne e le mette nel dizionario
+    #Mette le righe nel foglio
+    #(Prima ogni riga passava da un data frame di pandas e se ne prendeva una ogni 3 righe prodotte:
+    #una riga vuota ne produceva 2 e faceva slittare tutte le successive)
     for x in range(len(colonne)):
-        for y in range(len(colonne[x])):
-            d["col" + str(y + 1)] = colonne[x][y]
-
-        #Mette il dizionario in un data frame
-        df = pd.DataFrame(data=d, index=[0])
-
-        #trasforma il data frame in un file excel
-        #Non funziona
-        #df.to_excel('file.xlsx', header=False, index=False)
-
-        #Aggiunge una line alla volta al file excel
-        #Ne mette una ogni 3 perchè il dataframe ha un titolo poi una riga vuota poi la riga da passare
-
-        for x in dataframe_to_rows(df):
-            if first_chk == 1:
-                first_chk = 0
-            else:
-                if second_chk == 1:
-                    second_chk = 0
-                else:
-                    first_chk = 1
-                    second_chk = 1
-                    #active.append(x)
-                    foglio.append(x)
+        foglio.append(colonne[x])
 
 
-    #Cancella la prima colonna che contiene l'indice
-    sheet1.delete_cols(1, 1)
+    #Formati Excel: nel file xlsx vanno scritti in notazione inglese (Excel li mostra poi
+    #con le impostazioni italiane del PC)
+    formati_excel = {
+        0: '', 1: '0', 2: '0.00', 3: '#,##0', 4: '#,##0.00',
+        5: '#,##0 "€";-#,##0 "€"', 6: '#,##0 "€";[Red]-#,##0 "€"', 7: '#,##0 "€";[Red]-#,##0 "€"',
+        8: '#,##0.00 "€";[Red]-#,##0.00 "€"', 9: '0%', 10: '0.00%', 11: '0.00E+00',
+        12: 'dd/mm/yyyy', 13: 'dd-mmm-yyyy', 14: 'dd-mmm', 15: 'mmm yyyy', 16: 'h:mm AM/PM',
+        17: 'h:mm:ss AM/PM', 18: 'hh:mm', 19: 'hh:mm:ss', 20: 'dd/mm/yyyy hh:mm', 21: '##0.0E+0',
+        22: 'mm:ss', 23: '@',
+    }
+    codici_num = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21]
+    codici_data = [12, 13, 14, 15, 20]
+    codici_ora = [16, 17, 18, 19, 22]
 
-    #Prepara la variabile dimensioni
-    dims = {}
-
-    codici_num= [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21]
-    #Aggiusta la dimensione delle colonne
-    i = linea_inizio_format_excel
-    for col in range(0, len(foglio[0])):
-            if guida[i] != "fine":
-                if guida[i] != "":
+    def valore_excel(testo, codice):
+        #Trasforma il testo nel valore giusto per il formato; se non ci riesce lo lascia come testo
+        testo = testo.strip()
+        try:
+            if codice in codici_num:
+                #Numeri all'italiana: 1.234,56 -> 1234.56 (i punti delle migliaia si tolgono)
+                numero = testo.replace("€", "").replace("%", "").strip()
+                if "," in numero:
+                    numero = numero.replace(".", "").replace(",", ".")
+                valore = float(numero)
+                if codice in [9, 10] and "%" in testo:
+                    valore = valore / 100
+                return valore
+            if codice in codici_data:
+                for formato_data in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y"):
                     try:
-                        codice = int(guida[i].replace("\n", ""))
-                    except:
-                        codice = 0
+                        return datetime.datetime.strptime(testo, formato_data)
+                    except ValueError:
+                        pass
+            if codice in codici_ora:
+                for formato_ora in ("%H:%M:%S", "%H:%M"):
+                    try:
+                        return datetime.datetime.strptime(testo, formato_ora).time()
+                    except ValueError:
+                        pass
+        except ValueError:
+            pass
+        return testo
 
-                    def controllacodiceexcel(codice):
-                        format = ""
-                        if codice == 0:
-                            format = u''
-                        if codice == 1:
-                            format = u'0'
-                        if codice == 2:
-                            format = '0, 00'
-                        if codice == 3:
-                            format = u'#.##0'
-                        if codice == 4:
-                            format = u'#.##0,00'
-                        if codice == 5:
-                            format = "#.##0 \"€\";-#.##0 \"€\""
-                        if codice == 6:
-                            format = "#.##0 \"€\";[Red]-#.##0 \"€\""
-                        if codice == 7:
-                            format = "#.##0 \"€\";[Red]-#.##0 \"€\""
-                        if codice == 8:
-                            format = u'#.##0,00 \"€\";[Red]-#.##0,00 \"€\"'
-                        if codice == 9:
-                            format = "0%"
-                        if codice == 10:
-                            format = "0,00%"
-                        if codice == 11:
-                            format = "0,00E+00"
-                        if codice == 12:
-                            format = u'dd/mm/yyyy'
-                        if codice == 13:
-                            format = "gg-mmm-yyyy"
-                        if codice == 14:
-                            format = "gg-mmm"
-                        if codice == 15:
-                            format = "mmm yyyy"
-                        if codice == 16:
-                            format = "h:mm AM/PM"
-                        if codice == 17:
-                            format = "h:mm:ss AM/PM"
-                        if codice == 18:
-                            format = "hh:mm"
-                        if codice == 19:
-                            format = "hh:mm:ss"
-                        if codice == 20:
-                            format = "gg/mm/yyyy hh:mm"
-                        if codice == 21:
-                            format = "##0,0E+0"
-                        if codice == 22:
-                            format = "mm:ss"
-                        if codice == 23:
-                            format = "@"
-                        return format
+    #Applica a ogni colonna il formato della sua linea del .gui (dalla linea "fine" in poi: nessun formato)
+    #La prima linea dei formati è per la prima colonna (prima andava a una colonna indice
+    #che poi veniva cancellata, e tutti i formati risultavano spostati di una colonna)
+    i = linea_inizio_format_excel
+    arrivato_a_fine = False
+    num_colonne = max(len(r) for r in foglio) if len(foglio) > 0 else 0
+    for col in range(0, num_colonne):
+        linea = guida[i].strip() if i < len(guida) else "fine"
+        if linea[0:4] == "fine":
+            arrivato_a_fine = True
+        try:
+            codice = 0 if arrivato_a_fine else int(linea)
+        except ValueError:
+            codice = 0
+        formato = formati_excel.get(codice, '')
 
-                    formato = controllacodiceexcel(codice)
-
-                    for f in range(0, len(foglio)):
-                        res = isinstance(foglio[f][col], str)
-                        if codice in codici_num and f != 0 and foglio[f][col].isnumeric():
-                            if foglio[f][col].isspace() :
-                                foglio[f][col] = 0
-                            ws.cell(row=f + 1, column=col + 1).value = float(foglio[f][col])
-                            ws.cell(row=f + 1, column=col + 1).number_format = formato
-                        else:
-                            ws.cell(row=f + 1, column=col + 1).value = str(foglio[f][col])
-                            ws.cell(row=f + 1, column=col + 1).number_format = str(formato)
-
-                        #if formato != "":
-                        #    ws.cell(row=f + 1, column=col + 1).number_format = str(formato)
-
-            else:
-               sheet1.delete_cols(1, 1)
-               column_widths = []
-               for row in sheet1.iter_rows():
-                   for i, cell in enumerate(row):
-                       try:
-                           column_widths[i] = max(column_widths[i], len(str(cell.value)))
-                       except IndexError:
-                           column_widths.append(len(str(cell.value)))
-               for i, column_width in enumerate(column_widths):
-                   sheet1.column_dimensions[get_column_letter(i + 1)].width = column_width
-
-
-               wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
-               return
+        for f in range(0, len(foglio)):
+            valore = foglio[f][col] if col < len(foglio[f]) else ""
+            if valore is None:
+                valore = ""
+            #La prima riga è l'intestazione e resta testo
+            if f != 0 and isinstance(valore, str):
+                valore = valore_excel(valore, codice)
+            cella = ws.cell(row=f + 1, column=col + 1)
+            cella.value = valore
+            if formato != "":
+                cella.number_format = formato
+        if not arrivato_a_fine:
             i += 1
-    sheet1.delete_cols(1, 1)
+
+    #Aggiusta la dimensione delle colonne
     column_widths = []
     for row in sheet1.iter_rows():
-        for i, cell in enumerate(row):
-            try:
-                column_widths[i] = max(column_widths[i], len(str(cell.value)))
-            except IndexError:
-                column_widths.append(len(str(cell.value)))
-    for i, column_width in enumerate(column_widths):
-        sheet1.column_dimensions[get_column_letter(i + 1)].width = column_width
+        for n, cell in enumerate(row):
+            larghezza = len(str(cell.value)) if cell.value is not None else 0
+            if n < len(column_widths):
+                column_widths[n] = max(column_widths[n], larghezza)
+            else:
+                column_widths.append(larghezza)
+    for n, column_width in enumerate(column_widths):
+        sheet1.column_dimensions[get_column_letter(n + 1)].width = column_width + 2
 
     # Salva il file Excel
-
     wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
 
 def email_send(guida, config):
@@ -927,7 +809,8 @@ def email_send(guida, config):
     # Add header as key/value pair to attachment part
     part.add_header(
         "Content-Disposition",
-        f"attachment; filename= {filename}",
+        #Solo il nome del file, non tutto il percorso
+        "attachment", filename=os.path.basename(filename),
     )
 
     # Add attachment to message and convert message to string
@@ -944,7 +827,7 @@ def email_send(guida, config):
         # Add header as key/value pair to attachment part
         part2.add_header(
             "Content-Disposition",
-            f"attachment; filename= {filename2}",
+            "attachment", filename=os.path.basename(filename2),
         )
 
         # Add attachment to message and convert message to string
@@ -970,18 +853,86 @@ def start():
 
     # Per ogni file passa il suo nome alla main
     for name in onlyfiles:
-        main(name, config)
+        #Un file sbagliato non deve bloccare gli altri: scrive l'errore e passa al successivo
+        try:
+            main(name, config)
+        except Exception:
+            print("Errore con il file " + name + ":", file=sys.stderr)
+            traceback.print_exc()
 
 # file .gui global
 linea_inizio_format_pdf = 7
 linea_inizio_format_excel = 7
 
-#Crea un array con i file precedenti nella cartella
-filesprec = []
 
-process(filesprec)
+# Font del PDF: cartella Fonts accanto al programma (o all'eseguibile creato con PyInstaller)
+if getattr(sys, "frozen", False):
+    CARTELLA_FONT = os.path.join(os.path.dirname(sys.executable), "Fonts")
+else:
+    CARTELLA_FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Fonts")
+CARTELLA_FONT_WINDOWS = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+# Lettera del font nei codici del .gui -> (nome nel PDF, nome in Word)
+FONT_CODICI = {
+    "t": ("Times", "Times New Roman"),
+    "h": ("Helvetica", "Arial"),
+    "c": ("Courier", "Courier New"),
+    "k": ("Calibri", "Calibri"),
+    "v": ("Verdana", "Verdana"),
+    "g": ("Georgia", "Georgia"),
+    "u": ("SegoeUI", "Segoe UI"),
+}
+# Nome usato nel PDF -> (file nella cartella Fonts, file di Windows se manca)
+FONT_PDF = {
+    "Times": ("times.ttf", "times.ttf"),
+    "TimesBold": ("timesbd.ttf", "timesbd.ttf"),
+    "TimesBoldIt": ("timesbi.ttf", "timesbi.ttf"),
+    "TimesIt": ("timesi.ttf", "timesi.ttf"),
+    "Helvetica": ("Helvetica.ttf", "arial.ttf"),
+    "HelveticaBold": ("Helvetica-Bold.ttf", "arialbd.ttf"),
+    "HelveticaBoldIt": ("Helvetica-BoldOblique.ttf", "arialbi.ttf"),
+    "HelveticaIt": ("Helvetica-Oblique.ttf", "ariali.ttf"),
+    "Courier": ("cour.ttf", "cour.ttf"),
+    "CourierBold": ("courbd.ttf", "courbd.ttf"),
+    "CourierBoldIt": ("courbi.ttf", "courbi.ttf"),
+    "CourierIt": ("couri.ttf", "couri.ttf"),
+    "Calibri": ("calibri.ttf", "calibri.ttf"),
+    "CalibriBold": ("calibrib.ttf", "calibrib.ttf"),
+    "CalibriBoldIt": ("calibriz.ttf", "calibriz.ttf"),
+    "CalibriIt": ("calibrii.ttf", "calibrii.ttf"),
+    "Verdana": ("verdana.ttf", "verdana.ttf"),
+    "VerdanaBold": ("verdanab.ttf", "verdanab.ttf"),
+    "VerdanaBoldIt": ("verdanaz.ttf", "verdanaz.ttf"),
+    "VerdanaIt": ("verdanai.ttf", "verdanai.ttf"),
+    "Georgia": ("georgia.ttf", "georgia.ttf"),
+    "GeorgiaBold": ("georgiab.ttf", "georgiab.ttf"),
+    "GeorgiaBoldIt": ("georgiaz.ttf", "georgiaz.ttf"),
+    "GeorgiaIt": ("georgiai.ttf", "georgiai.ttf"),
+    "SegoeUI": ("segoeui.ttf", "segoeui.ttf"),
+    "SegoeUIBold": ("segoeuib.ttf", "segoeuib.ttf"),
+    "SegoeUIBoldIt": ("segoeuiz.ttf", "segoeuiz.ttf"),
+    "SegoeUIIt": ("segoeuii.ttf", "segoeuii.ttf"),
+}
+# Lettera del colore nei codici del .gui -> RGB (g = verde, come v, per i .gui vecchi)
+COLORI_TESTO = {
+    "n": (0, 0, 0),
+    "r": (255, 0, 0),
+    "v": (0, 128, 0),
+    "g": (0, 128, 0),
+    "b": (0, 0, 255),
+    "w": (255, 255, 255),
+}
+# fpdf salva i dati dei font in file .pkl; li mette nella cartella temporanea con un nome
+# legato al percorso completo del font, così non si usano .pkl vecchi con percorsi sbagliati
+fpdf.fpdf.FPDF_CACHE_MODE = 2
+fpdf.fpdf.FPDF_CACHE_DIR = tempfile.gettempdir()
+# Solo quando è avviato come programma (non quando viene importato)
+if __name__ == "__main__":
+    #Crea un array con i file precedenti nella cartella
+    filesprec = []
 
-#loop che avviene ogni secondo
-while True:
-    time.sleep(1)
-    filesprec = process(filesprec)
+    process(filesprec)
+
+    #loop che avviene ogni secondo
+    while True:
+        time.sleep(1)
+        filesprec = process(filesprec)

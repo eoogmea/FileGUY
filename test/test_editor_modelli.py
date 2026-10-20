@@ -1,0 +1,281 @@
+"""Prova dell'editor dei modelli (EditorModelli.py / modello_gui.py).
+
+Uso:  python test\\test_editor_modelli.py
+
+1. Formati -> linee del .gui -> formati: deve tornare uguale.
+2. Il servizio (SingleGUY_editor) applica davvero i formati scelti, nel PDF e nel Word.
+3. La finestra: formattazione di una selezione, salvataggio, anteprima e "Applica a file di testo".
+"""
+import os
+import random
+import shutil
+import sys
+import tempfile
+import traceback
+
+import fitz
+from docx import Document
+
+CARTELLA_PROGRAMMA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, CARTELLA_PROGRAMMA)
+os.chdir(CARTELLA_PROGRAMMA)
+import modello_gui
+
+risultati = []
+cartella = tempfile.mkdtemp(prefix="infas_modelli_")
+CARTELLA_TEMPLATE = os.path.join(cartella, "template")
+os.makedirs(CARTELLA_TEMPLATE)
+modello_pdf = fitz.open()
+modello_pdf.new_page(width=595, height=842).draw_rect(fitz.Rect(20, 20, 575, 822), color=(0, 0, 1))
+modello_pdf.save(os.path.join(CARTELLA_TEMPLATE, "modello.pdf"))
+
+RIGHE = [
+    "INFAS SERVICE S.r.l.",
+    "",
+    "Fattura n. 123 del 20/10/2026",
+    "Cliente: Mario Rossi   Totale: 1.234,56 €",
+    "Descrizione con accenti: città, perché, più, così",
+    "Testo bianco su fondo scuro",
+    "Verdana: e Segoe UI",
+]
+
+
+def prova(funzione):
+    try:
+        funzione()
+        risultati.append((funzione.__name__, None))
+    except Exception:
+        risultati.append((funzione.__name__, traceback.format_exc(limit=-4).strip()))
+    return funzione
+
+
+def formati_di_prova(word):
+    t = ("t", True, False, 14, "n")
+    h = ("h", False, True, 10, "r")
+    c = ("c", True, True, 12, "b")
+    k = ("k", True, False, 11, "v")
+    g = ("g", False, False, 10, "w")
+    v = ("v", False, True, 9, "n")
+    u = ("u", True, True, 10, "n")
+    return [
+        [t] * len(RIGHE[0]),
+        [],
+        [c] * len(RIGHE[2]),
+        [h] * 8 + [t] * 13 + [c] * (len(RIGHE[3]) - 21),
+        [k] * len(RIGHE[4]),
+        [g] * len(RIGHE[5]),
+        [v] * 9 + [u] * (len(RIGHE[6]) - 9),
+    ]
+
+
+@prova
+def andata_e_ritorno_casuale():
+    casuale = random.Random(1)
+    for word in (False, True):
+        for _ in range(200):
+            righe, formati = [], []
+            for _ in range(casuale.randint(1, 8)):
+                lunghezza = casuale.randint(0, 99)
+                righe.append("x" * lunghezza)
+                riga, formato = [], None
+                for _ in range(lunghezza):
+                    if formato is None or casuale.random() < 0.1:
+                        formato = (casuale.choice("thckvgu"), casuale.random() < .5, casuale.random() < .5,
+                                   casuale.randint(6, 36), casuale.choice("nnnrvbw"))
+                    riga.append(formato)
+                formati.append(riga)
+            linee = modello_gui.linee_formato(formati, word)
+            assert modello_gui.leggi_formati(linee, righe, word) == formati, linee
+
+
+@prova
+def colonna_oltre_99():
+    riga = [modello_gui.PREDEFINITO] * 100 + [("h", True, False, 10, "n")] * 5
+    try:
+        modello_gui.linee_formato([riga], False)
+        raise AssertionError("un formato dopo la colonna 99 è stato accettato")
+    except modello_gui.ErroreModello:
+        pass
+    # Un formato solo, anche su una riga lunga, va bene
+    assert modello_gui.linee_formato([[modello_gui.PREDEFINITO] * 150], False) == ["001\ttnn10", "fine"]
+
+
+def servizio():
+    import importlib
+    return importlib.import_module("SingleGUY_editor")
+
+
+def crea_con_servizio(word, nome):
+    intestazione = modello_gui.nuovo_modello(word)
+    intestazione.update(testo=nome + ".txt", uscita=nome + (".docx" if word else ".pdf"),
+                        template="" if word else "modello.pdf")
+    lavoro = os.path.join(cartella, nome)
+    os.makedirs(lavoro)
+    with open(os.path.join(lavoro, nome + ".txt"), "w") as f:
+        f.write("\n".join(RIGHE) + "\n")
+    modello_gui.scrivi_gui(os.path.join(lavoro, nome + ".gui"), intestazione,
+                           modello_gui.linee_formato(formati_di_prova(word), word))
+    with open(os.path.join(lavoro, nome + ".gui")) as f:
+        guida = f.readlines()
+    config = {"cartella_lavoro": lavoro, "cartella_output": lavoro, "cartella_template": CARTELLA_TEMPLATE}
+    if word:
+        servizio().docx(guida, config)
+    else:
+        servizio().pdf(guida, config)
+    return os.path.join(lavoro, intestazione["uscita"])
+
+
+@prova
+def servizio_applica_formati_pdf():
+    doc = fitz.open(crea_con_servizio(False, "pdf"))
+    pezzi = {}
+    for blocco in doc[0].get_text("dict")["blocks"]:
+        for riga in blocco.get("lines", []):
+            for span in riga["spans"]:
+                pezzi[span["text"].strip()] = (span["font"], round(span["size"]), "%06X" % span["color"])
+    # testo: (inizio del nome del font, grassetto, dimensione, colore)
+    attesi = {
+        "INFAS SERVICE S.r.l.": ("TimesNewRoman", True, 14, "000000"),
+        "Fattura n. 123 del 20/10/2026": ("CourierNew", True, 12, "0000FF"),
+        "Cliente:": (("Arial", "Helvetica"), False, 10, "FF0000"),
+        "Mario Rossi": ("TimesNewRoman", True, 14, "000000"),
+        "Totale: 1.234,56 €": ("CourierNew", True, 12, "0000FF"),
+        "Descrizione con accenti: città, perché, più, così": ("Calibri", True, 11, "008000"),
+        "Testo bianco su fondo scuro": ("Georgia", False, 10, "FFFFFF"),
+        "Verdana:": ("Verdana", False, 9, "000000"),
+        "e Segoe UI": ("SegoeUI", True, 10, "000000"),
+    }
+    for testo, (font, grassetto, dimensione, colore) in attesi.items():
+        assert testo in pezzi, "manca %r in %r" % (testo, list(pezzi))
+        trovato_font, trovata_dimensione, trovato_colore = pezzi[testo]
+        assert trovato_font.replace(" ", "").startswith(font) and trovata_dimensione == dimensione \
+            and trovato_colore == colore and ("Bold" in trovato_font) == grassetto, \
+            "%r: %s %d %s invece di %s %d %s" % (testo, trovato_font, trovata_dimensione, trovato_colore, font,
+                                               dimensione, colore)
+    # Nel PDF ci sono solo i font usati
+    usati = {f[3] for f in doc.get_page_fonts(0)}
+    assert not any("Courier" in f and "Italic" not in f for f in usati), usati
+
+
+@prova
+def servizio_applica_formati_word():
+    doc = Document(crea_con_servizio(True, "word"))
+    runs = [(r.text, r.font.name, r.font.size.pt if r.font.size else None, r.font.bold, r.font.italic,
+             str(r.font.color.rgb) if r.font.color.type else None) for p in doc.paragraphs for r in p.runs]
+    testo = "".join(r[0] for r in runs)
+    assert testo == "\n".join(RIGHE) + "\n", repr(testo)
+    def run_con(inizio):
+        return next(r for r in runs if r[0].strip().startswith(inizio.strip()))
+    assert run_con("INFAS")[1:] == ("Times New Roman", 14, True, False, "000000"), run_con("INFAS")
+    assert run_con("Fattura")[1:] == ("Courier New", 12, True, True, "0000FF"), run_con("Fattura")
+    assert run_con("Cliente:")[1:] == ("Arial", 10, False, True, "FF0000"), run_con("Cliente:")
+    assert run_con(" Mario Rossi")[1:] == ("Times New Roman", 14, True, False, "000000"), run_con(" Mario")
+    assert run_con("Totale")[1:] == ("Courier New", 12, True, True, "0000FF"), run_con("Totale")
+    assert run_con("Descrizione")[1:] == ("Calibri", 11, True, False, "008000"), run_con("Descrizione")
+    assert run_con("Testo bianco")[1:] == ("Georgia", 10, False, False, "FFFFFF"), run_con("Testo bianco")
+    assert run_con("Verdana:")[1:] == ("Verdana", 9, False, True, "000000"), run_con("Verdana:")
+    assert run_con("e Segoe UI")[1:] == ("Segoe UI", 10, True, True, "000000"), run_con("e Segoe UI")
+
+
+@prova
+def finestra_formatta_salva_anteprima_applica():
+    import EditorModelli
+    from tkinter import filedialog, messagebox
+    lavoro = os.path.join(cartella, "lavoro_finestra")
+    os.makedirs(lavoro)
+    esempio = os.path.join(cartella, "esempio.txt")
+    with open(esempio, "w") as f:
+        f.write("\n".join(RIGHE) + "\n")
+    percorso_modello = os.path.join(cartella, "modelli", "fattura.gui")
+    os.makedirs(os.path.dirname(percorso_modello))
+    risposte = {"askopenfilename": esempio, "asksaveasfilename": percorso_modello,
+                "askopenfilenames": (esempio,)}
+    for nome, valore in risposte.items():
+        setattr(filedialog, nome, lambda *a, _v=valore, **k: _v)
+    messaggi = []
+    for nome in ("showinfo", "showerror"):
+        setattr(messagebox, nome, lambda titolo, testo, _n=nome, **k: messaggi.append((_n, testo)))
+    messagebox.askokcancel = lambda *a, **k: True
+
+    app = EditorModelli.EditorModelli()
+    app.config_servizio = {"cartella_lavoro": lavoro, "cartella_template": CARTELLA_TEMPLATE,
+                           "cartella_output": lavoro}
+    try:
+        app.nuovo()
+        assert app.righe[:len(RIGHE)] == RIGHE
+        # Riga 1 intera: Courier 12 grassetto; riga 4 colonne 10-21 ("Mario Rossi"): Helvetica corsivo
+        app.testo.tag_add("sel", "1.0", "1.end")
+        app.scelta_font.set("Courier")
+        app._imposta("f", "c")
+        app.scelta_dimensione.set("12")
+        app._imposta_dimensione()
+        app._alterna("b")
+        app.testo.tag_remove("sel", "1.0", "end")
+        app.testo.tag_add("sel", "4.9", "4.20")
+        app._imposta("f", "h")
+        app._alterna("i")
+        # Solo alcune lettere ("Mario", colonne 9-14) in rosso
+        app.testo.tag_remove("sel", "1.0", "end")
+        app.testo.tag_add("sel", "4.9", "4.14")
+        app._imposta("c", "r")
+        app.update()
+        assert app.modificato
+        app.template.set("modello.pdf")
+        assert app.salva(), messaggi
+        assert os.path.isfile(percorso_modello) and os.path.isfile(percorso_modello[:-4] + ".txt")
+        intestazione, linee = modello_gui.leggi_gui(percorso_modello)
+        assert intestazione["testo"] == "{nome}.txt" and intestazione["uscita"] == "{nome}.pdf"
+        assert linee[0] == "001\tcsn12", linee
+        # Riga con un colore: codici di 6 caratteri; righe senza colori: 5 come prima
+        assert linee[3] == "004\ttnn10n 00 09\thns10r 09 14\thns10n 14 20\ttnn10n 20 41", linee
+        assert linee[4] == "005\ttnn10", linee
+
+        # Riaprendo il modello la formattazione torna uguale
+        formati = app._formati_testo()
+        app.apri_modello(percorso_modello)
+        assert app._formati_testo() == formati
+
+        # Anteprima PDF con il codice del servizio
+        pdf = app.crea_documento(tempfile.mkdtemp(dir=cartella))
+        assert pdf and fitz.open(pdf)[0].get_text().count("Mario Rossi") == 1
+        app.FinestraAnteprima = EditorModelli.FinestraAnteprima(app, pdf)
+        app.update()
+        app.FinestraAnteprima._chiudi()
+
+        # Anteprima Word
+        app.word.set(True)
+        app._cambia_tipo()
+        assert app.uscita.get() == "{nome}.docx" and app.azione.get() == "docx"
+        docx = app.crea_documento(tempfile.mkdtemp(dir=cartella))
+        assert docx and "Mario Rossi" in "".join(p.text for p in Document(docx).paragraphs)
+        app.word.set(False)
+        app._cambia_tipo()
+
+        # Applica: crea esempio.gui nella cartella di lavoro con {nome} sostituito
+        app.salva()
+        app.applica()
+        gui = os.path.join(lavoro, "esempio.gui")
+        assert os.path.isfile(gui) and os.path.isfile(os.path.join(lavoro, "esempio.txt")), os.listdir(lavoro)
+        intestazione, _ = modello_gui.leggi_gui(gui)
+        assert intestazione["testo"] == "esempio.txt" and intestazione["uscita"] == "esempio.pdf", intestazione
+
+        # Il servizio elabora il .gui creato
+        modulo = servizio()
+        modulo.main("esempio.txt", dict(app.config_servizio))
+        assert os.path.isfile(os.path.join(lavoro, "esempio.pdf")), os.listdir(lavoro)
+
+        # Il modello non si può salvare nella cartella di lavoro
+        app.percorso_modello = os.path.join(lavoro, "x.gui")
+        assert not app.salva() and "cartella di lavoro" in messaggi[-1][1]
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
+shutil.rmtree(cartella, ignore_errors=True)
+for nome, errore in risultati:
+    print("[%s] %s" % ("OK " if errore is None else "ERR", nome))
+    if errore:
+        print("       " + errore.replace("\n", "\n       "))
+print("\n%d/%d prove OK" % (sum(e is None for _, e in risultati), len(risultati)))
+sys.exit(0 if all(e is None for _, e in risultati) else 1)

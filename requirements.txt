@@ -1,14 +1,18 @@
-# Dipendenze di SingleGUY / FileGUY1 / ConfigManager
-# Le versioni fissate servono perché il codice usa API vecchie:
-# PyPDF2 3.x ha rimosso PdfFileReader/PdfFileWriter, fpdf2 cambia la gestione dei font (uni=True, .pkl)
+# Dipendenze di SingleGUY / SingleGUY_editor / FileGUY1 / ConfigManager
+# Versioni provate il 20/10/2026 con Python 3.14 (test\esegui_test.py e test\test_moduli.py)
+# PyPDF2 e fpdf vanno tenute a queste versioni perché il codice usa API vecchie:
+# PyPDF2 3.x ha rimosso PdfFileReader/PdfFileWriter, fpdf2 cambia la gestione dei font (uni=True)
 PyPDF2==1.26.0
 fpdf==1.7.2
-python-docx
-openpyxl
-pandas
-python-barcode
-pillow
-PyMuPDF
-pywin32
-requests
-telepot
+python-docx==1.2.0
+openpyxl==3.1.5
+python-barcode==0.16.1
+pillow==13.0.0
+PyMuPDF==2.0
+pywin32==312
+requests==2.34.2
+telepot==12.7
+# pandas serve solo alle versioni vecchie App.py e FileGuy.py
+pandas==3.0.6
+# Solo per creare SingleGUY_editor.exe con app.spec
+pyinstaller==6.22.3

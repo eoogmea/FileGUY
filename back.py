@@ -1,3 +1,5 @@
+import os
+import sys
 import time
 import subprocess
 
@@ -6,8 +8,14 @@ from config_sicuro import carica_config
 from os import listdir
 from os.path import isfile, join
 
+# Cartella del programma (o dell'eseguibile creato con PyInstaller)
+if getattr(sys, "frozen", False):
+    CARTELLA_PROGRAMMA = os.path.dirname(sys.executable)
+else:
+    CARTELLA_PROGRAMMA = os.path.dirname(os.path.abspath(__file__))
+
 #Controlla se è cambiato qualcosa nella cartella
-#Se sì fa partire App.exe o App.py
+#Se sì fa partire SingleGUY_editor.exe o SingleGUY_editor.py
 def process(filesprec):
     # Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
     config = carica_config()
@@ -19,10 +27,14 @@ def process(filesprec):
     onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
 
     if filesprec != onlyfiles:
-        try:
-            subprocess.call("App.exe", shell=True)
-        except:
-            subprocess.call("App.py", shell=True)
+        # Usa l'eseguibile se c'è, altrimenti lo script con lo stesso Python di back.py
+        # (subprocess.call con shell=True non dà errore se il file manca, quindi va controllato prima)
+        eseguibile = join(CARTELLA_PROGRAMMA, "SingleGUY_editor.exe")
+        if isfile(eseguibile):
+            subprocess.call([eseguibile], cwd=CARTELLA_PROGRAMMA)
+        else:
+            subprocess.call([sys.executable, join(CARTELLA_PROGRAMMA, "SingleGUY_editor.py")],
+                            cwd=CARTELLA_PROGRAMMA)
     return onlyfiles
 
 #Crea un array con i file precedenti nella cartella
@@ -32,5 +44,3 @@ filesprec = []
 while True:
     time.sleep(1)
     filesprec = process(filesprec)
-
-
