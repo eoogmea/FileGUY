@@ -67,7 +67,7 @@
 <div class="pagina">
 
 <h1>Editor modelli: guida all'uso</h1>
-<p class="sottotitolo">InfasService: modelli di formattazione per fatture, bolle e altri documenti ripetitivi</p>
+<p class="sottotitolo">FileGUY: modelli di formattazione per fatture, bolle e altri documenti ripetitivi</p>
 
 <nav class="indice">
   <ol>
@@ -90,7 +90,7 @@
 
 <h2 id="cosa">1. A cosa serve</h2>
 <p>Il gestionale produce i documenti (fatture, bolle, ordini…) come <strong>file di testo</strong>: righe di
-caratteri senza grassetto, dimensioni o colori. Il servizio InfasService trasforma ogni file di testo in un
+caratteri senza grassetto, dimensioni o colori. Il servizio FileGUY trasforma ogni file di testo in un
 <strong>PDF</strong> (anche stampato sopra un modulo, il <em>template</em>) o in un documento <strong>Word</strong>,
 seguendo le istruzioni di un file <code>.gui</code> con lo stesso nome.</p>
 <p>Fatture e bolle hanno sempre la stessa struttura: il nome del cliente è sempre alla stessa riga, gli importi
@@ -110,16 +110,24 @@ ConfigManager): da lì prende la cartella dei template PDF e la cartella di lavo
 <h2 id="schermata">3. La finestra</h2>
 <table>
   <tr><th>Parte</th><th>A cosa serve</th></tr>
-  <tr><td><strong>Menu File</strong></td><td>Nuovo modello da un testo di esempio, apri, salva, applica ai file di testo.</td></tr>
+  <tr><td><strong>Menu File</strong></td><td>Nuovo modello da un testo di esempio, apri, modelli recenti, salva, applica ai file di testo.</td></tr>
+  <tr><td><strong>Menu Modifica</strong></td><td>Annulla/ripeti, copia e incolla formato, selezione a blocco, formato di una riga su altre righe.</td></tr>
+  <tr><td><strong>Menu Visualizza</strong></td><td>Zoom del testo nell'editor.</td></tr>
   <tr><td><strong>Anteprima (F5)</strong></td><td>Crea il documento di prova come lo creerà il servizio.</td></tr>
   <tr><td><strong>Menu Aiuto</strong></td><td>Questa guida (<kbd>F1</kbd>) e informazioni sul programma.</td></tr>
   <tr><td><strong>Riquadro Documento</strong></td><td>Tipo di documento (PDF o Word), azione, template, rotazione, nome del documento creato, invio.</td></tr>
-  <tr><td><strong>Barra di formattazione</strong></td><td>Carattere, dimensione, grassetto (G), corsivo (C), colore, formato predefinito.</td></tr>
+  <tr><td><strong>Barra di formattazione</strong></td><td>Carattere, dimensione, grassetto (G), corsivo (C), colore, formato predefinito, spunta <em>Modifica testo</em>.</td></tr>
+  <tr><td><strong>Righello</strong></td><td>Sopra il testo: le colonne della riga dove si trova il cursore (in azzurro quelle selezionate, in rosso la colonna 99).</td></tr>
   <tr><td><strong>Area del testo</strong></td><td>Il testo di esempio con la formattazione. A sinistra il numero di ogni riga.</td></tr>
   <tr><td><strong>Barra di stato</strong> (in basso)</td><td>Riga e colonna del cursore e colonne della selezione.</td></tr>
 </table>
-<p>Il testo <strong>non si può modificare</strong>: si cambia solo il suo aspetto. Il contenuto vero arriverà
-ogni volta dal gestionale.</p>
+<p>Normalmente il testo <strong>non si può modificare</strong>: si cambia solo il suo aspetto. Il contenuto vero
+arriverà ogni volta dal gestionale.</p>
+<p>Per correggere il testo di esempio (per esempio allungare un nome per vedere se ci sta nel modulo, o
+aggiungere righe) si mette la spunta <strong>Modifica testo</strong> nella barra di formattazione: lo sfondo
+diventa giallo chiaro e si può scrivere, incollare, tagliare e annullare (<kbd>Ctrl</kbd>+<kbd>Z</kbd>). Il testo
+scritto dentro un pezzo formattato prende il suo formato. Al salvataggio il testo modificato va nella copia
+<code>.txt</code> accanto al modello; il file scelto con <em>Nuovo da testo di esempio</em> non cambia.</p>
 
 <h2 id="passi">4. Creare un modello passo per passo</h2>
 <ol class="passi">
@@ -166,6 +174,36 @@ non cambia. Si possono applicare più scelte di seguito alla stessa selezione.</
 <p>Senza selezione i comandi non fanno nulla (la barra di stato lo ricorda). Mettendo il cursore su un
 carattere, la barra mostra il suo formato.</p>
 
+<h3>Aiuti alla formattazione</h3>
+<p>Servono a fare prima, ma il modello che ne esce è uguale a quello fatto a mano: gli stessi codici nel
+<code>.gui</code>.</p>
+<table>
+  <tr><th>Comando</th><th>Effetto</th></tr>
+  <tr><td><strong>Annulla</strong> <kbd>Ctrl</kbd>+<kbd>Z</kbd>, <strong>Ripeti</strong> <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
+      <td>annulla o ripete le ultime formattazioni (fino a 100). Con <em>Modifica testo</em> attiva annullano invece
+      le modifiche al testo.</td></tr>
+  <tr><td><strong>Copia formato</strong> <kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>C</kbd></td>
+      <td>prende il formato del carattere dove si trova il cursore (o del primo selezionato).</td></tr>
+  <tr><td><strong>Incolla formato</strong> <kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>V</kbd></td>
+      <td>dà quel formato (carattere, dimensione, grassetto, corsivo, colore) al testo selezionato.</td></tr>
+  <tr><td><strong>Selezione a blocco</strong>: <kbd>Alt</kbd> + trascinare con il mouse, oppure
+      <em>Modifica &gt; Selezione a blocco…</em></td>
+      <td>seleziona le stesse colonne su più righe, per esempio la colonna degli importi di tutti gli articoli.
+      Poi si formatta come una selezione normale. Dal menu si scrivono righe e colonne a mano (utile su Linux,
+      dove alcuni desktop usano <kbd>Alt</kbd>+trascina per spostare le finestre).</td></tr>
+  <tr><td><strong>Copia il formato di una riga su altre righe…</strong></td>
+      <td>dà a un gruppo di righe la stessa formattazione di una riga, colonna per colonna: si formatta bene la
+      prima riga degli articoli e la si copia sulle altre. L'ultimo formato della riga continua fino a fine riga,
+      come fa il servizio.</td></tr>
+  <tr><td><strong>Zoom</strong> <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>-</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd>,
+      oppure <kbd>Ctrl</kbd> + rotellina</td>
+      <td>ingrandisce o riduce il testo nell'editor. Cambia solo la vista: le dimensioni nel documento restano
+      quelle scelte.</td></tr>
+  <tr><td><strong>File &gt; Modelli recenti</strong></td>
+      <td>gli ultimi 8 modelli aperti o salvati, per riaprirli con un clic. Zoom e modelli recenti vengono
+      ricordati per l'utente.</td></tr>
+</table>
+
 <h2 id="font">6. Caratteri e colori</h2>
 <h3>Caratteri</h3>
 <table>
@@ -203,8 +241,9 @@ documento lo sfondo è quello del template. Su un foglio bianco il testo bianco 
   <tr><th>Campo</th><th>Significato</th></tr>
   <tr><td><strong>Tipo</strong></td><td><strong>PDF</strong> (anche su template) o <strong>Word</strong> (.docx).</td></tr>
   <tr><td><strong>Azione</strong> (PDF)</td><td><code>file</code>: crea il PDF nella cartella di output.<br>
-      <code>pdf</code>: lo crea e lo apre sul computer del servizio.<br>
-      <code>stampa</code>: lo crea e lo stampa sulla stampante predefinita del computer del servizio.</td></tr>
+      <code>pdf</code>: lo crea e lo apre a schermo sul computer del servizio (su Linux con il visualizzatore PDF predefinito).<br>
+      <code>stampa</code>: lo crea e lo stampa sul computer del servizio, sulla stampante scelta in ConfigManager
+      (vuoto = quella predefinita; su Linux la stampa passa da CUPS).</td></tr>
   <tr><td><strong>Azione</strong> (Word)</td><td><code>docx</code>: crea il documento Word nella cartella di output.</td></tr>
   <tr><td><strong>Template PDF</strong></td><td>Il modulo su cui stampare il testo, scelto tra i PDF della cartella dei template.
       Vuoto = foglio bianco A4. Se il template è orizzontale anche il testo viene messo in orizzontale.</td></tr>
@@ -310,8 +349,12 @@ copi il modello e sostituisca <code>{nome}</code> con il nome del file di testo 
 lo copia accanto al modello.</p>
 <h3>Il servizio non ha creato il documento</h3>
 <p>Controllare che nella cartella di lavoro ci siano sia il <code>.txt</code> sia il <code>.gui</code> con lo
-stesso nome, e che il servizio (back.py / SingleGUY_editor) sia in funzione. Se un file è sbagliato il
+stesso nome, e che il servizio (back.py / SingleGUY) sia in funzione. Se un file è sbagliato il
 servizio scrive l'errore e passa ai file successivi; il file sbagliato resta nella cartella di lavoro.</p>
+<p>Ogni operazione del servizio è scritta nel <strong>file di log</strong> (impostato in ConfigManager, di solito
+<code>FileGUY.log</code> accanto al programma), con data, nome del file, azione ed esito (<code>OK</code> o
+<code>ERRORE</code> con il motivo). Un errore nell'invio, nella stampa o nell'apertura a schermo viene scritto
+nel log ma non blocca: il documento è comunque creato.</p>
 <h3>Il testo bianco non si vede nel documento</h3>
 <p>È bianco su bianco: va usato solo sopra parti scure del template.</p>
 

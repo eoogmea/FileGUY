@@ -1,5 +1,11 @@
-# Dipendenze di SingleGUY / SingleGUY_editor / FileGUY1 / ConfigManager
-# Versioni provate il 20/10/2026 con Python 3.14 (test\esegui_test.py e test\test_moduli.py)
+# Dipendenze di SingleGUY, back, ConfigManager ed EditorModelli
+# Versioni provate il 20-21/10/2026 con Python 3.14 (test\esegui_test.py e test\test_moduli.py)
+# Installazione (Windows e Linux):  pip install -r requirements.txt
+# Su Linux tkinter (ConfigManager, EditorModelli) non si installa con pip ma con il pacchetto
+# della distribuzione: python3-tk (Debian/Ubuntu), python3-tkinter (Fedora/RHEL), tk (Arch).
+# Per la stampa su Linux serve CUPS (comando lp, pacchetto cups-client), per aprire i PDF
+# a schermo xdg-utils (comando xdg-open).
+
 # PyPDF2 e fpdf vanno tenute a queste versioni perché il codice usa API vecchie:
 # PyPDF2 3.x ha rimosso PdfFileReader/PdfFileWriter, fpdf2 cambia la gestione dei font (uni=True)
 PyPDF2==1.26.0
@@ -9,10 +15,23 @@ openpyxl==3.1.5
 python-barcode==0.16.1
 pillow==13.0.0
 PyMuPDF==2.0
-pywin32==312
+
+# Stampa su Windows (stampa_pdf.py); su Linux si usa CUPS
+pywin32==312; sys_platform == "win32"
+# config.dat su Linux e macOS (su Windows si usa DPAPI, senza librerie)
+cryptography==50.0.2; sys_platform != "win32"
+cffi==2.1.1; sys_platform != "win32"
+pycparser==3.11; sys_platform != "win32"
+
+# WhatsApp (whatsapp_meta.py, API Cloud di Meta): requests e le sue dipendenze
 requests==2.34.2
+urllib3==2.8.0
+certifi==2026.10.19
+charset-normalizer==3.5.2
+idna==3.20
+# Telegram
 telepot==12.7
-# pandas serve solo alle versioni vecchie App.py e FileGuy.py
-pandas==3.0.6
-# Solo per creare SingleGUY_editor.exe con app.spec
+aiohttp==3.14.5
+
+# Solo per creare gli eseguibili con app.spec / EditorModelli.spec
 pyinstaller==6.22.3

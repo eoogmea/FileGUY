@@ -11,6 +11,10 @@ import subprocess
 # CONFIGURAZIONE CIFRATA
 from config_sicuro import carica_config
 
+# WINDOWS / LINUX E REGISTRO (LOG)
+from piattaforma import WINDOWS, ambiente_esterno, apri_file, cerca_font, leggi_righe
+import registro
+
 # EMAIL
 import email
 import smtplib
@@ -33,7 +37,7 @@ from whatsapp_meta import WhatsApp, WhatsAppError
 from PyPDF2 import PdfFileWriter, PdfFileReader
 from fpdf import FPDF
 import fpdf.fpdf
-# Stampa senza Ghostscript (PyMuPDF + stampante di Windows)
+# Stampa senza Ghostscript (stampante di Windows o CUPS su Linux)
 from stampa_pdf import stampa_pdf
 
 # DOCX
@@ -54,60 +58,101 @@ import fitz
 def main(name, config):
     # Sostituisce al file .txt la terminazione .gui per vedere se esiste
     name_gui = name.replace(".txt", ".gui")
-    path_gui = config["cartella_lavoro"] + "\\" + name_gui
+    path_gui = config["cartella_lavoro"] + os.sep + name_gui
     if name_gui[len(name_gui) - 3:len(name_gui)] != "gui":
         return
     if not os.path.isfile(path_gui):
         return
-    # Apre il file .gui
-    f = open(path_gui, "r")
-    guida = f.readlines()
-    f.close()
-    if guida[1].replace("\n", "") == "exe":
-        exe(guida, config)
+    # Apre il file .gui (creato su Windows o su Linux)
+    guida = leggi_righe(path_gui)
+    azione = guida[1].replace("\n", "")
+    if azione in ("exe", "barcode", "immagini"):
+        funzione = {"exe": exe, "barcode": barcode_add, "immagini": image_add}[azione]
+        descrizione = "exe " + guida[0].strip() if azione == "exe" else azione
+        passo(name_gui, descrizione, funzione, guida, config)
         # Rimuove i file dopo l'uso
         os.remove(path_gui)
-    elif guida[1].replace("\n", "") == "barcode":
-        barcode_add(guida, config)
-        os.remove(path_gui)
-    elif guida[1].replace("\n", "") == "immagini":
-        image_add(guida, config)
-        os.remove(path_gui)
+        return
 
     if name[-3:] == "gui":
         return
 
     # Legge la seconda linea del .gui per decidere cosa fare
-    if guida[1].replace("\n", "") == "pdf" or guida[1].replace("\n", "") == "file" \
-            or guida[1].replace("\n", "") == "stampa":
-        pdf(guida, config)
-        if guida[5].replace("\n", "") == "email":
-            email_send(guida, config)
-        if guida[5].replace("\n", "") == "telegram":
-            telegram(guida, config)
-        if guida[5].replace("\n", "") == "whatsapp":
-            whatsapp(guida, config)
-    if guida[1].replace("\n", "") == "excel":
-        excel(guida, config)
-        if guida[5].replace("\n", "") == "email":
-            email_send(guida, config)
-        if guida[5].replace("\n", "") == "telegram":
-            telegram(guida, config)
-        if guida[5].replace("\n", "") == "whatsapp":
-            whatsapp(guida, config)
-    if guida[1].replace("\n", "") == "docx":
-        docx(guida, config)
-        if guida[5].replace("\n", "") == "email":
-            email_send(guida, config)
-        if guida[5].replace("\n", "") == "telegram":
-            telegram(guida, config)
-        if guida[5].replace("\n", "") == "whatsapp":
-            whatsapp(guida, config)
+    uscita = guida[2].replace("\n", "")
+    if azione == "pdf" or azione == "file" or azione == "stampa":
+        template = guida[3].replace("\n", "")
+        risultato = passo(name, "pdf " + uscita + (" su template " + template if template != "" else ""),
+                          pdf, guida, config)
+        # Il documento è già creato: se non si apre o non si stampa l'errore va nel log e si prosegue
+        if azione == "pdf":
+            passo_secondario(name, "visualizzazione a schermo di " + uscita, apri_file, risultato)
+        if azione == "stampa":
+            stampante = config.get("stampante", "")
+            passo_secondario(name, "stampa di " + uscita + " su " + (stampante or "stampante predefinita"),
+                             stampa_pdf, risultato, stampante)
+    elif azione == "excel":
+        passo(name, "excel " + uscita, excel, guida, config)
+    elif azione == "docx":
+        passo(name, "word " + uscita, docx, guida, config)
+    else:
+        registro.registra(name, "azione sconosciuta nel .gui: " + azione, "ERRORE")
+        azione = ""
 
+    # Invio del documento creato: un errore va nel log ma non blocca
+    invio = guida[5].replace("\n", "")
+    if azione != "" and invio in ("email", "telegram", "whatsapp"):
+        if invio == "email":
+            coda = coda_gui(guida)
+            descrizione = "email a " + (coda[0] if len(coda) > 0 else "?")
+        else:
+            descrizione = guida[6].strip()
+        funzione = {"email": email_send, "telegram": telegram, "whatsapp": whatsapp}[invio]
+        passo_secondario(name, "invio " + descrizione, funzione, guida, config)
 
     # Rimuove i file dopo l'uso
     os.remove(path_gui)
-    os.remove(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""))
+    os.remove(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
+
+
+def passo(nome_file, descrizione, funzione, *argomenti):
+    """Esegue un'operazione e la scrive nel log con il suo esito.
+
+    Se non riesce l'errore va nel log e viene rilanciato: il .txt e il .gui restano nella
+    cartella di lavoro e start() passa al file successivo.
+    """
+    try:
+        risultato = funzione(*argomenti)
+    except Exception as e:
+        registro.registra_errore(nome_file, descrizione, e)
+        try:
+            e.registrato = True
+        except AttributeError:
+            pass
+        raise
+    registro.registra(nome_file, descrizione)
+    return risultato
+
+
+def passo_secondario(nome_file, descrizione, funzione, *argomenti):
+    """Come passo(), ma un errore non ferma l'elaborazione: resta nel log e sulla console."""
+    try:
+        passo(nome_file, descrizione, funzione, *argomenti)
+    except Exception:
+        print("Errore con il file " + nome_file + " (" + descrizione + "):", file=sys.stderr)
+        traceback.print_exc()
+
+
+def coda_gui(guida):
+    """Le linee del .gui dopo "fine" (dati dell'invio), senza a capo."""
+    for n in range(linea_inizio_format_pdf, len(guida)):
+        if guida[n][0:4] == "fine":
+            return [x.replace("\n", "") for x in guida[n + 1:]]
+    return []
+
+
+def nome_file(percorso):
+    """Solo il nome del file, sia da un percorso di Windows (\\) sia di Linux (/)."""
+    return percorso.replace("\\", "/").split("/")[-1]
 
 
 def barcode_add(guida, config):
@@ -117,7 +162,7 @@ def barcode_add(guida, config):
         codice = guida[3 + i].replace("\n", "")
         cab = barcode.get_barcode_class(guida[4 + i].replace("\n", ""))
         codicino = cab(codice, writer=ImageWriter())
-        percorso = config["cartella_lavoro"] + "\\" + "barcode" + str(codice)
+        percorso = config["cartella_lavoro"] + os.sep + "barcode" + str(codice)
         codicino.save(percorso)
 
         # la posizione è data da due vertici opposti partendo da quello alto a sx
@@ -131,7 +176,7 @@ def barcode_add(guida, config):
 
         # add the image
         page.insert_image(image_rectangle, filename=percorso + ".png")
-        doc.save(config["cartella_lavoro"] + "\\" + guida[7 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
+        doc.save(config["cartella_lavoro"] + os.sep + nome_file(guida[7 + i].replace("\n", "")), incremental=True, encryption=0)
         doc.close()
         #L'immagine del barcode non serve più
         os.remove(percorso + ".png")
@@ -152,22 +197,23 @@ def image_add(guida,config):
 
         # add the image
         page.insert_image(image_rectangle, filename= percorso)
-        doc.save(config["cartella_lavoro"] + "\\" + guida[6 + i].replace("\n", "").split("\\")[-1], incremental=True, encryption=0)
+        doc.save(config["cartella_lavoro"] + os.sep + nome_file(guida[6 + i].replace("\n", "")), incremental=True, encryption=0)
         doc.close()
 
 
 def exe(guida, config) :
 
-    path = config["cartella_lavoro"] + "\\" + guida[0].replace("\n", "")
+    path = config["cartella_lavoro"] + os.sep + guida[0].replace("\n", "")
     if not os.path.isfile(path):
         path = guida[0].replace("\n", "")
     if not os.path.isfile(path):
-        return
-    try:
+        raise FileNotFoundError("Programma non trovato: " + guida[0].replace("\n", ""))
+    if WINDOWS:
         #Tra virgolette, così funzionano anche i percorsi con spazi
         os.system('"' + path + '"')
-    except:
-        subprocess.call(path)
+    else:
+        #Su Linux il file deve essere eseguibile (chmod +x)
+        subprocess.call([os.path.abspath(path)], env=ambiente_esterno())
 
 
 def telegram(guida, config):
@@ -198,7 +244,7 @@ def telegram(guida, config):
             i += 1
     bot_message = body
     bot_chatID = guida[6].replace("\n", "").replace("telegram ", "")
-    doc_path = config["cartella_output"] + "\\" + document
+    doc_path = config["cartella_output"] + os.sep + document
 
     #manda il messaggio
     bot.sendMessage(bot_chatID, bot_message)
@@ -223,46 +269,36 @@ def whatsapp(guida, config):
     while len(parti) > 0 and parti[0].strip("+-./()0123456789") == "":
         numero += parti.pop(0)
     if numero == "":
-        print("WhatsApp: numero del destinatario mancante nella linea 7 del .gui")
-        return
+        raise WhatsAppError("numero del destinatario mancante nella linea 7 del .gui")
     template = parti[0] if len(parti) > 0 else ""
     lingua = parti[1] if len(parti) > 1 else config["whatsapp_lingua"]
 
-    #cerca la linea "fine" e prende le linee successive
-    fine = len(guida)
-    for n in range(linea_inizio_format_pdf, len(guida)):
-        if guida[n][0:4] == "fine":
-            fine = n
-            break
-    coda = [x.replace("\n", "") for x in guida[fine + 1:]]
+    #prende le linee dopo "fine"
+    coda = coda_gui(guida)
     document = coda[0].strip() if len(coda) > 0 else ""
     righe = coda[1:]
-    doc_path = config["cartella_output"] + "\\" + document if document != "" else None
+    doc_path = config["cartella_output"] + os.sep + document if document != "" else None
 
-    try:
-        messenger = WhatsApp(config["whatsapp_token"], config["whatsapp_phone_number_id"],
-                             config["whatsapp_versione_api"])
-        if template != "":
-            parametri = [r for r in righe if r.strip() != ""]
-            messenger.invia_template(numero, template, lingua, parametri, doc_path)
-        else:
-            testo = "\n".join(righe).strip()
-            #manda il messaggio
-            if testo != "":
-                messenger.invia_testo(numero, testo)
-            #se esiste manda il documento
-            if doc_path is not None:
-                messenger.invia_documento(numero, doc_path)
-    except (WhatsAppError, requests.RequestException, OSError) as e:
-        print("Errore invio WhatsApp a " + numero + ": " + str(e))
+    #Gli errori (WhatsAppError, rete, file mancante) vanno nel log tramite passo_secondario()
+    messenger = WhatsApp(config["whatsapp_token"], config["whatsapp_phone_number_id"],
+                         config["whatsapp_versione_api"])
+    if template != "":
+        parametri = [r for r in righe if r.strip() != ""]
+        messenger.invia_template(numero, template, lingua, parametri, doc_path)
+    else:
+        testo = "\n".join(righe).strip()
+        #manda il messaggio
+        if testo != "":
+            messenger.invia_testo(numero, testo)
+        #se esiste manda il documento
+        if doc_path is not None:
+            messenger.invia_documento(numero, doc_path)
 
 
 def pdf(guida, config):
 
     #Apre il documento di testo
-    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
-    content = f.readlines()
-    f.close()
+    content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
 
     #Immagazzina la rotazione(eventuale) da applicare alla pagina
     rotazione = int(guida[4])
@@ -273,21 +309,16 @@ def pdf(guida, config):
     orientamento = "P"
     nome_templ = guida[3].replace("\n", "")
     if nome_templ != "":
-        with fitz.open(config["cartella_template"] + "\\" + nome_templ) as doc_templ:
+        with fitz.open(config["cartella_template"] + os.sep + nome_templ) as doc_templ:
             if doc_templ[0].mediabox.width > doc_templ[0].mediabox.height:
                 orientamento = "L"
     pdf = FPDF(orientation=orientamento)
 
     #Imposta font, dimensione e colore. Il font viene aggiunto al pdf solo la prima volta che serve
-    #(ogni font aggiunto finisce dentro il file). Lo cerca nella cartella Fonts del programma,
-    #se manca usa quello di Windows (Helvetica in Windows non c'è: al suo posto usa Arial)
+    #(ogni font aggiunto finisce dentro il file). Il file del font lo cerca trova_font()
     def usa_font(nome_font, dimensione, colore="n"):
         if nome_font != "" and nome_font.lower() not in pdf.fonts:
-            file_font, file_windows = FONT_PDF[nome_font]
-            percorso_font = os.path.join(CARTELLA_FONT, file_font)
-            if not os.path.isfile(percorso_font):
-                percorso_font = os.path.join(CARTELLA_FONT_WINDOWS, file_windows)
-            pdf.add_font(nome_font, '', percorso_font, uni=True)
+            pdf.add_font(nome_font, '', trova_font(nome_font), uni=True)
         pdf.set_font(family=nome_font, size=dimensione)
         pdf.set_text_color(*COLORI_TESTO.get(colore, (0, 0, 0)))
 
@@ -385,16 +416,16 @@ def pdf(guida, config):
         i += 1
 
     #Salva il pdf temporaneo
-    pdf.output(config["cartella_lavoro"] + "\\" + "systemgen.pdf")
+    pdf.output(config["cartella_lavoro"] + os.sep + "systemgen.pdf")
     pdf.close()
 
     #Prepara i pdf overlay template e result
     nome_templ = guida[3].replace("\n", "")
-    overlay_pdf_file_name = config["cartella_lavoro"] + "\\" + "systemgen.pdf"
+    overlay_pdf_file_name = config["cartella_lavoro"] + os.sep + "systemgen.pdf"
     with open(overlay_pdf_file_name, 'rb') as Pdf_overlay:
         if nome_templ != "":
-            pdf_template_file_name = config["cartella_template"] + "\\" + nome_templ
-            result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
+            pdf_template_file_name = config["cartella_template"] + os.sep + nome_templ
+            result_pdf_file_name = config["cartella_output"] + os.sep + guida[2].replace("\n", "")
 
             # Open your overlay PDF that was created earlier
 
@@ -424,7 +455,7 @@ def pdf(guida, config):
                 f.close()
 
         else:
-            result_pdf_file_name = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
+            result_pdf_file_name = config["cartella_output"] + os.sep + guida[2].replace("\n", "")
             output_pdf = PdfFileWriter()
             # Open your overlay PDF that was created earlier
 
@@ -441,21 +472,15 @@ def pdf(guida, config):
             # Salva tutto nel result
             with open(result_pdf_file_name, 'wb') as resultPdf:
                 output_pdf.write(resultPdf)
-    #Il risultato è già chiuso (scritto del tutto) prima di aprirlo o stamparlo
-    if guida[1].replace("\n", "") == "pdf":
-        os.startfile(result_pdf_file_name)
-    if guida[1].replace("\n", "") == "stampa":
-        stampa_pdf(result_pdf_file_name)
-    #Prova a eliminare il file temporaneo
-
-    os.remove(config["cartella_lavoro"] + "\\" + "systemgen.pdf")
+    #Elimina il file temporaneo
+    os.remove(config["cartella_lavoro"] + os.sep + "systemgen.pdf")
+    #Il risultato è chiuso (scritto del tutto): main() lo apre a schermo o lo stampa
+    return result_pdf_file_name
 
 
 def docx(guida, config):
     #Apre il file di testo
-    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
-    content = f.readlines()
-    f.close()
+    content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
 
     #dichiara il documento
     document = Document()
@@ -586,16 +611,16 @@ def docx(guida, config):
                 font.color.rgb = RGBColor(*COLORI_TESTO.get(lastcolor, (0, 0, 0)))
             i += 1
 
+    #La formattazione si prepara una volta per tutte nel modello .gui con EditorModelli.py
+    #(prima qui si apriva una finestra per ogni documento, che bloccava il servizio)
 
     #Salva il documento
-    document.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
+    document.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
 
 
 def excel(guida, config):
     #Salva in content il contenuto del file di testo
-    f = open(config["cartella_lavoro"] + "\\" + guida[0].replace("\n", ""), 'r')
-    content = f.readlines()
-    f.close()
+    content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
 
     #Dichiara l'array delle colonne
     colonne = []
@@ -724,7 +749,7 @@ def excel(guida, config):
         sheet1.column_dimensions[get_column_letter(n + 1)].width = column_width + 2
 
     # Salva il file Excel
-    wb.save(config["cartella_output"] + "\\" + guida[2].replace("\n", ""))
+    wb.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
 
 
 def email_send(guida, config):
@@ -769,10 +794,10 @@ def email_send(guida, config):
     sender_email = config["email_mittente"]
 
     #L'allegato generato dalla funzione pdf
-    filename = config["cartella_output"] + "\\" + guida[2].replace("\n", "")
+    filename = config["cartella_output"] + os.sep + guida[2].replace("\n", "")
 
     if receiver_email == "":
-        return
+        raise ValueError("indirizzo del destinatario mancante (prima linea dopo \"fine\")")
 
     #Forma il messaggio
     message = MIMEMultipart()
@@ -830,22 +855,57 @@ def email_send(guida, config):
 
 def start():
     # Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
-    config = carica_config()
+    try:
+        config = carica_config()
+    except Exception as e:
+        # Senza configurazione il log va nel file predefinito
+        registro.configura()
+        registro.registra_errore("config.dat", "lettura della configurazione", e)
+        raise
+    registro.configura(config.get("file_log", ""))
 
     # Cartella con i file di testo e i .gui
     folder = config["cartella_lavoro"]
 
     # Legge i file in questa cartella
-    onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
+    try:
+        onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
+    except OSError as e:
+        registro.registra_errore(folder, "lettura della cartella di lavoro", e)
+        raise
 
     # Per ogni file passa il suo nome alla main
     for name in onlyfiles:
-        #Un file sbagliato non deve bloccare gli altri: scrive l'errore e passa al successivo
+        #Un file sbagliato non deve bloccare gli altri: scrive l'errore nel log e passa al successivo
         try:
             main(name, config)
-        except Exception:
+        except Exception as e:
+            if not getattr(e, "registrato", False):
+                registro.registra_errore(name, "elaborazione", e)
             print("Errore con il file " + name + ":", file=sys.stderr)
             traceback.print_exc()
+
+
+def trova_font(nome_font):
+    """File del font per il PDF.
+
+    Prima la cartella Fonts del programma, poi i font installati nel sistema (Windows, Linux, macOS).
+    Se il font non è installato (es. Calibri o Segoe UI su Linux) usa il più simile della cartella
+    Fonts: Helvetica al posto dei caratteri senza grazie, Times al posto di Georgia.
+    """
+    nomi = [nome_font]
+    for famiglia, sostituto in FONT_SOSTITUTI.items():
+        if nome_font.startswith(famiglia):
+            nomi.append(sostituto + nome_font[len(famiglia):])
+    for nome in nomi:
+        file_font, file_sistema = FONT_PDF[nome]
+        percorso_font = os.path.join(CARTELLA_FONT, file_font)
+        if os.path.isfile(percorso_font):
+            return percorso_font
+        percorso_font = cerca_font(file_sistema)
+        if percorso_font is not None:
+            return percorso_font
+    raise FileNotFoundError("Font non trovato: " + nome_font + " (manca la cartella Fonts accanto al programma?)")
 
 # file .gui global
 linea_inizio_format_pdf = 7
@@ -856,7 +916,6 @@ if getattr(sys, "frozen", False):
     CARTELLA_FONT = os.path.join(os.path.dirname(sys.executable), "Fonts")
 else:
     CARTELLA_FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Fonts")
-CARTELLA_FONT_WINDOWS = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
 # Lettera del font nei codici del .gui -> (nome nel PDF, nome in Word)
 FONT_CODICI = {
     "t": ("Times", "Times New Roman"),
@@ -867,7 +926,9 @@ FONT_CODICI = {
     "g": ("Georgia", "Georgia"),
     "u": ("SegoeUI", "Segoe UI"),
 }
-# Nome usato nel PDF -> (file nella cartella Fonts, file di Windows se manca)
+# Font che di solito ci sono solo su Windows -> font della cartella Fonts da usare se mancano
+FONT_SOSTITUTI = {"Calibri": "Helvetica", "Verdana": "Helvetica", "SegoeUI": "Helvetica", "Georgia": "Times"}
+# Nome usato nel PDF -> (file nella cartella Fonts, file del sistema se manca)
 FONT_PDF = {
     "Times": ("times.ttf", "times.ttf"),
     "TimesBold": ("timesbd.ttf", "timesbd.ttf"),

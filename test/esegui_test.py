@@ -1,6 +1,6 @@
-"""Debug completo di SingleGUY / SingleGUY_editor / FileGUY1 con file .gui di prova.
+"""Debug completo di SingleGUY con file .gui di prova.
 
-Uso:  python test\\esegui_test.py [SingleGUY_editor|SingleGUY|FileGUY1] [cartella dei modelli PDF]
+Uso:  python test\\esegui_test.py [SingleGUY] [cartella dei modelli PDF]
 
 Con la cartella dei modelli (es. C:\\prova\\modelli) prova anche ogni template vero.
 
@@ -228,9 +228,11 @@ def casi(modelli=None):
     caso("errore_non_blocca", gui("errore_non_blocca.txt", "file", "a_sbagliato.pdf", "non_esiste.pdf"),
          lavoro_extra=["z_dopo.txt", "z_dopo.gui"], controllo=controlla_file_dopo_errore, rimossi=False,
          errore_atteso=True)
-    caso("exe", ["programma di prova.bat", "exe"], txt=None, lavoro_extra=["programma di prova.bat"],
-         chiamate=["os_system"],
-         controllo=lambda config: [] if chiamate[-1][1][0].startswith('"') else ["percorso exe senza virgolette"])
+    # Un .bat si avvia solo su Windows
+    if os.name == "nt":
+        caso("exe", ["programma di prova.bat", "exe"], txt=None, lavoro_extra=["programma di prova.bat"],
+             chiamate=["os_system"],
+             controllo=lambda config: [] if chiamate[-1][1][0].startswith('"') else ["percorso exe senza virgolette"])
 
     # --- Template veri: ogni PDF della cartella dei modelli unito al testo di prova ---
     if modelli:
@@ -375,11 +377,38 @@ def prepara_simulazioni(modulo):
         modulo.WhatsApp = FintoWhatsApp
     if hasattr(modulo, "stampa_pdf"):
         modulo.stampa_pdf = lambda p, *a, **k: registra("stampa_pdf", p, os.path.isfile(p))
+    # Visualizzazione a schermo (os.startfile su Windows, xdg-open su Linux)
+    if hasattr(modulo, "apri_file"):
+        modulo.apri_file = lambda p: registra("startfile", p, os.path.isfile(p))
     finto_os = types.ModuleType("os")
     finto_os.__dict__.update(os.__dict__)
     finto_os.startfile = lambda p, *a: registra("startfile", p, os.path.isfile(p))
     finto_os.system = lambda cmd: registra("os_system", cmd)
     modulo.os = finto_os
+
+
+def controlla_log(config, caso):
+    """Il log deve esserci, con l'esito di ogni operazione e gli errori."""
+    if "file_log" not in config:
+        return []
+    if not os.path.isfile(config["file_log"]):
+        return ["log non creato: " + config["file_log"]]
+    with open(config["file_log"], encoding="utf-8") as f:
+        righe = [r for r in f.read().splitlines() if not r.startswith("    ")]
+    errori = []
+    for riga in righe:
+        campi = riga.split(" | ")
+        if len(campi) < 4:
+            errori.append("riga del log non valida: " + riga)
+    esiti = [r.split(" | ")[3] for r in righe if len(r.split(" | ")) >= 4]
+    if caso["errore_atteso"] and "ERRORE" not in esiti:
+        errori.append("l'errore non è nel log")
+    if not caso["errore_atteso"]:
+        if "ERRORE" in esiti:
+            errori.append("errori nel log:\n" + "\n".join(r for r in righe if " | ERRORE" in r))
+        elif "OK" not in esiti:
+            errori.append("nessuna operazione nel log")
+    return errori
 
 
 def crea_template(percorso):
@@ -433,7 +462,8 @@ def prepara_caso(caso):
         "cartella_output": cartelle["output"], "email_mittente": "prova@example.com",
         "email_password": "x", "email_smtp_server": "smtp.example.com", "email_smtp_porta": "465",
         "telegram_token": "x", "whatsapp_token": "x", "whatsapp_phone_number_id": "1",
-        "whatsapp_versione_api": "v23.0", "whatsapp_lingua": "it",
+        "whatsapp_versione_api": "v23.0", "whatsapp_lingua": "it", "stampante": "",
+        "file_log": os.path.join(base, "FileGUY.log"),
     }
     return config
 
@@ -489,6 +519,7 @@ def esegui(nome_programma, modelli=None):
                     errori.append(uscita + " non è un PDF valido: " + str(e))
             else:
                 dettagli.append(uscita + ": %d byte" % os.path.getsize(percorso))
+        errori += controlla_log(config, caso)
         fatte = [n for n, _ in chiamate]
         for attesa in caso["chiamate"]:
             if attesa not in fatte:
@@ -521,5 +552,5 @@ def esegui(nome_programma, modelli=None):
 
 
 if __name__ == "__main__":
-    sys.exit(0 if esegui(sys.argv[1] if len(sys.argv) > 1 else "SingleGUY_editor",
+    sys.exit(0 if esegui(sys.argv[1] if len(sys.argv) > 1 else "SingleGUY",
                          sys.argv[2] if len(sys.argv) > 2 else None) else 1)

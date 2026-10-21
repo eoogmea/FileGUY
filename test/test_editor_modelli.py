@@ -3,7 +3,7 @@
 Uso:  python test\\test_editor_modelli.py
 
 1. Formati -> linee del .gui -> formati: deve tornare uguale.
-2. Il servizio (SingleGUY_editor) applica davvero i formati scelti, nel PDF e nel Word.
+2. Il servizio (SingleGUY) applica davvero i formati scelti, nel PDF e nel Word.
 3. La finestra: formattazione di una selezione, salvataggio, anteprima e "Applica a file di testo".
 """
 import os
@@ -102,7 +102,7 @@ def colonna_oltre_99():
 
 def servizio():
     import importlib
-    return importlib.import_module("SingleGUY_editor")
+    return importlib.import_module("SingleGUY")
 
 
 def crea_con_servizio(word, nome):
@@ -267,6 +267,105 @@ def finestra_formatta_salva_anteprima_applica():
         # Il modello non si può salvare nella cartella di lavoro
         app.percorso_modello = os.path.join(lavoro, "x.gui")
         assert not app.salva() and "cartella di lavoro" in messaggi[-1][1]
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
+@prova
+def finestra_aiuti_alla_formattazione():
+    """Annulla/ripeti, copia formato, blocco, formato di una riga su altre, righello, zoom, recenti."""
+    import EditorModelli
+    EditorModelli.FILE_PREFERENZE = os.path.join(cartella, "preferenze", "editor_modelli.json")
+    righe = ["Codice  Descrizione          Q.ta   Importo",
+             "A001    Vite                 10     12,50",
+             "A002    Bullone lungo         5      7,00",
+             "A003    Rondella            100      1,20"]
+    app = EditorModelli.EditorModelli()
+    try:
+        app._mostra_testo(righe)
+        app.update()
+
+        def linee():
+            return modello_gui.linee_formato(app._formati_testo(), False)
+        iniziali = linee()
+
+        # Annulla e ripeti della formattazione
+        app.testo.tag_add("sel", "1.0", "1.end")
+        app._alterna("b")
+        con_grassetto = linee()
+        assert con_grassetto[0] == "001\ttsn10", con_grassetto
+        app.annulla_formato()
+        assert linee() == iniziali
+        app.ripeti_formato()
+        assert linee() == con_grassetto
+        # Ctrl+Z senza "Modifica testo" annulla il formato, non il testo
+        app._annulla_o_ripeti(False)
+        assert linee() == iniziali and app.righe == righe
+
+        # Selezione a blocco: colonne 37-42 (gli importi) delle righe 2-4 in Courier;
+        # le righe degli articoli finiscono alla colonna 41: il blocco si ferma lì
+        app.seleziona_blocco(2, 4, 37, 42)
+        assert len(app.testo.tag_ranges("sel")) == 6
+        app._imposta("f", "c")
+        risultato = linee()
+        for n in (1, 2, 3):
+            assert risultato[n] == "%03d\ttnn10 00 37\tcnn10 37 41" % (n + 1), risultato
+        assert risultato[0] == "001\ttnn10", risultato
+
+        # Copia e incolla formato: il formato degli importi sulla riga 1 colonne 0-6
+        app.testo.tag_remove("sel", "1.0", "end")
+        app.testo.mark_set("insert", "2.40")
+        app.copia_formato()
+        assert app.formato_copiato == ("c", False, False, 10, "n"), app.formato_copiato
+        app.testo.tag_add("sel", "1.0", "1.6")
+        app.incolla_formato()
+        assert linee()[0] == "001\tcnn10 00 06\ttnn10 06 %d" % len(righe[0]), linee()[0]
+
+        # Formato della riga 2 sulle righe 3-4 (già uguali) e sulla riga 1
+        app.testo.tag_add("sel", "2.0", "2.4")
+        app._alterna("b")
+        app.copia_formato_riga(2, 1, 4)
+        # L'ultimo formato arriva a fine riga, anche dove la riga è più lunga della riga 2
+        risultato = linee()
+        assert risultato[0] == "001\ttsn10 00 04\ttnn10 04 37\tcnn10 37 %d" % len(righe[0]), risultato
+        assert risultato[2] == "003\ttsn10 00 04\ttnn10 04 37\tcnn10 37 41", risultato
+
+        # Il righello disegna le colonne della riga del cursore
+        app.testo.mark_set("insert", "2.0")
+        app._disegna_righello()
+        app.update()
+        assert app.righello.find_all(), "righello vuoto"
+
+        # Lo zoom cambia solo la vista: il .gui resta uguale
+        prima = linee()
+        app.cambia_zoom(1)
+        app.cambia_zoom(1)
+        assert app.zoom == 1.25 and linee() == prima
+        nomi_vista = [t for t in app.testo.tag_names() if t.startswith("v|")]
+        assert any("|12|" in t for t in nomi_vista), nomi_vista
+        app.cambia_zoom(0)
+        assert app.zoom == 1.0
+
+        # Modelli recenti: salvati e riproposti, il più recente per primo
+        modello = os.path.join(cartella, "recenti", "articoli.gui")
+        os.makedirs(os.path.dirname(modello))
+        from tkinter import filedialog
+        filedialog.asksaveasfilename = lambda *a, **k: modello
+        app.percorso_testo = os.path.join(cartella, "articoli_esempio.txt")
+        with open(app.percorso_testo, "w") as f:
+            f.write("\n".join(righe))
+        assert app.salva(con_nome=True)
+        app._elenca_recenti()
+        assert app.menu_recenti.entrycget(0, "label").endswith("articoli.gui")
+        nuova = EditorModelli.EditorModelli()
+        try:
+            assert nuova.preferenze["recenti"][0] == os.path.abspath(modello)
+        finally:
+            nuova.destroy()
+        formati = app._formati_testo()
+        app.apri_recente(modello)
+        assert app._formati_testo() == formati
     finally:
         app.modificato = False
         app.destroy()

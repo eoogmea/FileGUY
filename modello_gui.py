@@ -19,6 +19,8 @@ Una riga senza codice mantiene il formato della riga prima.
 """
 import os
 
+from piattaforma import leggi_testo
+
 # Font: lettera del codice -> (nome mostrato, nome in Word e nell'editor)
 FONT = {
     "t": ("Times", "Times New Roman"),
@@ -189,8 +191,8 @@ def nuovo_modello(word):
 
 def leggi_gui(percorso):
     """Legge un .gui: restituisce (intestazione, linee di formato)."""
-    with open(percorso, "r") as f:
-        righe = f.read().split("\n")
+    # Il .gui può essere stato creato su Windows o su Linux
+    righe = leggi_testo(percorso).split("\n")
     while len(righe) < 7:
         righe.append("")
     intestazione = {
@@ -219,7 +221,7 @@ def testo_gui(intestazione, linee):
 
 
 def scrivi_gui(percorso, intestazione, linee):
-    # Stessa codifica con cui SingleGUY lo leggerà (quella predefinita di Windows)
+    # Codifica predefinita del sistema (cp1252 su Windows, UTF-8 su Linux): SingleGUY le legge tutte e due
     with open(percorso, "w") as f:
         f.write(testo_gui(intestazione, linee))
 

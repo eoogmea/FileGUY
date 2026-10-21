@@ -1,28 +1,77 @@
-"""Stampa di un PDF su una stampante di Windows senza Ghostscript.
+"""Stampa di un PDF senza Ghostscript, su Windows e su Linux.
 
-Le pagine vengono trasformate in immagini con PyMuPDF (fitz) e mandate alla stampante
+Windows: le pagine vengono trasformate in immagini con PyMuPDF (fitz) e mandate alla stampante
 con le funzioni di stampa di Windows (pywin32), librerie già usate dal programma.
+Linux e macOS: il PDF viene mandato a CUPS con il comando lp (pacchetto cups-client, presente
+in tutte le distribuzioni con la stampa configurata), o lpr se lp manca. CUPS stampa i PDF da solo.
 """
 import os
+import shutil
+import subprocess
 
-import fitz
-import win32con
-import win32print
-import win32ui
-from PIL import Image, ImageWin
+from piattaforma import WINDOWS, ambiente_esterno
 
 # Risoluzione massima con cui vengono trasformate le pagine (più alta = più nitida ma più lenta)
 DPI_MASSIMI = 300
 
 
 def stampa_pdf(percorso, stampante=None, file_uscita=None):
-    """Stampa il PDF sulla stampante indicata (se manca, quella predefinita).
+    """Stampa il PDF sulla stampante indicata (se manca o è vuota, quella predefinita).
 
     Le pagine sono stampate a grandezza reale e rimpicciolite solo se non entrano nel foglio;
     se l'orientamento della pagina è diverso da quello del foglio la pagina viene ruotata.
-    file_uscita serve solo con stampanti virtuali come "Microsoft Print to PDF",
+    file_uscita serve solo su Windows con stampanti virtuali come "Microsoft Print to PDF",
     per non far comparire la finestra "Salva con nome".
     """
+    if WINDOWS:
+        _stampa_windows(percorso, stampante or None, file_uscita)
+    else:
+        _stampa_cups(percorso, stampante or None)
+
+
+def elenca_stampanti():
+    """Nomi delle stampanti installate (lista vuota se non si riesce a leggerle)."""
+    if WINDOWS:
+        import win32print
+        tipi = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+        return sorted(p[2] for p in win32print.EnumPrinters(tipi))
+    if shutil.which("lpstat") is None:
+        return []
+    try:
+        uscita = subprocess.run(["lpstat", "-e"], capture_output=True, text=True, timeout=10,
+                                env=ambiente_esterno()).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return sorted(riga.split()[0] for riga in uscita.splitlines() if riga.strip())
+
+
+def _stampa_cups(percorso, stampante):
+    # print-scaling=auto: grandezza reale, rimpicciolita solo se non entra nel foglio (come su Windows);
+    # CUPS ruota da solo le pagine orizzontali. Le opzioni sconosciute a una stampante vengono ignorate.
+    if shutil.which("lp"):
+        comando = ["lp", "-o", "print-scaling=auto"]
+        if stampante:
+            comando += ["-d", stampante]
+    elif shutil.which("lpr"):
+        comando = ["lpr", "-o", "print-scaling=auto"]
+        if stampante:
+            comando += ["-P", stampante]
+    else:
+        raise RuntimeError("Comando di stampa non trovato (lp o lpr): installa CUPS (pacchetto cups-client)")
+    risultato = subprocess.run(comando + ["--", percorso], capture_output=True, text=True, timeout=120,
+                               env=ambiente_esterno())
+    if risultato.returncode != 0:
+        messaggio = (risultato.stderr or risultato.stdout).strip()
+        raise RuntimeError("Stampa non riuscita (" + " ".join(comando) + "): " + messaggio)
+
+
+def _stampa_windows(percorso, stampante, file_uscita):
+    import fitz
+    import win32con
+    import win32print
+    import win32ui
+    from PIL import Image, ImageWin
+
     if stampante is None:
         stampante = win32print.GetDefaultPrinter()
 

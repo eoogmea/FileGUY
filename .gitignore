@@ -6,3 +6,11 @@ __pycache__/
 
 # Cartelle create dai test
 test/_run/
+
+# Eseguibili creati con PyInstaller
+dist/
+build/
+
+# Log del servizio
+*.log
+*.log.[0-9]

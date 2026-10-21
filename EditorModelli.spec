@@ -1,8 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Crea EditorModelli.exe, l'editor dei modelli .gui.
+# Crea EditorModelli.exe (su Linux: EditorModelli), l'editor dei modelli .gui.
 # Uso (dalla cartella del programma):  pyinstaller EditorModelli.spec
-# Accanto all'exe vanno messi config.dat e la cartella Fonts, come per SingleGUY_editor.exe.
+# Accanto all'exe vanno messi config.dat e la cartella Fonts, come per SingleGUY.exe.
 # I modelli vengono salvati nella cartella ModelliGUI accanto all'exe.
+
+import sys
 
 from PyInstaller.utils.hooks import collect_data_files
 
@@ -16,11 +18,13 @@ a = Analysis(['EditorModelli.py'],
              # e la guida aperta dal menu Aiuto
              datas=collect_data_files('barcode') + [('Guida_EditorModelli.html', '.')],
              # Il codice del servizio è importato per nome solo al momento dell'anteprima
-             hiddenimports=['SingleGUY_editor'],
+             hiddenimports=['SingleGUY'],
              hookspath=[],
              runtime_hooks=[],
              # Come in app.spec: pymupdf.layout nell'exe non trova i suoi file e non serve
-             excludes=['pymupdf.layout', 'pymupdf4llm', 'onnxruntime'],
+             excludes=['pymupdf.layout', 'pymupdf4llm', 'onnxruntime']
+                      # cryptography serve solo su Linux per config.dat (su Windows c'è DPAPI)
+                      + (['cryptography'] if sys.platform == 'win32' else []),
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,

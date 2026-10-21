@@ -1,4 +1,4 @@
-"""Interfaccia grafica per gestire la configurazione cifrata di InfasService (config.dat).
+"""Interfaccia grafica per gestire la configurazione cifrata di FileGUY (config.dat).
 
 Avvio: python ConfigManager.py (oppure l'eseguibile creato con PyInstaller, nella stessa
 cartella del servizio).
@@ -11,12 +11,16 @@ import config_sicuro
 from config_sicuro import CAMPI, ConfigError
 
 
-# (campo, etichetta, tipo) - tipo: "cartella", "segreto" o "testo"
+# (campo, etichetta, tipo) - tipo: "cartella", "file", "stampante", "segreto" o "testo"
 SEZIONI = [
     ("Cartelle", [
         ("cartella_lavoro", "Cartella di lavoro (.txt e .gui)", "cartella"),
         ("cartella_template", "Cartella dei template PDF", "cartella"),
         ("cartella_output", "Cartella di output", "cartella"),
+    ]),
+    ("Stampa e log", [
+        ("stampante", "Stampante (vuoto = predefinita)", "stampante"),
+        ("file_log", "File di log (vuoto = FileGUY.log accanto al programma)", "file"),
     ]),
     ("Email", [
         ("email_mittente", "Indirizzo mittente", "testo"),
@@ -39,7 +43,7 @@ SEZIONI = [
 class ConfigManager(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("InfasService - Configurazione")
+        self.title("FileGUY - Configurazione")
         self.resizable(True, False)
         self.minsize(640, 0)
 
@@ -74,7 +78,7 @@ class ConfigManager(tk.Tk):
         ttk.Checkbutton(
             principale, variable=self.tutto_il_pc,
             text="Consenti la lettura a tutti gli utenti di questo PC "
-                 "(necessario se il servizio gira con un altro utente Windows)",
+                 "(necessario se il servizio gira con un altro utente)",
         ).grid(row=riga, column=0, sticky="w", pady=(0, 8))
         riga += 1
 
@@ -90,11 +94,19 @@ class ConfigManager(tk.Tk):
 
     def _crea_campo(self, genitore, riga, campo, etichetta, tipo):
         ttk.Label(genitore, text=etichetta).grid(row=riga, column=0, sticky="w", padx=(0, 8), pady=2)
-        voce = ttk.Entry(genitore, textvariable=self.variabili[campo], width=50,
-                         show="•" if tipo == "segreto" else "")
+        if tipo == "stampante":
+            # Si può anche scrivere il nome; l'elenco si legge solo quando si apre la tendina
+            voce = ttk.Combobox(genitore, textvariable=self.variabili[campo], width=48)
+            voce.configure(postcommand=lambda: voce.configure(values=[""] + self._stampanti()))
+        else:
+            voce = ttk.Entry(genitore, textvariable=self.variabili[campo], width=50,
+                             show="•" if tipo == "segreto" else "")
         voce.grid(row=riga, column=1, sticky="ew", pady=2)
         if tipo == "cartella":
             ttk.Button(genitore, text="Sfoglia...", command=lambda: self._scegli_cartella(campo)) \
+                .grid(row=riga, column=2, padx=(6, 0))
+        elif tipo == "file":
+            ttk.Button(genitore, text="Sfoglia...", command=lambda: self._scegli_file_log(campo)) \
                 .grid(row=riga, column=2, padx=(6, 0))
         elif tipo == "segreto":
             mostra = tk.BooleanVar(value=False)
@@ -106,8 +118,26 @@ class ConfigManager(tk.Tk):
         iniziale = self.variabili[campo].get()
         cartella = filedialog.askdirectory(parent=self, initialdir=iniziale if os.path.isdir(iniziale) else None)
         if cartella:
-            # Il servizio compone i percorsi con "\\", quindi usa il formato di Windows
+            # Il formato del sistema (con "\" su Windows, "/" su Linux), come li compone il servizio
             self.variabili[campo].set(os.path.normpath(cartella))
+
+    def _scegli_file_log(self, campo):
+        attuale = self.variabili[campo].get()
+        percorso = filedialog.asksaveasfilename(
+            parent=self, title="File di log", defaultextension=".log", confirmoverwrite=False,
+            initialdir=os.path.dirname(attuale) if attuale else config_sicuro.CARTELLA_PROGRAMMA,
+            initialfile=os.path.basename(attuale) if attuale else "FileGUY.log",
+            filetypes=[("File di log", "*.log"), ("Tutti i file", "*.*")])
+        if percorso:
+            self.variabili[campo].set(os.path.normpath(percorso))
+
+    def _stampanti(self):
+        try:
+            from stampa_pdf import elenca_stampanti
+            return elenca_stampanti()
+        except Exception as e:
+            self._messaggio("Impossibile leggere l'elenco delle stampanti: " + str(e))
+            return []
 
     # --- Dati --------------------------------------------------------------
 
@@ -165,6 +195,8 @@ class ConfigManager(tk.Tk):
         for campo in ("cartella_lavoro", "cartella_template", "cartella_output"):
             if config[campo] != "" and not os.path.isdir(config[campo]):
                 errori.append("La cartella non esiste: " + config[campo])
+        if config["file_log"] != "" and not os.path.isdir(os.path.dirname(os.path.abspath(config["file_log"]))):
+            errori.append("La cartella del file di log non esiste: " + os.path.dirname(config["file_log"]))
         if not config["email_smtp_porta"].isdigit():
             errori.append("La porta SMTP deve essere un numero")
         return errori

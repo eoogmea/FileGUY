@@ -1,15 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Crea SingleGUY_editor.exe, il programma che back.py fa partire.
+# Crea SingleGUY.exe (su Linux: SingleGUY), il programma che back.py fa partire.
 # Uso (dalla cartella del programma):  pyinstaller app.spec
 # Accanto all'exe vanno messi config.dat (si crea con ConfigManager) e la cartella Fonts
-# (se manca usa i font di Windows, con Arial al posto di Helvetica).
+# (se manca usa i font del sistema, con Arial al posto di Helvetica).
+
+import sys
 
 from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 
 
-a = Analysis(['SingleGUY_editor.py'],
+a = Analysis(['SingleGUY.py'],
              pathex=[],
              binaries=[],
              # Font usato da python-barcode per scrivere il numero sotto il codice
@@ -20,7 +22,9 @@ a = Analysis(['SingleGUY_editor.py'],
              # PyMuPDF 2.0 attiva da solo pymupdf.layout (un modello onnx) se è installato:
              # nell'exe non trova i suoi file e il programma non parte. Non serve, quindi si esclude
              # (PyMuPDF lo importa dentro un try/except ImportError)
-             excludes=['pymupdf.layout', 'pymupdf4llm', 'onnxruntime'],
+             excludes=['pymupdf.layout', 'pymupdf4llm', 'onnxruntime']
+                      # cryptography serve solo su Linux per config.dat (su Windows c'è DPAPI)
+                      + (['cryptography'] if sys.platform == 'win32' else []),
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
@@ -33,7 +37,7 @@ exe = EXE(pyz,
           a.zipfiles,
           a.datas,
           [],
-          name='SingleGUY_editor',
+          name='SingleGUY',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
