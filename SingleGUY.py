@@ -49,6 +49,10 @@ from docx.shared import Pt, Cm
 # EXCEL
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment, Font, PatternFill
+# Righe speciali, colonne e formati Excel del .gui, gli stessi dell'editor dei modelli Excel
+from modello_gui import (ALLINEAMENTI, FORMATI_EXCEL, SFONDI, campi_excel, colonna_excel_vuota, leggi_excel,
+                         righe_excel, stile_riga_vuoto, valore_excel)
 
 #BARCODE
 import barcode
@@ -618,125 +622,75 @@ def docx(guida, config):
     document.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
 
 
+def font_excel(formato):
+    #Font di openpyxl da un formato (font, grassetto, corsivo, dimensione, colore) del .gui
+    lettera, grassetto, corsivo, dimensione, colore = formato
+    #Colore ARGB con FF davanti (opaco): con 6 cifre openpyxl scrive 00, che alcuni programmi
+    #considerano trasparente
+    return Font(name=FONT_CODICI[lettera][1], size=dimensione, bold=grassetto, italic=corsivo,
+                color="FF%02X%02X%02X" % COLORI_TESTO.get(colore, (0, 0, 0)))
+
+
 def excel(guida, config):
     #Salva in content il contenuto del file di testo
     content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
-
-    #Dichiara l'array delle colonne
-    colonne = []
-
-    primo_char = 0
 
     # Create new workbook
     wb = Workbook()
     sheet1 = wb.create_sheet('sheet1', 0)
     #Toglie il foglio vuoto "Sheet" che Workbook crea da solo
     wb.remove(wb['Sheet'])
-    active = wb['sheet1']
     ws = wb.active
-    foglio = []
 
-
-    #legge linea per il linea il file e mette le righe in un array
-    for line in content:
-        riga = []
-        num_col = 1
-        i = 0
-        primo_char = 0
-        while i <= len(line):
-            char = line[i: i + 1]
-            if char == ";":
-                res = isinstance(line[primo_char: i], str)
-                if res == True:
-                    riga.append(line[primo_char: i])
-                else:
-                    riga.append(float(line[primo_char: i]))
-                primo_char = i + 1
-                num_col += 1
-            i += 1
-        colonne.append(riga)
-
-    #Mette le righe nel foglio
+    #Ogni riga del testo è una riga del foglio, i campi sono separati da ";"
     #(Prima ogni riga passava da un data frame di pandas e se ne prendeva una ogni 3 righe prodotte:
     #una riga vuota ne produceva 2 e faceva slittare tutte le successive)
-    for x in range(len(colonne)):
-        foglio.append(colonne[x])
+    foglio = [campi_excel(line) for line in content]
 
+    #Dalla linea 7 del .gui: le righe speciali (titoli, totali...), la linea "colonna" e una linea
+    #per ogni colonna fino a "fine" (vedi modello_gui.py). La prima linea delle colonne è per la
+    #prima colonna (prima andava a una colonna indice che poi veniva cancellata, e tutti i formati
+    #risultavano spostati di una colonna)
+    stili, colonne = leggi_excel(guida[linea_inizio_format_excel:])
+    #Riga del foglio (da 1) -> stile; se una riga è in più stili vale l'ultimo
+    stile_della_riga = {}
+    for stile in stili:
+        for numero in righe_excel(stile["righe"], len(foglio)):
+            stile_della_riga[numero] = stile
 
-    #Formati Excel: nel file xlsx vanno scritti in notazione inglese (Excel li mostra poi
-    #con le impostazioni italiane del PC)
-    formati_excel = {
-        0: '', 1: '0', 2: '0.00', 3: '#,##0', 4: '#,##0.00',
-        5: '#,##0 "€";-#,##0 "€"', 6: '#,##0 "€";[Red]-#,##0 "€"', 7: '#,##0 "€";[Red]-#,##0 "€"',
-        8: '#,##0.00 "€";[Red]-#,##0.00 "€"', 9: '0%', 10: '0.00%', 11: '0.00E+00',
-        12: 'dd/mm/yyyy', 13: 'dd-mmm-yyyy', 14: 'dd-mmm', 15: 'mmm yyyy', 16: 'h:mm AM/PM',
-        17: 'h:mm:ss AM/PM', 18: 'hh:mm', 19: 'hh:mm:ss', 20: 'dd/mm/yyyy hh:mm', 21: '##0.0E+0',
-        22: 'mm:ss', 23: '@',
-    }
-    codici_num = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21]
-    codici_data = [12, 13, 14, 15, 20]
-    codici_ora = [16, 17, 18, 19, 22]
-
-    def valore_excel(testo, codice):
-        #Trasforma il testo nel valore giusto per il formato; se non ci riesce lo lascia come testo
-        testo = testo.strip()
-        try:
-            if codice in codici_num:
-                #Numeri all'italiana: 1.234,56 -> 1234.56 (i punti delle migliaia si tolgono)
-                numero = testo.replace("€", "").replace("%", "").strip()
-                if "," in numero:
-                    numero = numero.replace(".", "").replace(",", ".")
-                valore = float(numero)
-                if codice in [9, 10] and "%" in testo:
-                    valore = valore / 100
-                return valore
-            if codice in codici_data:
-                for formato_data in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y"):
-                    try:
-                        return datetime.datetime.strptime(testo, formato_data)
-                    except ValueError:
-                        pass
-            if codice in codici_ora:
-                for formato_ora in ("%H:%M:%S", "%H:%M"):
-                    try:
-                        return datetime.datetime.strptime(testo, formato_ora).time()
-                    except ValueError:
-                        pass
-        except ValueError:
-            pass
-        return testo
-
-    #Applica a ogni colonna il formato della sua linea del .gui (dalla linea "fine" in poi: nessun formato)
-    #La prima linea dei formati è per la prima colonna (prima andava a una colonna indice
-    #che poi veniva cancellata, e tutti i formati risultavano spostati di una colonna)
-    i = linea_inizio_format_excel
-    arrivato_a_fine = False
     num_colonne = max(len(r) for r in foglio) if len(foglio) > 0 else 0
+    larghezze_fisse = {}
     for col in range(0, num_colonne):
-        linea = guida[i].strip() if i < len(guida) else "fine"
-        if linea[0:4] == "fine":
-            arrivato_a_fine = True
-        try:
-            codice = 0 if arrivato_a_fine else int(linea)
-        except ValueError:
-            codice = 0
-        formato = formati_excel.get(codice, '')
+        #Le colonne dopo "fine" hanno il formato generale
+        colonna = colonne[col] if col < len(colonne) else colonna_excel_vuota()
+        codice = colonna["formato"]
+        formato = FORMATI_EXCEL[codice][1]
+        if colonna["larghezza"]:
+            larghezze_fisse[col] = colonna["larghezza"]
 
         for f in range(0, len(foglio)):
             valore = foglio[f][col] if col < len(foglio[f]) else ""
-            if valore is None:
-                valore = ""
-            #La prima riga è l'intestazione e resta testo
-            if f != 0 and isinstance(valore, str):
-                valore = valore_excel(valore, codice)
+            stile = stile_della_riga.get(f + 1, stile_riga_vuoto())
             cella = ws.cell(row=f + 1, column=col + 1)
-            cella.value = valore
-            if formato != "":
-                cella.number_format = formato
-        if not arrivato_a_fine:
-            i += 1
+            #Le righe con "testo=si" (es. l'intestazione) restano testo, senza formato numerico
+            if stile["testo"]:
+                cella.value = valore
+            else:
+                cella.value = valore_excel(valore, codice)
+                if formato != "":
+                    cella.number_format = formato
+            #Carattere, sfondo e allineamento della riga speciale valgono più di quelli della colonna
+            carattere = stile["carattere"] or colonna["carattere"]
+            if carattere is not None:
+                cella.font = font_excel(carattere)
+            if stile["sfondo"]:
+                colore = "FF" + SFONDI[stile["sfondo"]][1]
+                cella.fill = PatternFill(fill_type="solid", start_color=colore, end_color=colore)
+            allineamento = stile["allineamento"] or colonna["allineamento"]
+            if allineamento:
+                cella.alignment = Alignment(horizontal=ALLINEAMENTI[allineamento])
 
-    #Aggiusta la dimensione delle colonne
+    #Larghezza delle colonne: quella scritta nel .gui, altrimenti adatta al testo più lungo
     column_widths = []
     for row in sheet1.iter_rows():
         for n, cell in enumerate(row):
@@ -746,7 +700,8 @@ def excel(guida, config):
             else:
                 column_widths.append(larghezza)
     for n, column_width in enumerate(column_widths):
-        sheet1.column_dimensions[get_column_letter(n + 1)].width = column_width + 2
+        larghezza = larghezze_fisse[n] if n in larghezze_fisse else column_width + 2
+        sheet1.column_dimensions[get_column_letter(n + 1)].width = larghezza
 
     # Salva il file Excel
     wb.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))

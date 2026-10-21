@@ -16,7 +16,28 @@ Codice: <font><grassetto s/n><corsivo s/n><dimensione 2 cifre>[<colore>]       e
     colore: n nero, r rosso, v verde, b blu, w bianco. In Word c'è sempre; nel PDF si può omettere
             (= nero), ma sulla stessa riga i codici devono essere tutti con o tutti senza colore.
 Una riga senza codice mantiene il formato della riga prima.
+
+Excel (azione "excel"): il testo ha i campi separati da ";", una riga del foglio per ogni riga.
+Dalla linea 7: gli stili delle righe speciali (titoli, totali...), la linea "colonna", una linea
+per ogni colonna (A, B, C...) e infine "fine". Le voci sono separate da tabulatori.
+    Riga speciale: "<righe>[\\t<chiave>=<valore>...]"       es. 1-2, u1\\tnome=Totale\\tsfondo=giallo
+        righe: numeri e intervalli separati da virgole; u1 = ultima riga, u2 = penultima...
+        nome=<testo>            solo per l'editor
+        carattere=<codice>      font della riga (codice come sopra, con il colore)
+        sfondo=grigio|giallo|azzurro|verde|arancio
+        allineamento=sinistra|centro|destra
+        testo=si                i valori restano testo (non diventano numeri o date)
+        Se una riga è in più stili vale l'ultimo.
+    Colonna: "<formato numerico>[\\t<chiave>=<valore>...]"  es. 8\\tcarattere=kns11r\\tlarghezza=14
+        formato numerico: numero di FORMATI_EXCEL (0 = generale)
+        carattere=<codice>      font delle celle della colonna
+        larghezza=<1-255>       larghezza della colonna in caratteri (senza: automatica)
+        allineamento=sinistra|centro|destra
+    Nelle righe speciali il carattere, lo sfondo e l'allineamento della riga valgono più di quelli
+    della colonna. Le chiavi sono facoltative e in qualsiasi ordine.
+    Senza la linea "colonna" (i .gui di prima) sono tutte colonne e la prima riga resta testo.
 """
+import datetime
 import os
 
 from piattaforma import leggi_testo
@@ -50,6 +71,234 @@ SEGNAPOSTO = "{nome}"
 
 # Formato: (font, grassetto, corsivo, dimensione, colore)
 PREDEFINITO = ("t", False, False, 10, "n")
+
+# --- Excel ---------------------------------------------------------------------
+# Formati numerici: codice -> (descrizione, formato di Excel). Nel file xlsx i formati vanno
+# scritti in notazione inglese: Excel li mostra poi con le impostazioni italiane del PC.
+FORMATI_EXCEL = {
+    0: ("Generale (il testo così com'è)", ""),
+    1: ("Numero intero  1234", "0"),
+    2: ("Numero con 2 decimali  1234,56", "0.00"),
+    3: ("Intero con migliaia  1.234", "#,##0"),
+    4: ("Decimali con migliaia  1.234,56", "#,##0.00"),
+    5: ("Valuta intera  1.234 €", '#,##0 "€";-#,##0 "€"'),
+    6: ("Valuta intera, negativi in rosso", '#,##0 "€";[Red]-#,##0 "€"'),
+    7: ("Valuta intera, negativi in rosso (come 6)", '#,##0 "€";[Red]-#,##0 "€"'),
+    8: ("Valuta con decimali, negativi in rosso  1.234,56 €", '#,##0.00 "€";[Red]-#,##0.00 "€"'),
+    9: ("Percentuale  12%", "0%"),
+    10: ("Percentuale con decimali  12,50%", "0.00%"),
+    11: ("Scientifico  1,23E+03", "0.00E+00"),
+    12: ("Data  20/10/2026", "dd/mm/yyyy"),
+    13: ("Data  20-ott-2026", "dd-mmm-yyyy"),
+    14: ("Giorno e mese  20-ott", "dd-mmm"),
+    15: ("Mese e anno  ott 2026", "mmm yyyy"),
+    16: ("Ora  1:30 PM", "h:mm AM/PM"),
+    17: ("Ora con secondi  1:30:55 PM", "h:mm:ss AM/PM"),
+    18: ("Ora  13:30", "hh:mm"),
+    19: ("Ora con secondi  13:30:55", "hh:mm:ss"),
+    20: ("Data e ora  20/10/2026 13:30", "dd/mm/yyyy hh:mm"),
+    21: ("Ingegneristico  1,2E+3", "##0.0E+0"),
+    22: ("Minuti e secondi  30:55", "mm:ss"),
+    23: ("Testo", "@"),
+    24: ("Valuta con decimali  1.234,56 €", '#,##0.00 "€";-#,##0.00 "€"'),
+}
+# Quali formati trasformano il testo in numero, data o ora
+CODICI_NUMERO = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 21, 24]
+CODICI_DATA = [12, 13, 14, 15, 20]
+CODICI_ORA = [16, 17, 18, 19, 22]
+ALLINEAMENTI = {"sinistra": "left", "centro": "center", "destra": "right"}
+# Font predefinito di Excel (Calibri 11 nero): una colonna senza "carattere" resta così
+PREDEFINITO_EXCEL = ("k", False, False, 11, "n")
+# Sfondi delle righe speciali (colori chiari, su cui il testo nero si legge): nome -> (descrizione, RRGGBB)
+SFONDI = {
+    "grigio": ("grigio chiaro", "D9D9D9"),
+    "giallo": ("giallo chiaro", "FFF2CC"),
+    "azzurro": ("azzurro", "DDEBF7"),
+    "verde": ("verde chiaro", "E2EFDA"),
+    "arancio": ("arancio chiaro", "FCE4D6"),
+}
+
+
+def colonna_excel_vuota():
+    return {"formato": 0, "carattere": None, "larghezza": None, "allineamento": None}
+
+
+def stile_riga_vuoto():
+    return {"righe": "", "nome": "", "carattere": None, "sfondo": None, "allineamento": None, "testo": False}
+
+
+def _parti(linea):
+    """Prima parte e coppie chiave=valore di una linea Excel (separate da tabulatori)."""
+    parti = linea.rstrip("\r\n").split("\t")
+    voci = {}
+    for parte in parti[1:]:
+        chiave, _, valore = parte.partition("=")
+        voci[chiave.strip().lower()] = valore.strip()
+    return parti[0].strip(), voci
+
+
+def _leggi_comuni(voci, risultato):
+    """Carattere e allineamento, comuni a colonne e righe; i valori sbagliati si ignorano."""
+    if voci.get("carattere"):
+        risultato["carattere"] = leggi_codice(voci["carattere"], PREDEFINITO_EXCEL)
+    if voci.get("allineamento", "").lower() in ALLINEAMENTI:
+        risultato["allineamento"] = voci["allineamento"].lower()
+
+
+def leggi_colonna_excel(linea):
+    """Legge una linea di colonna Excel; i valori sbagliati o sconosciuti vengono ignorati."""
+    colonna = colonna_excel_vuota()
+    primo, voci = _parti(linea)
+    try:
+        formato = int(primo)
+        colonna["formato"] = formato if formato in FORMATI_EXCEL else 0
+    except ValueError:
+        pass
+    _leggi_comuni(voci, colonna)
+    larghezza = voci.get("larghezza", "")
+    if larghezza.isdigit() and 1 <= int(larghezza) <= 255:
+        colonna["larghezza"] = int(larghezza)
+    return colonna
+
+
+def linea_colonna_excel(colonna):
+    parti = [str(colonna["formato"])]
+    if colonna["carattere"] is not None:
+        # Con il colore sempre (6 caratteri), come nel Word
+        parti.append("carattere=" + codice(colonna["carattere"], True))
+    if colonna["larghezza"]:
+        parti.append("larghezza=%d" % colonna["larghezza"])
+    if colonna["allineamento"]:
+        parti.append("allineamento=" + colonna["allineamento"])
+    return "\t".join(parti)
+
+
+def leggi_stile_riga(linea):
+    stile = stile_riga_vuoto()
+    stile["righe"], voci = _parti(linea)
+    stile["nome"] = voci.get("nome", "")
+    _leggi_comuni(voci, stile)
+    if voci.get("sfondo", "").lower() in SFONDI:
+        stile["sfondo"] = voci["sfondo"].lower()
+    stile["testo"] = voci.get("testo", "").lower() in ("si", "sì")
+    return stile
+
+
+def linea_stile_riga(stile):
+    parti = [stile["righe"]]
+    if stile["nome"]:
+        # Il nome serve solo all'editor; un tabulatore lo spezzerebbe
+        parti.append("nome=" + " ".join(stile["nome"].split()))
+    if stile["carattere"] is not None:
+        parti.append("carattere=" + codice(stile["carattere"], True))
+    if stile["sfondo"]:
+        parti.append("sfondo=" + stile["sfondo"])
+    if stile["allineamento"]:
+        parti.append("allineamento=" + stile["allineamento"])
+    if stile["testo"]:
+        parti.append("testo=si")
+    return "\t".join(parti)
+
+
+def _numero_riga(testo, numero_righe):
+    if testo.startswith("u"):
+        # u1 = ultima riga, u2 = penultima...
+        distanza = int(testo[1:] or "1")
+        if distanza < 1:
+            raise ValueError
+        return numero_righe - distanza + 1
+    riga = int(testo)
+    if riga < 1:
+        raise ValueError
+    return riga
+
+
+def righe_excel(testo, numero_righe):
+    """Le righe del foglio (da 1) indicate da un testo come "1-3, 10, u1".
+
+    Numeri e intervalli separati da virgole; u1 è l'ultima riga, u2 la penultima e così via.
+    Le righe che il foglio non ha si ignorano. ValueError se il testo non è valido.
+    """
+    risultato = set()
+    for parte in testo.replace(";", ",").split(","):
+        parte = parte.replace(" ", "").lower()
+        if parte == "":
+            continue
+        try:
+            inizio, _, fine = parte.partition("-")
+            da = _numero_riga(inizio, numero_righe)
+            a = _numero_riga(fine, numero_righe) if fine else da
+        except ValueError:
+            raise ValueError("Righe non valide: \"%s\" (esempi: 1-3, 10, u1 = ultima riga)" % parte)
+        risultato.update(range(max(1, min(da, a)), min(numero_righe, max(da, a)) + 1))
+    return risultato
+
+
+def leggi_excel(linee):
+    """Stili delle righe e colonne di un .gui Excel (le linee dalla 7 in poi).
+
+    Prima gli stili delle righe, poi la linea "colonna", poi le colonne fino a "fine".
+    Senza la linea "colonna" sono tutte colonne (i .gui di prima) e la prima riga resta testo,
+    come allora.
+    """
+    stili, colonne, dopo_colonna = [], [], False
+    for linea in linee:
+        parola = linea.strip().lower()
+        if parola[0:4] == "fine":
+            break
+        if parola == "colonna":
+            dopo_colonna = True
+            continue
+        (colonne if dopo_colonna else stili).append(linea)
+    if not dopo_colonna:
+        return [dict(stile_riga_vuoto(), righe="1", testo=True)], [leggi_colonna_excel(l) for l in stili]
+    return [leggi_stile_riga(l) for l in stili], [leggi_colonna_excel(l) for l in colonne]
+
+
+def linee_excel(stili, colonne):
+    """Linee di formato di un .gui Excel. Le ultime colonne senza formato si omettono: dopo
+    "fine" il servizio usa il formato generale."""
+    colonne = list(colonne)
+    while colonne and colonne[-1] == colonna_excel_vuota():
+        colonne.pop()
+    return [linea_stile_riga(s) for s in stili] + ["colonna"] + [linea_colonna_excel(c) for c in colonne] + ["fine"]
+
+
+def valore_excel(testo, codice):
+    #Trasforma il testo nel valore giusto per il formato; se non ci riesce lo lascia come testo
+    #(la usano il servizio e l'editor dei modelli Excel per mostrare le celle)
+    testo = testo.strip()
+    try:
+        if codice in CODICI_NUMERO:
+            #Numeri all'italiana: 1.234,56 -> 1234.56 (i punti delle migliaia si tolgono)
+            numero = testo.replace("€", "").replace("%", "").strip()
+            if "," in numero:
+                numero = numero.replace(".", "").replace(",", ".")
+            valore = float(numero)
+            if codice in [9, 10] and "%" in testo:
+                valore = valore / 100
+            return valore
+        if codice in CODICI_DATA:
+            for formato_data in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y"):
+                try:
+                    return datetime.datetime.strptime(testo, formato_data)
+                except ValueError:
+                    pass
+        if codice in CODICI_ORA:
+            for formato_ora in ("%H:%M:%S", "%H:%M"):
+                try:
+                    return datetime.datetime.strptime(testo, formato_ora).time()
+                except ValueError:
+                    pass
+    except ValueError:
+        pass
+    return testo
+
+
+def campi_excel(riga):
+    """I campi di una riga del testo Excel, come li legge il servizio: ogni campo finisce con ";"
+    (il testo dopo l'ultimo ";" non è un campo)."""
+    return riga.rstrip("\n").split(";")[:-1]
 
 
 class ErroreModello(Exception):

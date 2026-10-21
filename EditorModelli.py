@@ -66,6 +66,36 @@ def apri_con_avviso(percorso, genitore):
         messagebox.showerror("Apri", "Impossibile aprire " + percorso + ":\n" + str(e), parent=genitore)
 
 
+def leggi_preferenze():
+    """Preferenze dell'utente (modelli recenti, zoom), comuni a EditorModelli ed EditorExcel."""
+    try:
+        with open(FILE_PREFERENZE, encoding="utf-8") as f:
+            preferenze = json.load(f)
+        return preferenze if isinstance(preferenze, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def scrivi_preferenze(preferenze):
+    # Non sono essenziali: se non si possono salvare si va avanti
+    try:
+        os.makedirs(os.path.dirname(FILE_PREFERENZE), exist_ok=True)
+        with open(FILE_PREFERENZE, "w", encoding="utf-8") as f:
+            json.dump(preferenze, f, indent=1)
+    except OSError:
+        pass
+
+
+def apri_guida(genitore):
+    # La guida sta accanto al programma o dentro l'exe creato con PyInstaller
+    for cartella in (CARTELLA_PROGRAMMA, getattr(sys, "_MEIPASS", CARTELLA_PROGRAMMA)):
+        percorso = os.path.join(cartella, GUIDA)
+        if os.path.isfile(percorso):
+            apri_con_avviso(percorso, genitore)
+            return
+    messagebox.showerror("Guida", "Guida non trovata: " + os.path.join(CARTELLA_PROGRAMMA, GUIDA), parent=genitore)
+
+
 def tag_logico(tag):
     """I tag che descrivono il formato (gli altri servono solo a mostrarlo: v|..., sel, oltre)."""
     return tag[:2] in ("f:", "s:", "c:") or tag in ("b", "i")
@@ -777,21 +807,10 @@ class EditorModelli(tk.Tk):
         self._scrivi_preferenze()
 
     def _leggi_preferenze(self):
-        try:
-            with open(FILE_PREFERENZE, encoding="utf-8") as f:
-                preferenze = json.load(f)
-            return preferenze if isinstance(preferenze, dict) else {}
-        except (OSError, ValueError):
-            return {}
+        return leggi_preferenze()
 
     def _scrivi_preferenze(self):
-        # Non sono essenziali: se non si possono salvare si va avanti
-        try:
-            os.makedirs(os.path.dirname(FILE_PREFERENZE), exist_ok=True)
-            with open(FILE_PREFERENZE, "w", encoding="utf-8") as f:
-                json.dump(self.preferenze, f, indent=1)
-        except OSError:
-            pass
+        scrivi_preferenze(self.preferenze)
 
     def _aggiungi_recente(self, percorso):
         percorso = os.path.abspath(percorso)
@@ -1000,6 +1019,9 @@ class EditorModelli(tk.Tk):
 
     def apri_modello(self, percorso, percorso_testo=None):
         intestazione, linee = modello_gui.leggi_gui(percorso)
+        if intestazione["azione"] == "excel":
+            messagebox.showinfo("Apri modello", "È un modello Excel: aprilo con EditorExcel.", parent=self)
+            return
         if percorso_testo is None:
             # Il testo di esempio è salvato accanto al modello con lo stesso nome
             percorso_testo = os.path.splitext(percorso)[0] + ".txt"
@@ -1143,13 +1165,7 @@ class EditorModelli(tk.Tk):
     # --- Aiuto ---------------------------------------------------------------
 
     def apri_guida(self):
-        cartelle = [CARTELLA_PROGRAMMA, getattr(sys, "_MEIPASS", CARTELLA_PROGRAMMA)]
-        for cartella in cartelle:
-            percorso = os.path.join(cartella, GUIDA)
-            if os.path.isfile(percorso):
-                apri_con_avviso(percorso, self)
-                return
-        messagebox.showerror("Guida", "Guida non trovata: " + os.path.join(CARTELLA_PROGRAMMA, GUIDA), parent=self)
+        apri_guida(self)
 
     def _informazioni(self):
         messagebox.showinfo("Informazioni", "Editor modelli di FileGUY\n\nPrepara i modelli .gui con la "

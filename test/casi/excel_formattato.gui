@@ -1,0 +1,16 @@
+excel_formattato.txt
+excel
+excel_formattato.xlsx
+
+0
+0
+
+1	nome=Intestazione	carattere=hsn11b	sfondo=grigio	testo=si
+u1	nome=Totale	carattere=tss14n	sfondo=giallo	allineamento=sinistra
+colonna
+1	carattere=csn12r	larghezza=9	allineamento=centro
+0
+1
+24	carattere=kns10v	allineamento=destra
+12
+fine

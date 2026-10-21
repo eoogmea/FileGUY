@@ -166,7 +166,8 @@ def casi(modelli=None):
          txt=testo_excel, uscite=["excel.xlsx"],
          # linea 8 del .gui = colonna A, linea 9 = colonna B, ...
          controllo=controlla_excel("excel.xlsx", 4, 5, celle=[
-             (1, 1, "Codice", "0"), (2, 1, 1, "0"), (2, 2, "Viti", "General"), (3, 3, 50, "0"),
+             # .gui di prima (senza la linea "colonna"): la prima riga resta testo, senza formato
+             (1, 1, "Codice", "General"), (2, 1, 1, "0"), (2, 2, "Viti", "General"), (3, 3, 50, "0"),
              (2, 4, 0.15, '#,##0.00 "€";[Red]-#,##0.00 "€"'),
              (4, 4, 12, '#,##0.00 "€";[Red]-#,##0.00 "€"'),
              (2, 5, datetime.datetime(2026, 10, 20), "dd/mm/yyyy")]))
@@ -182,6 +183,41 @@ def casi(modelli=None):
                             formati=["1", "0", "1", "8", "12", "fine"],
                             coda=["cliente@example.com", "Listino", "", "In allegato il listino"]),
          txt=testo_excel, uscite=["excel_email.xlsx"], chiamate=["smtp_sendmail"])
+    # Colonne con carattere, intestazione, larghezza e allineamento (linee nuove del .gui)
+    # Colonne con carattere, larghezza e allineamento; righe speciali (intestazione come testo, totale
+    # sull'ultima riga contata dalla fine) che valgono più della colonna
+    caso("excel_formattato", gui("excel_formattato.txt", "excel", "excel_formattato.xlsx", formati=[
+        "1\tnome=Intestazione\tcarattere=hsn11b\tsfondo=grigio\ttesto=si",
+        "u1\tnome=Totale\tcarattere=tss14n\tsfondo=giallo\tallineamento=sinistra",
+        "colonna",
+        "1\tcarattere=csn12r\tlarghezza=9\tallineamento=centro",
+        "0", "1", "24\tcarattere=kns10v\tallineamento=destra", "12", "fine"]),
+         txt=testo_excel, uscite=["excel_formattato.xlsx"],
+         controllo=controlla_excel_stili("excel_formattato.xlsx", [
+             # (riga, colonna, font, dimensione, grassetto, corsivo, colore, allineamento, formato, sfondo)
+             (1, 1, "Arial", 11, True, False, "FF0000FF", "center", "General", "FFD9D9D9"),
+             (2, 1, "Courier New", 12, True, False, "FFFF0000", "center", "0", None),
+             (3, 4, "Calibri", 10, False, True, "FF008000", "right", '#,##0.00 "€";-#,##0.00 "€"', None),
+             (1, 5, "Arial", 11, True, False, "FF0000FF", None, "General", "FFD9D9D9"),
+             (2, 2, "Calibri", 11, False, False, None, None, "General", None),
+             # Ultima riga (u1): carattere e allineamento della riga, formato numerico della colonna
+             (4, 4, "Times New Roman", 14, True, True, "FF000000", "left", '#,##0.00 "€";-#,##0.00 "€"',
+              "FFFFF2CC")],
+             larghezze={"A": 9}, valori={(1, 3): "Quantita", (4, 4): 12, (4, 5): datetime.datetime(2026, 10, 22)}))
+    # Più intervalli di righe, contati dall'inizio e dalla fine; una riga in due stili prende l'ultimo
+    caso("excel_righe_speciali", gui("excel_righe_speciali.txt", "excel", "excel_righe_speciali.xlsx", formati=[
+        "1-2, u2-u1\tnome=Titoli\tcarattere=ksn11n\ttesto=si",
+        "u1\tnome=Totale\tcarattere=ksn12r",
+        "colonna", "0", "4", "fine"]),
+         txt="Listino ottobre;;\nArticolo;Prezzo;\nViti;1.000,5;\nDadi;2,25;\nSubtotale;1002,75;\nTotale;1.002,75;\n",
+         uscite=["excel_righe_speciali.xlsx"],
+         controllo=controlla_excel_stili("excel_righe_speciali.xlsx", [
+             (1, 1, "Calibri", 11, True, False, "FF000000", None, "General", None),
+             (2, 2, "Calibri", 11, True, False, "FF000000", None, "General", None),
+             (3, 2, "Calibri", 11, False, False, None, None, "#,##0.00", None),
+             (5, 2, "Calibri", 11, True, False, "FF000000", None, "General", None),
+             (6, 2, "Calibri", 12, True, False, "FFFF0000", None, "#,##0.00", None)],
+             valori={(2, 2): "Prezzo", (3, 2): 1000.5, (5, 2): "1002,75", (6, 2): 1002.75}))
 
     # --- Word ---
     caso("docx", gui("docx.txt", "docx", "docx.docx", formati=FORMATI_DOCX),
@@ -279,6 +315,35 @@ def controlla_excel(nome, righe, colonne, vuote=(), celle=()):
         for r, c in vuote:
             if ws.cell(row=r, column=c).value not in (None, ""):
                 errori.append("cella %d,%d dovrebbe essere vuota: %r" % (r, c, ws.cell(row=r, column=c).value))
+        return errori
+    return controllo
+
+
+def controlla_excel_stili(nome, celle, larghezze=None, valori=None):
+    """celle: (riga, colonna, font, dimensione, grassetto, corsivo, colore ARGB o None, allineamento, formato,
+    sfondo ARGB o None); valori: {(riga, colonna): valore atteso}"""
+    def controllo(config):
+        from openpyxl import load_workbook
+        ws = load_workbook(os.path.join(config["cartella_output"], nome)).worksheets[0]
+        errori = []
+        for r, c, font, dimensione, grassetto, corsivo, colore, allineamento, formato, sfondo in celle:
+            cella = ws.cell(row=r, column=c)
+            # Senza colore scritto Excel usa quello del tema (rgb non è un testo)
+            colore_trovato = getattr(cella.font.color, "rgb", None)
+            sfondo_trovato = cella.fill.start_color.rgb if cella.fill.fill_type == "solid" else None
+            trovato = (cella.font.name, cella.font.size, bool(cella.font.bold), bool(cella.font.italic),
+                       colore_trovato if isinstance(colore_trovato, str) else None,
+                       cella.alignment.horizontal, cella.number_format, sfondo_trovato)
+            atteso = (font, dimensione, grassetto, corsivo, colore, allineamento, formato, sfondo)
+            if trovato != atteso:
+                errori.append("cella %d,%d: %r invece di %r" % (r, c, trovato, atteso))
+        for (r, c), valore in (valori or {}).items():
+            if ws.cell(row=r, column=c).value != valore:
+                errori.append("cella %d,%d: valore %r invece di %r" % (r, c, ws.cell(row=r, column=c).value, valore))
+        for lettera, larghezza in (larghezze or {}).items():
+            if ws.column_dimensions[lettera].width != larghezza:
+                errori.append("colonna %s larga %r invece di %r" % (lettera, ws.column_dimensions[lettera].width,
+                                                                   larghezza))
         return errori
     return controllo
 

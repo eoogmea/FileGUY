@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Guida Editor modelli</title>
+<title>Guida ai modelli</title>
 <style>
   :root {
     --testo: #1d2127;
@@ -14,29 +14,64 @@
     --accento: #1f5fa8;
     --avviso: #fff6e0;
     --avviso-bordo: #e7b84a;
+    --consiglio: #eaf4ec;
+    --consiglio-bordo: #5aa66a;
     --codice: #eef1f5;
+    --tasto: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --testo: #e4e7eb;
+      --tenue: #a3abb5;
+      --sfondo: #16191d;
+      --pannello: #1f242a;
+      --bordo: #343b44;
+      --accento: #7fb2ef;
+      --avviso: #33290f;
+      --avviso-bordo: #b8902f;
+      --consiglio: #16291b;
+      --consiglio-bordo: #4c9159;
+      --codice: #252b32;
+      --tasto: #2b3138;
+    }
+  }
+  :root[data-theme="dark"] {
+    --testo: #e4e7eb;
+    --tenue: #a3abb5;
+    --sfondo: #16191d;
+    --pannello: #1f242a;
+    --bordo: #343b44;
+    --accento: #7fb2ef;
+    --avviso: #33290f;
+    --avviso-bordo: #b8902f;
+    --consiglio: #16291b;
+    --consiglio-bordo: #4c9159;
+    --codice: #252b32;
+    --tasto: #2b3138;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--sfondo);
     color: var(--testo);
-    font: 16px/1.6 "Segoe UI", Calibri, Arial, sans-serif;
+    font: 16px/1.65 "Segoe UI", Calibri, Arial, sans-serif;
   }
-  .pagina { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
-  h1 { font-size: 30px; margin: 0 0 4px; }
+  .pagina { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 30px; line-height: 1.25; margin: 0 0 6px; }
   .sottotitolo { color: var(--tenue); margin: 0 0 28px; }
-  h2 { font-size: 22px; margin: 44px 0 10px; padding-top: 12px; border-top: 1px solid var(--bordo); }
-  h3 { font-size: 17px; margin: 26px 0 6px; }
+  h2 { font-size: 22px; margin: 48px 0 10px; padding-top: 14px; border-top: 1px solid var(--bordo); }
+  h3 { font-size: 17px; margin: 28px 0 6px; }
+  p, li { max-width: 72ch; }
   a { color: var(--accento); }
-  code, kbd, .codice {
+  code, kbd {
     font-family: Consolas, "Courier New", monospace;
     font-size: 0.92em;
     background: var(--codice);
     border-radius: 4px;
     padding: 1px 5px;
+    white-space: nowrap;
   }
-  kbd { border: 1px solid var(--bordo); border-bottom-width: 2px; background: #fff; }
+  kbd { border: 1px solid var(--bordo); border-bottom-width: 2px; background: var(--tasto); }
   pre {
     background: var(--codice);
     border-radius: 6px;
@@ -44,21 +79,26 @@
     overflow-x: auto;
     font: 14px/1.5 Consolas, "Courier New", monospace;
   }
-  table { border-collapse: collapse; width: 100%; margin: 10px 0 16px; font-size: 15px; }
-  th, td { border: 1px solid var(--bordo); padding: 6px 9px; text-align: left; vertical-align: top; }
+  .tabella { overflow-x: auto; margin: 10px 0 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { border: 1px solid var(--bordo); padding: 7px 10px; text-align: left; vertical-align: top; }
   th { background: var(--pannello); }
   .indice { background: var(--pannello); border: 1px solid var(--bordo); border-radius: 8px; padding: 14px 20px; }
-  .indice ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  .indice strong { display: block; margin-bottom: 6px; }
+  .indice ol { margin: 0; padding-left: 22px; columns: 2; column-gap: 32px; }
   .indice li { break-inside: avoid; }
-  .nota { background: var(--avviso); border-left: 4px solid var(--avviso-bordo); padding: 10px 14px;
-          border-radius: 4px; margin: 14px 0; }
+  .nota, .consiglio { padding: 10px 14px; border-radius: 4px; margin: 16px 0; }
+  .nota { background: var(--avviso); border-left: 4px solid var(--avviso-bordo); }
+  .consiglio { background: var(--consiglio); border-left: 4px solid var(--consiglio-bordo); }
   ol.passi > li { margin-bottom: 8px; }
   .colore { display: inline-block; width: 14px; height: 14px; border: 1px solid #888; vertical-align: -2px;
             margin-right: 6px; border-radius: 3px; }
-  @media (max-width: 640px) { .indice ol { columns: 1; } }
+  @media (max-width: 640px) {
+    .indice ol { columns: 1; }
+    h1 { font-size: 25px; }
+  }
   @media print {
     .pagina { max-width: none; padding: 0; }
-    h2 { break-before: auto; }
     a { color: var(--testo); text-decoration: none; }
   }
 </style>
@@ -66,341 +106,600 @@
 <body>
 <div class="pagina">
 
-<h1>Editor modelli: guida all'uso</h1>
-<p class="sottotitolo">FileGUY: modelli di formattazione per fatture, bolle e altri documenti ripetitivi</p>
+<h1>Guida ai modelli di FileGUY</h1>
+<p class="sottotitolo">Come preparare con EditorModelli ed EditorExcel la formattazione di fatture, bolle, listini
+e degli altri documenti che il gestionale produce ogni giorno.</p>
 
 <nav class="indice">
+  <strong>Indice</strong>
   <ol>
-    <li><a href="#cosa">A cosa serve</a></li>
-    <li><a href="#avvio">Avvio</a></li>
-    <li><a href="#schermata">La finestra</a></li>
+    <li><a href="#cosa">A cosa servono i modelli</a></li>
+    <li><a href="#avvio">Prima di iniziare</a></li>
+    <li><a href="#schermata">La finestra di EditorModelli</a></li>
     <li><a href="#passi">Creare un modello passo per passo</a></li>
     <li><a href="#formattare">Formattare il testo</a></li>
     <li><a href="#font">Caratteri e colori</a></li>
-    <li><a href="#documento">Impostazioni del documento</a></li>
-    <li><a href="#invio">Invio per email, Telegram, WhatsApp</a></li>
-    <li><a href="#anteprima">Anteprima</a></li>
+    <li><a href="#documento">Le impostazioni del documento</a></li>
+    <li><a href="#invio">Inviare il documento per email, Telegram o WhatsApp</a></li>
+    <li><a href="#anteprima">L'anteprima</a></li>
     <li><a href="#salvare">Salvare e riaprire un modello</a></li>
-    <li><a href="#applicare">Applicare il modello ai file di testo</a></li>
+    <li><a href="#applicare">Applicare un modello ai file di testo</a></li>
+    <li><a href="#excel">I modelli Excel (EditorExcel)</a></li>
     <li><a href="#regole">Regole e limiti</a></li>
     <li><a href="#problemi">Problemi frequenti</a></li>
     <li><a href="#tecnico">Appendice tecnica: il file .gui</a></li>
   </ol>
 </nav>
 
-<h2 id="cosa">1. A cosa serve</h2>
-<p>Il gestionale produce i documenti (fatture, bolle, ordini…) come <strong>file di testo</strong>: righe di
-caratteri senza grassetto, dimensioni o colori. Il servizio FileGUY trasforma ogni file di testo in un
-<strong>PDF</strong> (anche stampato sopra un modulo, il <em>template</em>) o in un documento <strong>Word</strong>,
-seguendo le istruzioni di un file <code>.gui</code> con lo stesso nome.</p>
-<p>Fatture e bolle hanno sempre la stessa struttura: il nome del cliente è sempre alla stessa riga, gli importi
-sempre nelle stesse colonne. Per questo la formattazione si prepara <strong>una volta sola</strong>, su un
-documento di esempio, e si salva in un <strong>modello</strong>. Il modello si applica poi a tutti i documenti
-dello stesso tipo.</p>
-<p>Il modello lavora per <strong>righe</strong> e <strong>colonne</strong>: dice per esempio “la riga 7 in
-Courier grassetto 10” oppure “nella riga 18, dalla colonna 85 in poi, grassetto”. Applicato a un'altra
-fattura, formatta allo stesso modo le stesse righe e colonne, qualunque sia il testo che contengono.</p>
+<h2 id="cosa">1. A cosa servono i modelli</h2>
+<p>Il gestionale produce i documenti (fatture, bolle, ordini, listini…) come semplici <strong>file di
+testo</strong>: righe di caratteri tutte uguali, senza grassetto, dimensioni o colori. Il servizio FileGUY
+trasforma ogni file di testo in un documento vero e proprio:</p>
+<ul>
+  <li>un <strong>PDF</strong>, anche stampato sopra un modulo prestampato (il <em>template</em>);</li>
+  <li>un documento <strong>Word</strong>;</li>
+  <li>un foglio <strong>Excel</strong>, se il testo è fatto di campi separati da punto e virgola.</li>
+</ul>
+<p>Per sapere come trasformarlo, il servizio legge un secondo file con lo stesso nome e l'estensione
+<code>.gui</code>, che contiene le istruzioni: che tipo di documento creare, su quale template, con quale
+formattazione e se inviarlo a qualcuno.</p>
+<p>I documenti dello stesso tipo hanno sempre la stessa struttura: il nome del cliente sta sempre sulla stessa
+riga, gli importi sempre nelle stesse colonne. Per questo la formattazione si prepara <strong>una volta
+sola</strong>, su un documento di esempio, e si salva in un <strong>modello</strong>. Il modello si applica poi a
+tutti i documenti di quel tipo.</p>
+<p>Un modello lavora per <strong>posizione</strong>: per esempio dice “la riga 7 in Courier grassetto 10” oppure
+“nella riga 18, dalla colonna 85 in poi, grassetto”. Applicato a un'altra fattura, formatta allo stesso modo le
+stesse righe e colonne, qualunque testo contengano.</p>
+<p>I modelli si preparano con due programmi:</p>
+<ul>
+  <li><strong>EditorModelli</strong> per i documenti PDF e Word (capitoli 3-11);</li>
+  <li><strong>EditorExcel</strong> per i fogli Excel (capitolo 12).</li>
+</ul>
 
-<h2 id="avvio">2. Avvio</h2>
-<p>Si avvia <code>EditorModelli.exe</code> (oppure <code>python EditorModelli.py</code>) dalla cartella del
-programma. L'editor usa la stessa configurazione del servizio (<code>config.dat</code>, impostata con
-ConfigManager): da lì prende la cartella dei template PDF e la cartella di lavoro.</p>
-<p>L'editor è indipendente dal servizio: si può usare mentre il servizio è in funzione.</p>
+<h2 id="avvio">2. Prima di iniziare</h2>
+<p>Avvia <code>EditorModelli.exe</code> oppure <code>EditorExcel.exe</code> dalla cartella del programma (chi usa
+Python può lanciare <code>python EditorModelli.py</code> o <code>python EditorExcel.py</code>).</p>
+<p>Gli editor usano la stessa configurazione del servizio, cioè il file <code>config.dat</code> che si prepara con
+<strong>ConfigManager</strong>. Da lì leggono:</p>
+<ul>
+  <li>la <strong>cartella dei template</strong>, dove si trovano i moduli PDF;</li>
+  <li>la <strong>cartella di lavoro</strong>, dove il servizio cerca i file di testo e i <code>.gui</code> da
+      elaborare.</li>
+</ul>
+<p>Gli editor non disturbano il servizio: puoi usarli mentre il servizio è in funzione.</p>
 
-<h2 id="schermata">3. La finestra</h2>
-<table>
+<h2 id="schermata">3. La finestra di EditorModelli</h2>
+<div class="tabella"><table>
   <tr><th>Parte</th><th>A cosa serve</th></tr>
-  <tr><td><strong>Menu File</strong></td><td>Nuovo modello da un testo di esempio, apri, modelli recenti, salva, applica ai file di testo.</td></tr>
-  <tr><td><strong>Menu Modifica</strong></td><td>Annulla/ripeti, copia e incolla formato, selezione a blocco, formato di una riga su altre righe.</td></tr>
-  <tr><td><strong>Menu Visualizza</strong></td><td>Zoom del testo nell'editor.</td></tr>
-  <tr><td><strong>Anteprima (F5)</strong></td><td>Crea il documento di prova come lo creerà il servizio.</td></tr>
-  <tr><td><strong>Menu Aiuto</strong></td><td>Questa guida (<kbd>F1</kbd>) e informazioni sul programma.</td></tr>
-  <tr><td><strong>Riquadro Documento</strong></td><td>Tipo di documento (PDF o Word), azione, template, rotazione, nome del documento creato, invio.</td></tr>
-  <tr><td><strong>Barra di formattazione</strong></td><td>Carattere, dimensione, grassetto (G), corsivo (C), colore, formato predefinito, spunta <em>Modifica testo</em>.</td></tr>
-  <tr><td><strong>Righello</strong></td><td>Sopra il testo: le colonne della riga dove si trova il cursore (in azzurro quelle selezionate, in rosso la colonna 99).</td></tr>
-  <tr><td><strong>Area del testo</strong></td><td>Il testo di esempio con la formattazione. A sinistra il numero di ogni riga.</td></tr>
-  <tr><td><strong>Barra di stato</strong> (in basso)</td><td>Riga e colonna del cursore e colonne della selezione.</td></tr>
-</table>
-<p>Normalmente il testo <strong>non si può modificare</strong>: si cambia solo il suo aspetto. Il contenuto vero
+  <tr><td><strong>Menu File</strong></td><td>Crea un modello da un testo di esempio, apre un modello, riapre uno
+      dei modelli recenti, salva, applica il modello ai file di testo.</td></tr>
+  <tr><td><strong>Menu Modifica</strong></td><td>Annulla e ripeti, copia e incolla il formato, selezione a blocco,
+      copia del formato di una riga su altre righe.</td></tr>
+  <tr><td><strong>Menu Visualizza</strong></td><td>Ingrandisce o riduce il testo nell'editor.</td></tr>
+  <tr><td><strong>Anteprima (F5)</strong></td><td>Crea un documento di prova esattamente come lo creerà il
+      servizio.</td></tr>
+  <tr><td><strong>Menu Aiuto</strong></td><td>Apre questa guida (<kbd>F1</kbd>).</td></tr>
+  <tr><td><strong>Riquadro Documento</strong></td><td>Tipo di documento (PDF o Word), azione, template, rotazione,
+      nome del documento da creare e impostazioni dell'invio.</td></tr>
+  <tr><td><strong>Barra di formattazione</strong></td><td>Carattere, dimensione, grassetto (<strong>G</strong>),
+      corsivo (<strong>C</strong>), colore, formato predefinito e la spunta <em>Modifica testo</em>.</td></tr>
+  <tr><td><strong>Righello</strong></td><td>Sopra il testo, numera le colonne della riga in cui si trova il
+      cursore. Le colonne selezionate sono in azzurro, la colonna 99 è segnata in rosso.</td></tr>
+  <tr><td><strong>Area del testo</strong></td><td>Il testo di esempio, già con la formattazione che gli hai dato.
+      A sinistra c'è il numero di ogni riga.</td></tr>
+  <tr><td><strong>Barra di stato</strong> (in basso)</td><td>Riga e colonna del cursore, colonne selezionate e
+      messaggi dell'editor.</td></tr>
+</table></div>
+
+<h3>Il testo di esempio non si modifica</h3>
+<p>Di norma il testo nell'area centrale è bloccato: puoi cambiarne solo l'aspetto, perché il contenuto vero
 arriverà ogni volta dal gestionale.</p>
-<p>Per correggere il testo di esempio (per esempio allungare un nome per vedere se ci sta nel modulo, o
-aggiungere righe) si mette la spunta <strong>Modifica testo</strong> nella barra di formattazione: lo sfondo
-diventa giallo chiaro e si può scrivere, incollare, tagliare e annullare (<kbd>Ctrl</kbd>+<kbd>Z</kbd>). Il testo
-scritto dentro un pezzo formattato prende il suo formato. Al salvataggio il testo modificato va nella copia
-<code>.txt</code> accanto al modello; il file scelto con <em>Nuovo da testo di esempio</em> non cambia.</p>
+<p>A volte però conviene ritoccare l'esempio, per esempio per allungare il nome di un cliente e vedere se entra
+nella casella del modulo, o per aggiungere qualche riga. In questi casi metti la spunta <strong>Modifica
+testo</strong>: lo sfondo diventa giallo chiaro e puoi scrivere, incollare, tagliare e annullare con
+<kbd>Ctrl</kbd>+<kbd>Z</kbd>. Il testo che scrivi dentro un pezzo già formattato ne prende il formato.</p>
+<p>Le modifiche finiscono solo nella copia del testo salvata accanto al modello: il file che hai scelto con
+<em>Nuovo da testo di esempio</em> resta com'era.</p>
 
 <h2 id="passi">4. Creare un modello passo per passo</h2>
 <ol class="passi">
-  <li>Prendere un file di testo tipico (es. una fattura uscita dal gestionale) e salvarlo da qualche parte.</li>
-  <li><strong>File &gt; Nuovo da testo di esempio…</strong> e scegliere quel file.</li>
-  <li>Nel riquadro <strong>Documento</strong> scegliere <strong>PDF</strong> o <strong>Word</strong>; per il PDF
-      scegliere il <strong>template</strong> (il modulo prestampato) se serve.</li>
-  <li>Selezionare righe o parti di riga e scegliere carattere, dimensione, grassetto, corsivo e colore
-      (vedi <a href="#formattare">Formattare il testo</a>).</li>
-  <li>Premere <kbd>F5</kbd> per l'<strong>anteprima</strong> e controllare che tutto cada al posto giusto nel
-      modulo. Correggere e ripetere finché il risultato va bene.</li>
-  <li><strong>File &gt; Salva modello</strong> (<kbd>Ctrl</kbd>+<kbd>S</kbd>), dandogli un nome chiaro, es.
-      <code>fattura_accompagnatoria.gui</code>.</li>
-  <li>Per usarlo: <strong>File &gt; Applica a file di testo…</strong> (vedi
-      <a href="#applicare">Applicare il modello</a>), oppure il programma che prepara i <code>.gui</code>
-      copia il modello per ogni documento.</li>
+  <li>Procurati un file di testo tipico, per esempio una fattura appena uscita dal gestionale, e salvalo in una
+      cartella qualsiasi.</li>
+  <li>Scegli <strong>File &gt; Nuovo da testo di esempio…</strong> (<kbd>Ctrl</kbd>+<kbd>N</kbd>) e apri quel
+      file.</li>
+  <li>Nel riquadro <strong>Documento</strong> scegli se creare un <strong>PDF</strong> o un
+      <strong>Word</strong>. Per il PDF scegli anche il <strong>template</strong>, se il documento va stampato su
+      un modulo.</li>
+  <li>Seleziona righe o pezzi di riga e scegli carattere, dimensione, grassetto, corsivo e colore (vedi
+      <a href="#formattare">Formattare il testo</a>).</li>
+  <li>Premi <kbd>F5</kbd> per vedere l'<strong>anteprima</strong> e controlla che ogni cosa cada al posto giusto
+      nel modulo. Correggi e riprova finché il risultato ti soddisfa.</li>
+  <li>Salva con <strong>File &gt; Salva modello</strong> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) e dai al modello un nome
+      chiaro, per esempio <code>fattura_accompagnatoria.gui</code>.</li>
+  <li>Per usarlo scegli <strong>File &gt; Applica a file di testo…</strong> (vedi
+      <a href="#applicare">Applicare un modello</a>). In alternativa, il programma che oggi prepara i
+      <code>.gui</code> può copiare il modello per ogni documento.</li>
 </ol>
 
 <h2 id="formattare">5. Formattare il testo</h2>
 <h3>Selezionare</h3>
-<table>
-  <tr><th>Per selezionare</th><th>Come</th></tr>
-  <tr><td>alcune lettere</td><td>clic e trascinare con il mouse, oppure <kbd>Maiusc</kbd> + frecce</td></tr>
+<div class="tabella"><table>
+  <tr><th>Per selezionare</th><th>Come fare</th></tr>
+  <tr><td>alcune lettere</td><td>fai clic e trascina con il mouse, oppure usa <kbd>Maiusc</kbd> + le frecce</td></tr>
   <tr><td>una parola</td><td>doppio clic</td></tr>
   <tr><td>una riga intera</td><td>triplo clic</td></tr>
-  <tr><td>più righe</td><td>trascinare dalla prima all'ultima, oppure <kbd>Maiusc</kbd> + <kbd>↓</kbd></td></tr>
+  <tr><td>più righe</td><td>trascina dalla prima all'ultima, oppure usa <kbd>Maiusc</kbd> + <kbd>↓</kbd></td></tr>
+  <tr><td>le stesse colonne su più righe</td><td>tieni premuto <kbd>Alt</kbd> e trascina (vedi
+      <a href="#aiuti">Selezione a blocco</a>)</td></tr>
   <tr><td>tutto il testo</td><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td></tr>
-</table>
-<p>La barra di stato mostra le colonne selezionate, es. <em>selezione: colonne 9-15</em>. La selezione resta
-attiva (e visibile in azzurro) anche mentre si usano le tendine o si scrive la dimensione.</p>
+</table></div>
+<p>La barra di stato mostra le colonne selezionate, per esempio <em>selezione: colonne 9-15</em>. La selezione
+resta attiva, e visibile in azzurro, anche mentre usi le tendine o scrivi la dimensione.</p>
 
 <h3>Applicare un formato</h3>
-<p>Ogni scelta vale <strong>solo per i caratteri selezionati</strong>: tutto il resto della riga e del testo
-non cambia. Si possono applicare più scelte di seguito alla stessa selezione.</p>
-<table>
+<p>Ogni scelta vale <strong>solo per i caratteri selezionati</strong>: il resto della riga e del testo non cambia.
+Puoi applicare più scelte di seguito alla stessa selezione, per esempio prima il carattere e poi il grassetto.</p>
+<div class="tabella"><table>
   <tr><th>Comando</th><th>Effetto</th></tr>
-  <tr><td><strong>Carattere</strong></td><td>cambia il tipo di carattere (vedi <a href="#font">Caratteri e colori</a>)</td></tr>
-  <tr><td><strong>Dimensione</strong></td><td>scegliere dalla tendina, oppure scrivere un numero da 1 a 99 e premere <kbd>Invio</kbd></td></tr>
-  <tr><td><strong>G</strong> o <kbd>Ctrl</kbd>+<kbd>G</kbd> (anche <kbd>Ctrl</kbd>+<kbd>B</kbd>)</td><td>grassetto sì/no</td></tr>
-  <tr><td><strong>C</strong> o <kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>corsivo sì/no</td></tr>
-  <tr><td><strong>Colore</strong></td><td>nero, rosso, verde, blu, bianco</td></tr>
-  <tr><td><strong>Formato predefinito</strong></td><td>riporta la selezione al formato base: Times 10, normale, nero</td></tr>
-</table>
-<p>Senza selezione i comandi non fanno nulla (la barra di stato lo ricorda). Mettendo il cursore su un
-carattere, la barra mostra il suo formato.</p>
+  <tr><td><strong>Carattere</strong></td><td>cambia il tipo di carattere (vedi <a href="#font">Caratteri e
+      colori</a>)</td></tr>
+  <tr><td><strong>Dimensione</strong></td><td>scegli un valore dalla tendina, oppure scrivi un numero da 1 a 99
+      e premi <kbd>Invio</kbd></td></tr>
+  <tr><td><strong>G</strong>, <kbd>Ctrl</kbd>+<kbd>G</kbd> o <kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>mette o toglie
+      il grassetto</td></tr>
+  <tr><td><strong>C</strong> o <kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>mette o toglie il corsivo</td></tr>
+  <tr><td><strong>Colore</strong></td><td>nero, rosso, verde, blu o bianco</td></tr>
+  <tr><td><strong>Formato predefinito</strong></td><td>riporta la selezione al formato di base: Times 10,
+      normale, nero</td></tr>
+</table></div>
+<p>Se non c'è niente di selezionato i comandi non fanno nulla, e la barra di stato te lo ricorda. Quando il
+cursore è su un carattere, la barra di formattazione mostra il suo formato.</p>
 
-<h3>Aiuti alla formattazione</h3>
-<p>Servono a fare prima, ma il modello che ne esce è uguale a quello fatto a mano: gli stessi codici nel
-<code>.gui</code>.</p>
-<table>
+<h3 id="aiuti">Strumenti per fare prima</h3>
+<p>Questi strumenti fanno risparmiare tempo, ma il modello che ne esce è identico a quello fatto a mano.</p>
+<div class="tabella"><table>
   <tr><th>Comando</th><th>Effetto</th></tr>
-  <tr><td><strong>Annulla</strong> <kbd>Ctrl</kbd>+<kbd>Z</kbd>, <strong>Ripeti</strong> <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
-      <td>annulla o ripete le ultime formattazioni (fino a 100). Con <em>Modifica testo</em> attiva annullano invece
-      le modifiche al testo.</td></tr>
-  <tr><td><strong>Copia formato</strong> <kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>C</kbd></td>
-      <td>prende il formato del carattere dove si trova il cursore (o del primo selezionato).</td></tr>
-  <tr><td><strong>Incolla formato</strong> <kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>V</kbd></td>
-      <td>dà quel formato (carattere, dimensione, grassetto, corsivo, colore) al testo selezionato.</td></tr>
-  <tr><td><strong>Selezione a blocco</strong>: <kbd>Alt</kbd> + trascinare con il mouse, oppure
+  <tr><td><strong>Annulla</strong> <kbd>Ctrl</kbd>+<kbd>Z</kbd><br><strong>Ripeti</strong>
+      <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
+      <td>Annulla o ripete le ultime formattazioni, fino a 100. Quando è attiva <em>Modifica testo</em>, invece,
+      annullano le modifiche al testo.</td></tr>
+  <tr><td><strong>Copia formato</strong><br><kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>C</kbd></td>
+      <td>Prende il formato del carattere su cui si trova il cursore (o del primo carattere selezionato).</td></tr>
+  <tr><td><strong>Incolla formato</strong><br><kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>V</kbd></td>
+      <td>Dà quel formato (carattere, dimensione, grassetto, corsivo e colore) al testo selezionato.</td></tr>
+  <tr><td><strong>Selezione a blocco</strong><br><kbd>Alt</kbd> + trascinamento, oppure
       <em>Modifica &gt; Selezione a blocco…</em></td>
-      <td>seleziona le stesse colonne su più righe, per esempio la colonna degli importi di tutti gli articoli.
-      Poi si formatta come una selezione normale. Dal menu si scrivono righe e colonne a mano (utile su Linux,
-      dove alcuni desktop usano <kbd>Alt</kbd>+trascina per spostare le finestre).</td></tr>
-  <tr><td><strong>Copia il formato di una riga su altre righe…</strong></td>
-      <td>dà a un gruppo di righe la stessa formattazione di una riga, colonna per colonna: si formatta bene la
-      prima riga degli articoli e la si copia sulle altre. L'ultimo formato della riga continua fino a fine riga,
-      come fa il servizio.</td></tr>
-  <tr><td><strong>Zoom</strong> <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>-</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd>,
-      oppure <kbd>Ctrl</kbd> + rotellina</td>
-      <td>ingrandisce o riduce il testo nell'editor. Cambia solo la vista: le dimensioni nel documento restano
-      quelle scelte.</td></tr>
+      <td>Seleziona le stesse colonne su più righe, per esempio la colonna degli importi di tutti gli articoli,
+      che poi formatti come una selezione normale. Dal menu puoi scrivere a mano righe e colonne: è comodo su
+      Linux, dove alcuni desktop usano <kbd>Alt</kbd> + trascinamento per spostare le finestre.</td></tr>
+  <tr><td><strong>Copia il formato di una riga su altre righe…</strong> (menu Modifica)</td>
+      <td>Dà a un gruppo di righe la stessa formattazione di una riga, colonna per colonna. Per esempio formatti
+      con cura la prima riga degli articoli e poi la copi su tutte le altre. L'ultimo formato della riga
+      continua fino alla fine di ogni riga, come fa il servizio.</td></tr>
+  <tr><td><strong>Zoom</strong><br><kbd>Ctrl</kbd>+<kbd>+</kbd>, <kbd>Ctrl</kbd>+<kbd>-</kbd>,
+      <kbd>Ctrl</kbd>+<kbd>0</kbd> oppure <kbd>Ctrl</kbd> + rotellina</td>
+      <td>Ingrandisce o riduce il testo nell'editor. Cambia solo quello che vedi: le dimensioni nel documento
+      restano quelle che hai scelto.</td></tr>
   <tr><td><strong>File &gt; Modelli recenti</strong></td>
-      <td>gli ultimi 8 modelli aperti o salvati, per riaprirli con un clic. Zoom e modelli recenti vengono
-      ricordati per l'utente.</td></tr>
-</table>
+      <td>Gli ultimi 8 modelli aperti o salvati, da riaprire con un clic. L'editor ricorda per ogni utente
+      sia i modelli recenti sia lo zoom.</td></tr>
+</table></div>
 
 <h2 id="font">6. Caratteri e colori</h2>
 <h3>Caratteri</h3>
-<table>
+<div class="tabella"><table>
   <tr><th>Carattere</th><th>Tipo</th><th>Note</th></tr>
-  <tr><td style="font-family:'Times New Roman'">Times</td><td>proporzionale, con grazie</td><td>formato base dei documenti</td></tr>
-  <tr><td style="font-family:Arial">Helvetica</td><td>proporzionale, senza grazie</td><td>nel PDF usa i file Helvetica della cartella Fonts, altrimenti Arial; in Word è Arial</td></tr>
-  <tr><td style="font-family:Calibri">Calibri</td><td>proporzionale, senza grazie</td><td>moderno, compatto</td></tr>
-  <tr><td style="font-family:Verdana">Verdana</td><td>proporzionale, senza grazie</td><td>molto leggibile anche piccolo, ma largo</td></tr>
-  <tr><td style="font-family:Georgia">Georgia</td><td>proporzionale, con grazie</td><td>elegante, per intestazioni</td></tr>
-  <tr><td style="font-family:'Segoe UI'">Segoe UI</td><td>proporzionale, senza grazie</td><td>il carattere di Windows</td></tr>
-  <tr><td style="font-family:'Courier New'">Courier</td><td>a larghezza fissa</td><td>tutte le lettere e gli spazi sono larghi uguale: l'unico che mantiene le colonne</td></tr>
-</table>
-<div class="nota"><strong>Colonne e spazi.</strong> Nei caratteri <em>proporzionali</em> le lettere hanno larghezze
-diverse (una “i” è più stretta di una “M”) e anche lo spazio è stretto. Se nel testo le colonne sono allineate
-con gli spazi, in un carattere proporzionale si spostano: per esempio un nome preceduto da 50 spazi in Times
-inizia molto più a sinistra che in Courier. L'editor mostra esattamente questo effetto, come il PDF.
-<br>Consiglio: <strong>Courier</strong> per le righe con dati incolonnati (righe degli articoli, importi),
-i caratteri proporzionali per titoli, intestazioni e testi liberi. Se si usa un carattere proporzionale su
-una riga che inizia con molti spazi, controllare la posizione con l'anteprima.</div>
+  <tr><td style="font-family:'Times New Roman'">Times</td><td>proporzionale, con grazie</td><td>è il formato di
+      base dei documenti</td></tr>
+  <tr><td style="font-family:Arial">Helvetica</td><td>proporzionale, senza grazie</td><td>nel PDF usa i file
+      Helvetica della cartella Fonts (se mancano, Arial); in Word e in Excel diventa Arial</td></tr>
+  <tr><td style="font-family:Calibri">Calibri</td><td>proporzionale, senza grazie</td><td>moderno e
+      compatto</td></tr>
+  <tr><td style="font-family:Verdana">Verdana</td><td>proporzionale, senza grazie</td><td>molto leggibile anche
+      piccolo, ma largo</td></tr>
+  <tr><td style="font-family:Georgia">Georgia</td><td>proporzionale, con grazie</td><td>elegante, adatto alle
+      intestazioni</td></tr>
+  <tr><td style="font-family:'Segoe UI'">Segoe UI</td><td>proporzionale, senza grazie</td><td>il carattere di
+      Windows</td></tr>
+  <tr><td style="font-family:'Courier New'">Courier</td><td>a larghezza fissa</td><td>lettere e spazi hanno tutti
+      la stessa larghezza: è l'unico che mantiene allineate le colonne</td></tr>
+</table></div>
+<p>Su Linux Calibri, Verdana, Segoe UI e Georgia di solito non sono installati: in quel caso il servizio usa
+Helvetica al posto dei primi tre e Times al posto di Georgia.</p>
+
+<div class="nota"><strong>Attenzione alle colonne allineate con gli spazi.</strong> Nei caratteri
+<em>proporzionali</em> ogni lettera ha la sua larghezza (una “i” è molto più stretta di una “M”) e anche lo
+spazio è stretto. Se nel testo le colonne sono allineate con gli spazi, con un carattere proporzionale si
+spostano: un nome preceduto da 50 spazi, in Times, comincia molto più a sinistra che in Courier. L'editor mostra
+esattamente questo effetto, come lo vedrai nel PDF.</div>
+<div class="consiglio"><strong>Consiglio.</strong> Usa <strong>Courier</strong> per le righe con dati
+incolonnati, come le righe degli articoli e gli importi, e i caratteri proporzionali per titoli, intestazioni e
+testi liberi. Se usi un carattere proporzionale su una riga che comincia con molti spazi, controlla la posizione
+con l'anteprima.</div>
 
 <h3>Colori</h3>
-<table>
+<div class="tabella"><table>
   <tr><th>Colore</th><th>Uso tipico</th></tr>
-  <tr><td><span class="colore" style="background:#000"></span>nero</td><td>formato base</td></tr>
+  <tr><td><span class="colore" style="background:#000"></span>nero</td><td>il formato di base</td></tr>
   <tr><td><span class="colore" style="background:#f00"></span>rosso</td><td>scadenze, insoluti, avvisi</td></tr>
   <tr><td><span class="colore" style="background:#008000"></span>verde</td><td>pagato, confermato</td></tr>
   <tr><td><span class="colore" style="background:#00f"></span>blu</td><td>evidenziazioni</td></tr>
-  <tr><td><span class="colore" style="background:#fff"></span>bianco</td><td>testo sopra le parti scure del modulo (es. una fascia grigia o colorata)</td></tr>
-</table>
-<p>Il testo <strong>bianco</strong> nell'editor è mostrato su sfondo grigio, altrimenti non si vedrebbe; nel
-documento lo sfondo è quello del template. Su un foglio bianco il testo bianco è invisibile.</p>
+  <tr><td><span class="colore" style="background:#fff"></span>bianco</td><td>testo sopra le parti scure del modulo,
+      per esempio una fascia grigia o colorata</td></tr>
+</table></div>
+<p>Nell'editor il testo <strong>bianco</strong> compare su sfondo grigio, altrimenti non lo vedresti. Nel
+documento lo sfondo è quello del template: su un foglio bianco il testo bianco è invisibile.</p>
 
-<h2 id="documento">7. Impostazioni del documento</h2>
-<table>
+<h2 id="documento">7. Le impostazioni del documento</h2>
+<div class="tabella"><table>
   <tr><th>Campo</th><th>Significato</th></tr>
-  <tr><td><strong>Tipo</strong></td><td><strong>PDF</strong> (anche su template) o <strong>Word</strong> (.docx).</td></tr>
-  <tr><td><strong>Azione</strong> (PDF)</td><td><code>file</code>: crea il PDF nella cartella di output.<br>
-      <code>pdf</code>: lo crea e lo apre a schermo sul computer del servizio (su Linux con il visualizzatore PDF predefinito).<br>
-      <code>stampa</code>: lo crea e lo stampa sul computer del servizio, sulla stampante scelta in ConfigManager
-      (vuoto = quella predefinita; su Linux la stampa passa da CUPS).</td></tr>
-  <tr><td><strong>Azione</strong> (Word)</td><td><code>docx</code>: crea il documento Word nella cartella di output.</td></tr>
-  <tr><td><strong>Template PDF</strong></td><td>Il modulo su cui stampare il testo, scelto tra i PDF della cartella dei template.
-      Vuoto = foglio bianco A4. Se il template è orizzontale anche il testo viene messo in orizzontale.</td></tr>
-  <tr><td><strong>Rotazione</strong></td><td>0, 90, 180 o 270 gradi: ruota la pagina finita (template e testo insieme).</td></tr>
-  <tr><td><strong>Documento creato</strong></td><td>Nome del file creato. <code>{nome}</code> diventa il nome del
-      file di testo: con <code>{nome}.pdf</code> la fattura <code>FT123.txt</code> diventa <code>FT123.pdf</code>.</td></tr>
-  <tr><td><strong>Invio</strong>, <strong>Destinatario</strong>, <strong>Dati dell'invio</strong></td><td>Vedi il capitolo seguente.</td></tr>
-</table>
+  <tr><td><strong>Tipo</strong></td><td><strong>PDF</strong>, anche su template, oppure <strong>Word</strong>
+      (<code>.docx</code>).</td></tr>
+  <tr><td><strong>Azione</strong> (PDF)</td><td>
+      <code>file</code>: crea il PDF nella cartella di output.<br>
+      <code>pdf</code>: lo crea e lo apre a schermo sul computer dove gira il servizio (su Linux con il
+      visualizzatore PDF predefinito).<br>
+      <code>stampa</code>: lo crea e lo stampa sul computer dove gira il servizio, con la stampante scelta in
+      ConfigManager o, se non ne è stata scelta una, con quella predefinita. Su Linux la stampa passa da
+      CUPS.</td></tr>
+  <tr><td><strong>Azione</strong> (Word)</td><td><code>docx</code>: crea il documento Word nella cartella di
+      output.</td></tr>
+  <tr><td><strong>Template PDF</strong></td><td>Il modulo su cui stampare il testo, scelto tra i PDF della
+      cartella dei template. Se lo lasci vuoto, il testo va su un foglio bianco A4. Se il template è orizzontale,
+      anche il testo viene disposto in orizzontale.</td></tr>
+  <tr><td><strong>Rotazione</strong></td><td>0, 90, 180 o 270 gradi: ruota la pagina finita, template e testo
+      insieme.</td></tr>
+  <tr><td><strong>Documento creato</strong></td><td>Il nome del file da creare. <code>{nome}</code> viene
+      sostituito dal nome del file di testo: con <code>{nome}.pdf</code>, la fattura <code>FT123.txt</code> diventa
+      <code>FT123.pdf</code>.</td></tr>
+  <tr><td><strong>Invio</strong>, <strong>Destinatario</strong>, <strong>Dati dell'invio</strong></td><td>Vedi il
+      capitolo seguente.</td></tr>
+</table></div>
 
-<h2 id="invio">8. Invio per email, Telegram, WhatsApp</h2>
-<p>Dopo aver creato il documento il servizio può spedirlo. Si sceglie il canale in <strong>Invio</strong>
-(<code>0</code> = nessun invio) e si compilano gli altri campi come segue. In tutti i campi si può usare
-<code>{nome}</code>.</p>
+<h2 id="invio">8. Inviare il documento per email, Telegram o WhatsApp</h2>
+<p>Dopo aver creato il documento, il servizio può anche spedirlo. Scegli il canale nel campo
+<strong>Invio</strong> (<code>0</code> vuol dire nessun invio) e compila gli altri campi come spiegato qui sotto.
+In tutti i campi puoi usare <code>{nome}</code>.</p>
+
 <h3>Email</h3>
-<p>Il campo Destinatario non si usa. Nei <strong>Dati dell'invio</strong>, una voce per riga:</p>
+<p>Il campo Destinatario non serve. Nei <strong>Dati dell'invio</strong> scrivi una voce per riga:</p>
 <pre>cliente@esempio.it            ← indirizzo del destinatario
 Fattura {nome}                ← oggetto
-                              ← secondo allegato: percorso completo, oppure riga vuota
-Buongiorno,                   ← dalla quarta riga: testo del messaggio
+                              ← secondo allegato (percorso completo), oppure riga vuota
+Buongiorno,                   ← dalla quarta riga in poi: il testo del messaggio
 in allegato la fattura.</pre>
-<p>Il documento creato è sempre allegato. Mittente e server si impostano in ConfigManager.</p>
+<p>Il documento creato è sempre allegato. Indirizzo del mittente e server di posta si impostano in
+ConfigManager.</p>
+
 <h3>Telegram</h3>
-<p><strong>Destinatario</strong>: <code>telegram</code> seguito dall'id della chat, es. <code>telegram 123456789</code>.
-Nei <strong>Dati dell'invio</strong>:</p>
-<pre>{nome}.pdf                    ← documento da mandare (riga vuota = solo messaggio)
-Ecco il documento richiesto   ← dalla seconda riga: testo del messaggio</pre>
+<p>Nel campo <strong>Destinatario</strong> scrivi <code>telegram</code> seguito dall'identificativo della chat, per
+esempio <code>telegram 123456789</code>. Nei <strong>Dati dell'invio</strong>:</p>
+<pre>{nome}.pdf                    ← documento da mandare (riga vuota = solo il messaggio)
+Ecco il documento richiesto   ← dalla seconda riga in poi: il testo del messaggio</pre>
+
 <h3>WhatsApp</h3>
-<p><strong>Destinatario</strong>: <code>whatsapp</code> seguito dal numero con prefisso internazionale, es.
-<code>whatsapp 393331234567</code>. Per usare un template approvato su Meta si aggiungono nome e lingua:
-<code>whatsapp 393331234567 fattura it</code>. Nei <strong>Dati dell'invio</strong>:</p>
+<p>Nel campo <strong>Destinatario</strong> scrivi <code>whatsapp</code> seguito dal numero con il prefisso
+internazionale, per esempio <code>whatsapp 393331234567</code>. Per usare un template approvato su Meta aggiungi
+il suo nome e la lingua: <code>whatsapp 393331234567 fattura it</code>. Nei <strong>Dati dell'invio</strong>:</p>
 <pre>{nome}.pdf                    ← documento da mandare (riga vuota = nessun documento)
 Buongiorno,                   ← testo del messaggio (con un template: i valori {{1}}, {{2}}…)
 in allegato il documento.</pre>
-<div class="nota">Regola di WhatsApp: senza template un messaggio arriva solo se il destinatario ha scritto al
-numero aziendale nelle ultime 24 ore. Per i clienti in generale serve un template approvato.</div>
+<div class="nota">WhatsApp ha una regola precisa: senza template, un messaggio arriva solo se il destinatario ha
+scritto al numero aziendale nelle ultime 24 ore. Per scrivere ai clienti in generale serve un template
+approvato.</div>
 
-<h2 id="anteprima">9. Anteprima</h2>
-<p><strong>Anteprima</strong> (menu, pulsante a destra della barra, oppure <kbd>F5</kbd>) crea il documento con
-il testo di esempio usando <strong>lo stesso codice del servizio</strong>: quello che si vede è quello che il
-servizio produrrà.</p>
+<h2 id="anteprima">9. L'anteprima</h2>
+<p>Il comando <strong>Anteprima</strong> (dal menu, dal pulsante a destra della barra o con <kbd>F5</kbd>) crea il
+documento dal testo di esempio usando <strong>lo stesso codice del servizio</strong>: quello che vedi è
+esattamente quello che il servizio produrrà.</p>
 <ul>
-  <li><strong>PDF</strong>: si apre una finestra con le pagine sul template; frecce per cambiare pagina,
-      zoom, e <em>Apri nel visualizzatore</em> per aprirlo nel programma PDF del computer.</li>
-  <li><strong>Word</strong>: il documento si apre in Word.</li>
+  <li><strong>PDF</strong>: si apre una finestra con le pagine sul template. Con le frecce cambi pagina, con la
+      tendina scegli lo zoom, e con <em>Apri nel visualizzatore</em> lo apri nel programma PDF del
+      computer.</li>
+  <li><strong>Word</strong>: il documento si apre in Word (su Linux, di solito in LibreOffice).</li>
 </ul>
-<p>L'anteprima non invia nulla e non stampa: è solo un file temporaneo.</p>
+<p>L'anteprima non invia nulla e non stampa nulla: crea solo un file temporaneo.</p>
 
 <h2 id="salvare">10. Salvare e riaprire un modello</h2>
 <ul>
-  <li><strong>File &gt; Salva modello</strong> salva il modello (<code>.gui</code>), di solito nella cartella
-      <code>ModelliGUI</code> accanto al programma. Accanto al modello viene salvata anche una copia del
-      testo di esempio con lo stesso nome (<code>.txt</code>): serve per riaprirlo.</li>
-  <li><strong>File &gt; Apri modello…</strong> riapre un modello con il suo testo di esempio. Se il testo di
-      esempio non c'è, l'editor ne chiede uno.</li>
-  <li><strong>Salva modello con nome…</strong> crea una copia, per esempio per fare la variante di un modello esistente.</li>
-  <li>Il titolo della finestra mostra un <strong>*</strong> quando ci sono modifiche non salvate.</li>
+  <li><strong>File &gt; Salva modello</strong> salva il modello (il file <code>.gui</code>), di solito nella
+      cartella <code>ModelliGUI</code> accanto al programma. Accanto al modello viene salvata anche una copia del
+      testo di esempio, con lo stesso nome ed estensione <code>.txt</code>: serve per poterlo riaprire.</li>
+  <li><strong>File &gt; Apri modello…</strong> riapre un modello insieme al suo testo di esempio. Se il testo non
+      c'è più, l'editor te ne chiede uno.</li>
+  <li><strong>File &gt; Salva modello con nome…</strong> crea una copia, per esempio per preparare la variante di
+      un modello esistente.</li>
+  <li>Quando ci sono modifiche non salvate, il titolo della finestra mostra un <strong>*</strong>.</li>
 </ul>
-<div class="nota">Il modello <strong>non</strong> va salvato nella cartella di lavoro del servizio: il servizio
-cercherebbe di elaborarlo. L'editor lo impedisce.</div>
+<div class="nota">Non salvare mai un modello nella cartella di lavoro del servizio: il servizio proverebbe a
+elaborarlo come un documento. L'editor comunque te lo impedisce.</div>
 
-<h2 id="applicare">11. Applicare il modello ai file di testo</h2>
-<p><strong>File &gt; Applica a file di testo…</strong> chiede uno o più file di testo. Per ognuno:</p>
+<h2 id="applicare">11. Applicare un modello ai file di testo</h2>
+<p><strong>File &gt; Applica a file di testo…</strong> ti chiede uno o più file di testo. Per ciascuno
+l'editor:</p>
 <ol>
-  <li>copia il file di testo nella cartella di lavoro del servizio (se non c'è già);</li>
-  <li>crea accanto il <code>.gui</code> con lo stesso nome, ricavato dal modello con <code>{nome}</code> sostituito.</li>
+  <li>copia il file di testo nella cartella di lavoro del servizio, se non c'è già;</li>
+  <li>crea accanto il file <code>.gui</code> con lo stesso nome, preso dal modello sostituendo
+      <code>{nome}</code>.</li>
 </ol>
-<p>Il servizio trova la coppia di file, crea il documento nella cartella di output (ed eventualmente lo apre,
-lo stampa o lo spedisce) e poi cancella testo e <code>.gui</code> dalla cartella di lavoro.</p>
-<p>Lo stesso lavoro lo può fare in automatico il programma che oggi prepara i <code>.gui</code>: basta che
-copi il modello e sostituisca <code>{nome}</code> con il nome del file di testo (vedi
-<a href="#tecnico">Appendice tecnica</a>).</p>
+<p>Il servizio trova la coppia di file, crea il documento nella cartella di output (e, se previsto, lo apre, lo
+stampa o lo spedisce) e infine cancella il testo e il <code>.gui</code> dalla cartella di lavoro.</p>
+<p>Lo stesso lavoro può farlo in automatico il programma che oggi prepara i <code>.gui</code>: basta che copi il
+modello e sostituisca <code>{nome}</code> con il nome del file di testo (vedi l'<a href="#tecnico">appendice
+tecnica</a>).</p>
 
-<h2 id="regole">12. Regole e limiti</h2>
+<h2 id="excel">12. I modelli Excel (EditorExcel)</h2>
+<p>Per i fogli Excel c'è un editor a parte, <strong>EditorExcel</strong>. Qui il file di testo non è un documento
+da impaginare ma una tabella: ogni riga del testo diventa una riga del foglio e i campi sono separati da punto e
+virgola. Per esempio:</p>
+<pre>Codice;Descrizione;Quantità;Prezzo;Data;
+1;Viti;100;0,15;20/10/2026;
+2;Bulloni;50;1.234,50;21/10/2026;</pre>
+<p>Ogni campo deve finire con <code>;</code>: il testo che segue l'ultimo punto e virgola di una riga non diventa
+una cella.</p>
+<p>La formattazione si decide in due modi, ognuno con la sua scheda nel pannello a sinistra:</p>
 <ul>
-  <li><strong>Colonna 99.</strong> Nel <code>.gui</code> le colonne si scrivono con due cifre: il formato può
-      cambiare <em>dentro</em> una riga solo fino alla colonna 99. I caratteri oltre la colonna 99 sono su
-      sfondo grigio nell'editor e prendono il formato del pezzo che li precede. Una riga intera, anche lunga,
-      si può sempre formattare. Se si prova a salvare un cambio di formato oltre la colonna 99, l'editor
-      lo segnala con il numero della riga.</li>
-  <li><strong>Righe vuote</strong>: non hanno un formato proprio e tengono quello della riga precedente.</li>
-  <li><strong>Documenti più lunghi del testo di esempio</strong>: finite le righe del modello, i formati
-      ripartono dalla prima riga. Conviene quindi usare come esempio un documento con il numero di righe
-      tipico (per esempio una pagina intera).</li>
-  <li><strong>Righe più corte o più lunghe</strong> rispetto all'esempio: nessun problema, il formato
-      segue le colonne; il testo che va oltre l'ultimo pezzo formattato prende il formato di quel pezzo.</li>
-  <li><strong>PDF su più pagine</strong>: le righe che non stanno in una pagina passano alla successiva,
-      sempre sullo stesso template.</li>
-  <li><strong>Excel</strong>: i modelli dell'editor valgono per PDF e Word; i file Excel usano un'altra
-      formattazione (un formato per colonna) e non si preparano con questo editor.</li>
+  <li><strong>per colonna</strong>: il formato dei valori (numero, valuta, data…), il carattere, la larghezza e
+      l'allineamento di ogni colonna;</li>
+  <li><strong>per riga</strong>, con le <strong>righe speciali</strong>: titoli, intestazione, totali e
+      qualunque altra riga che deve apparire diversa dalle altre.</li>
 </ul>
 
-<h2 id="problemi">13. Problemi frequenti</h2>
+<h3>Come si prepara un modello Excel</h3>
+<ol class="passi">
+  <li>Scegli <strong>File &gt; Nuovo da testo di esempio…</strong> e apri un file di testo tipico.</li>
+  <li>Scegli una colonna con un clic sulla sua lettera (A, B, C…) o su una delle sue celle.
+      <kbd>Ctrl</kbd>+clic aggiunge o toglie una colonna, <kbd>Maiusc</kbd>+clic prende tutte le colonne in mezzo e
+      <kbd>Ctrl</kbd>+<kbd>A</kbd> le prende tutte. Dopo un clic sulla tabella, le frecce <kbd>←</kbd>
+      <kbd>→</kbd> passano alla colonna vicina.</li>
+  <li>Nella scheda <strong>Colonne</strong> decidi le proprietà. Valgono per tutte le colonne selezionate;
+      quando ne hai selezionate più di una, i campi mostrano le impostazioni della prima.</li>
+  <li>Nella scheda <strong>Righe speciali</strong> prepara gli stili per titoli, intestazione e totali (vedi
+      <a href="#righe-speciali">Le righe speciali</a>).</li>
+  <li>Premi <kbd>F5</kbd>: l'editor crea il file Excel con il codice del servizio e lo apre in Excel (o in
+      LibreOffice).</li>
+  <li>Salva e applica il modello come quelli PDF e Word (vedi i capitoli <a href="#salvare">10</a> e
+      <a href="#applicare">11</a>). Tutti i modelli stanno nella stessa cartella <code>ModelliGUI</code>, ma ogni
+      editor apre solo i suoi.</li>
+</ol>
+
+<h3>Le proprietà di una colonna</h3>
+<div class="tabella"><table>
+  <tr><th>Proprietà</th><th>Significato</th></tr>
+  <tr><td><strong>Formato dei valori</strong></td><td>Come Excel mostra i valori della colonna: numero intero o con
+      decimali, con i separatori delle migliaia, valuta in euro, percentuale, data, ora, testo e così via
+      (l'elenco completo è nell'<a href="#linee-excel">appendice</a>). Il testo viene trasformato nel valore
+      giusto: <code>1.234,56</code> diventa il numero 1234,56 e <code>20/10/2026</code> diventa una data. Se un
+      valore non si può trasformare resta testo, e il pannello te lo segnala con un esempio.</td></tr>
+  <tr><td><strong>Carattere delle celle</strong></td><td>Carattere, dimensione, grassetto, corsivo e colore delle
+      celle della colonna. Nelle righe speciali che hanno un carattere proprio vale quello della riga.</td></tr>
+  <tr><td><strong>Larghezza</strong></td><td>In caratteri, da 1 a 255. Se la lasci vuota, la colonna si adatta al
+      testo più lungo.</td></tr>
+  <tr><td><strong>Allineamento</strong></td><td>Sinistra, centro o destra. Con <em>automatico</em> fa come Excel:
+      numeri e date a destra, testo a sinistra.</td></tr>
+</table></div>
+<p>La tabella a destra mostra le celle come le vedrai in Excel con le impostazioni italiane, carattere e sfondo
+compresi. Mostra le prime 60 righe, mentre nell'anteprima ci sono tutte. Se non scegli un carattere, resta quello
+predefinito di Excel: Calibri 11 nero.</p>
+
+<h3 id="righe-speciali">Le righe speciali</h3>
+<p>Un foglio ha spesso alcune righe diverse dalle altre: un titolo in alto, l'intestazione delle colonne, una
+riga di totale in fondo. Per queste righe si preparano degli <strong>stili</strong> nella scheda
+<strong>Righe speciali</strong>. Un modello nuovo ne ha già uno, <em>Intestazione</em>, per la riga 1.</p>
+<ol class="passi">
+  <li>Fai clic sui <strong>numeri di riga</strong> a sinistra della tabella per scegliere le righe
+      (<kbd>Ctrl</kbd>+clic aggiunge o toglie una riga, <kbd>Maiusc</kbd>+clic prende tutte quelle in mezzo).</li>
+  <li>Premi <strong>Nuovo</strong>: lo stile nasce con le righe scelte. Per cambiare le righe di uno stile già
+      fatto, scegli le righe e premi <strong>Righe scelte</strong>, oppure scrivile nel campo
+      <strong>Righe</strong>.</li>
+  <li>Decidi carattere, sfondo, allineamento e se i valori devono restare testo.</li>
+</ol>
+<p>Nel campo <strong>Righe</strong> puoi scrivere numeri e intervalli separati da virgole, contando dalla prima
+riga oppure dall'ultima con la lettera <code>u</code>:</p>
+<div class="tabella"><table>
+  <tr><th>Scrivi</th><th>Righe</th></tr>
+  <tr><td><code>1</code></td><td>la prima riga</td></tr>
+  <tr><td><code>1-3, 10</code></td><td>le righe 1, 2, 3 e 10</td></tr>
+  <tr><td><code>u1</code></td><td>l'ultima riga, qualunque sia la lunghezza del documento</td></tr>
+  <tr><td><code>u3-u1</code></td><td>le ultime tre righe (per esempio subtotale, IVA e totale)</td></tr>
+  <tr><td><code>2-u2</code></td><td>dalla seconda alla penultima</td></tr>
+</table></div>
+<div class="consiglio"><strong>Consiglio.</strong> Per i totali usa <code>u1</code>, <code>u2</code>… invece del
+numero della riga: ogni documento ha un numero di righe diverso, ma il totale è sempre in fondo.</div>
+<div class="tabella"><table>
+  <tr><th>Proprietà dello stile</th><th>Significato</th></tr>
+  <tr><td><strong>Nome</strong></td><td>Serve solo a riconoscere lo stile nell'elenco, per esempio
+      <em>Titolo</em> o <em>Totale</em>.</td></tr>
+  <tr><td><strong>Carattere proprio</strong></td><td>Se è spuntato, la riga usa il carattere scelto qui (anche
+      Calibri 11 nero). Se non è spuntato, ogni cella tiene il carattere della sua colonna.</td></tr>
+  <tr><td><strong>Sfondo</strong></td><td>Grigio, giallo, azzurro, verde o arancio chiaro, oppure nessuno.</td></tr>
+  <tr><td><strong>Allineamento</strong></td><td>Sinistra, centro o destra. Con <em>automatico</em> vale quello
+      della colonna.</td></tr>
+  <tr><td><strong>Valori come testo</strong></td><td>I valori della riga non diventano numeri o date e non hanno
+      il formato della colonna. Serve per titoli e intestazioni: per esempio un'intestazione “2026” resta
+      testo e non diventa il numero 2026. Nei totali lascialo spento, così gli importi restano numeri con il
+      formato della colonna.</td></tr>
+</table></div>
+<p>Le righe speciali valgono più della formattazione delle colonne. Se una riga appartiene a più stili, vale
+quello più in basso nell'elenco: con <strong>Su</strong> e <strong>Giù</strong> cambi l'ordine. Nella tabella i
+numeri delle righe speciali sono colorati di lilla.</p>
+<p>Nel menu <strong>Modifica</strong> trovi annulla e ripeti (<kbd>Ctrl</kbd>+<kbd>Z</kbd> e
+<kbd>Ctrl</kbd>+<kbd>Y</kbd>, valgono sia per le colonne sia per le righe speciali), la copia del formato di una
+colonna su altre colonne
+(<kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>C</kbd> e <kbd>Ctrl</kbd>+<kbd>Maiusc</kbd>+<kbd>V</kbd>) e il ritorno al
+formato predefinito. Gli invii per email, Telegram e WhatsApp si impostano come negli altri modelli (vedi il
+<a href="#invio">capitolo 8</a>).</p>
+
+<h2 id="regole">13. Regole e limiti</h2>
+<ul>
+  <li><strong>La colonna 99.</strong> Nel file <code>.gui</code> le colonne si scrivono con due cifre, quindi il
+      formato può cambiare <em>dentro</em> una riga solo fino alla colonna 99. Nell'editor i caratteri oltre la
+      colonna 99 hanno lo sfondo grigio e prendono il formato del pezzo che li precede. Una riga intera, anche
+      lunga, si può sempre formattare. Se provi a salvare un cambio di formato oltre la colonna 99, l'editor ti
+      indica le righe da correggere.</li>
+  <li><strong>Righe vuote.</strong> Non hanno un formato proprio e tengono quello della riga precedente.</li>
+  <li><strong>Documenti più lunghi dell'esempio.</strong> Finite le righe del modello, i formati ripartono dalla
+      prima riga. Conviene quindi usare come esempio un documento con il numero di righe tipico, per esempio una
+      pagina intera.</li>
+  <li><strong>Righe più corte o più lunghe dell'esempio.</strong> Nessun problema: il formato segue le colonne e il
+      testo oltre l'ultimo pezzo formattato prende il formato di quel pezzo.</li>
+  <li><strong>PDF su più pagine.</strong> Le righe che non stanno in una pagina passano alla successiva, sempre
+      sullo stesso template.</li>
+  <li><strong>Excel.</strong> I modelli Excel si preparano solo con EditorExcel: hanno un formato per ogni
+      colonna più le righe speciali, invece di una linea di formato per ogni riga del testo.</li>
+</ul>
+
+<h2 id="problemi">14. Problemi frequenti</h2>
 <h3>Ho scelto un formato ma non è cambiato niente</h3>
-<p>Non c'era testo selezionato: la barra di stato lo segnala. Selezionare e riprovare.</p>
+<p>Probabilmente non c'era testo selezionato: la barra di stato lo segnala. Seleziona il testo e riprova.</p>
+
 <h3>Nel PDF il testo non è dove me lo aspettavo</h3>
 <p>Quasi sempre è un carattere proporzionale su una riga allineata con gli spazi (vedi
-<a href="#font">Colonne e spazi</a>). Usare Courier per quella riga, oppure controllare con l'anteprima.</p>
-<h3>L'anteprima dice “Template non trovato”</h3>
-<p>Il template scelto non è nella cartella dei template configurata in ConfigManager. Sceglierlo dalla tendina
-(che mostra solo i PDF di quella cartella).</p>
-<h3>Non trovo il testo di esempio di un modello</h3>
-<p>Va bene qualunque documento dello stesso tipo: all'apertura l'editor chiede di sceglierlo e al salvataggio
-lo copia accanto al modello.</p>
-<h3>Il servizio non ha creato il documento</h3>
-<p>Controllare che nella cartella di lavoro ci siano sia il <code>.txt</code> sia il <code>.gui</code> con lo
-stesso nome, e che il servizio (back.py / SingleGUY) sia in funzione. Se un file è sbagliato il
-servizio scrive l'errore e passa ai file successivi; il file sbagliato resta nella cartella di lavoro.</p>
-<p>Ogni operazione del servizio è scritta nel <strong>file di log</strong> (impostato in ConfigManager, di solito
-<code>FileGUY.log</code> accanto al programma), con data, nome del file, azione ed esito (<code>OK</code> o
-<code>ERRORE</code> con il motivo). Un errore nell'invio, nella stampa o nell'apertura a schermo viene scritto
-nel log ma non blocca: il documento è comunque creato.</p>
-<h3>Il testo bianco non si vede nel documento</h3>
-<p>È bianco su bianco: va usato solo sopra parti scure del template.</p>
+<a href="#font">Caratteri e colori</a>). Usa Courier per quella riga, oppure controlla la posizione con
+l'anteprima.</p>
 
-<h2 id="tecnico">14. Appendice tecnica: il file .gui</h2>
-<p>Per chi prepara i <code>.gui</code> con altri programmi. Il file è di testo (codifica Windows), una voce per riga:</p>
-<table>
+<h3>L'anteprima dice “Template non trovato”</h3>
+<p>Il template scelto non si trova nella cartella dei template impostata in ConfigManager. Sceglilo dalla
+tendina, che mostra solo i PDF di quella cartella.</p>
+
+<h3>Non trovo il testo di esempio di un modello</h3>
+<p>Va bene qualunque documento dello stesso tipo: quando apri il modello l'editor ti chiede di sceglierne uno, e
+al salvataggio lo copia accanto al modello.</p>
+
+<h3>In Excel un numero o una data sono rimasti testo</h3>
+<p>Il valore nel file di testo non era scritto in un modo riconoscibile: per esempio una data come
+<code>20 ottobre</code> invece di <code>20/10/2026</code>, oppure un numero con lettere. In EditorExcel, selezionando
+la colonna, il pannello mostra quanti valori non si possono trasformare e un esempio.</p>
+
+<h3>Il servizio non ha creato il documento</h3>
+<p>Controlla che nella cartella di lavoro ci siano sia il <code>.txt</code> sia il <code>.gui</code> con lo stesso
+nome, e che il servizio (<code>back</code> e <code>SingleGUY</code>) sia in funzione. Se un file contiene un
+errore, il servizio lo segnala e passa ai file successivi; il file sbagliato resta nella cartella di lavoro.</p>
+<p>Per capire cosa è successo apri il <strong>file di log</strong>: si imposta in ConfigManager e di solito è
+<code>FileGUY.log</code>, accanto al programma. Per ogni operazione riporta data e ora, nome del file, azione ed
+esito, cioè <code>OK</code> oppure <code>ERRORE</code> con il motivo. Un errore nell'invio, nella stampa o
+nell'apertura a schermo viene registrato ma non blocca nulla: il documento è comunque creato.</p>
+
+<h3>Il testo bianco non si vede nel documento</h3>
+<p>È bianco su bianco: usalo solo sopra le parti scure del template.</p>
+
+<h2 id="tecnico">15. Appendice tecnica: il file .gui</h2>
+<p>Questa parte serve a chi prepara i <code>.gui</code> con altri programmi. Il <code>.gui</code> è un file di
+testo (con la codifica di Windows o in UTF-8) con una voce per riga:</p>
+<div class="tabella"><table>
   <tr><th>Riga</th><th>Contenuto</th><th>Nel modello</th></tr>
   <tr><td>1</td><td>nome del file di testo</td><td><code>{nome}.txt</code></td></tr>
-  <tr><td>2</td><td>azione: <code>file</code>, <code>pdf</code>, <code>stampa</code>, <code>docx</code>
-      (altre azioni del servizio: <code>excel</code>, <code>barcode</code>, <code>immagini</code>, <code>exe</code>)</td><td></td></tr>
-  <tr><td>3</td><td>nome del documento da creare</td><td>es. <code>{nome}.pdf</code></td></tr>
-  <tr><td>4</td><td>template PDF (vuoto = nessuno)</td><td></td></tr>
+  <tr><td>2</td><td>azione: <code>file</code>, <code>pdf</code>, <code>stampa</code>, <code>docx</code>,
+      <code>excel</code> (il servizio conosce anche <code>barcode</code>, <code>immagini</code> ed
+      <code>exe</code>)</td><td></td></tr>
+  <tr><td>3</td><td>nome del documento da creare</td><td>per esempio <code>{nome}.pdf</code></td></tr>
+  <tr><td>4</td><td>template PDF (vuota = nessuno)</td><td></td></tr>
   <tr><td>5</td><td>rotazione in gradi</td><td></td></tr>
-  <tr><td>6</td><td>invio: <code>0</code>, <code>email</code>, <code>telegram</code>, <code>whatsapp</code></td><td></td></tr>
-  <tr><td>7</td><td>destinatario (Telegram / WhatsApp)</td><td></td></tr>
-  <tr><td>8 …</td><td>una <strong>linea di formato</strong> per ogni riga del testo</td><td></td></tr>
+  <tr><td>6</td><td>invio: <code>0</code>, <code>email</code>, <code>telegram</code> o <code>whatsapp</code></td><td></td></tr>
+  <tr><td>7</td><td>destinatario (Telegram o WhatsApp)</td><td></td></tr>
+  <tr><td>dalla 8</td><td>una <strong>linea di formato</strong> per ogni riga del testo (per Excel, le
+      <a href="#linee-excel">righe speciali e una linea per ogni colonna</a>)</td><td></td></tr>
   <tr><td></td><td><code>fine</code></td><td></td></tr>
   <tr><td>dopo <code>fine</code></td><td>dati dell'invio</td><td></td></tr>
-</table>
+</table></div>
 <p>Per usare un modello basta copiarlo sostituendo <code>{nome}</code> con il nome del file di testo senza
-<code>.txt</code>, e salvarlo nella cartella di lavoro <em>dopo</em> il file di testo.</p>
+<code>.txt</code>, e salvarlo nella cartella di lavoro <em>dopo</em> aver salvato il file di testo: il servizio
+parte quando trova il <code>.gui</code>.</p>
 
-<h3>Linee di formato</h3>
-<p>Ogni linea inizia con il numero della riga su 3 cifre, poi un tabulatore:</p>
-<pre>001                 riga senza codice: tiene il formato della riga prima
-002&lt;TAB&gt;tsn14       tutta la riga con un formato
+<h3>Linee di formato (PDF e Word)</h3>
+<p>Ogni linea comincia con il numero della riga su tre cifre, seguito da un tabulatore:</p>
+<pre>001                 riga senza codice: tiene il formato della riga precedente
+002&lt;TAB&gt;tsn14       tutta la riga con un solo formato
 003&lt;TAB&gt;cnn10 00 09&lt;TAB&gt;csn10r 09 20&lt;TAB&gt;cnn10 20 41
-                    più formati: codice, colonna iniziale, colonna finale (esclusa), 2 cifre ciascuna</pre>
-<p>Le colonne partono da 0. Il testo dopo l'ultimo pezzo prende il formato dell'ultimo pezzo.</p>
+                    più formati: codice, colonna iniziale, colonna finale (esclusa), due cifre ciascuna</pre>
+<p>Le colonne si contano da 0. Il testo dopo l'ultimo pezzo prende il formato dell'ultimo pezzo.</p>
 
 <h3>Codice di formato</h3>
-<table>
+<div class="tabella"><table>
   <tr><th>Posizione</th><th>Significato</th><th>Valori</th></tr>
   <tr><td>1</td><td>carattere</td><td><code>t</code> Times, <code>h</code> Helvetica/Arial, <code>c</code> Courier,
       <code>k</code> Calibri, <code>v</code> Verdana, <code>g</code> Georgia, <code>u</code> Segoe UI</td></tr>
   <tr><td>2</td><td>grassetto</td><td><code>s</code> sì, <code>n</code> no</td></tr>
   <tr><td>3</td><td>corsivo</td><td><code>s</code> sì, <code>n</code> no</td></tr>
-  <tr><td>4-5</td><td>dimensione in punti</td><td><code>06</code> … <code>99</code></td></tr>
+  <tr><td>4-5</td><td>dimensione in punti</td><td>da <code>01</code> a <code>99</code></td></tr>
   <tr><td>6</td><td>colore</td><td><code>n</code> nero, <code>r</code> rosso, <code>v</code> verde,
       <code>b</code> blu, <code>w</code> bianco</td></tr>
-</table>
-<p>Esempi: <code>tsn14</code> = Times grassetto 14 nero; <code>hns10r</code> = Helvetica corsivo 10 rosso.</p>
-<p>Nel <strong>Word</strong> il colore c'è sempre (6 caratteri). Nel <strong>PDF</strong> il colore si può
-omettere (5 caratteri = nero), ma sulla stessa linea i codici devono essere tutti con il colore o tutti senza:
-l'editor scrive il colore solo sulle righe che ne hanno uno diverso dal nero, così i modelli senza colori
-restano identici a quelli di prima.</p>
+</table></div>
+<p>Esempi: <code>tsn14</code> è Times grassetto 14 nero; <code>hns10r</code> è Helvetica corsivo 10 rosso.</p>
+<p>Nei documenti <strong>Word</strong> il colore c'è sempre (codice di 6 caratteri). Nei <strong>PDF</strong> si
+può omettere (5 caratteri, e il testo è nero), ma sulla stessa linea i codici devono essere o tutti con il colore
+o tutti senza. L'editor scrive il colore solo sulle righe che ne hanno uno diverso dal nero, così i modelli senza
+colori restano identici a quelli di una volta.</p>
+
+<h3 id="linee-excel">Righe speciali e colonne Excel</h3>
+<p>Con l'azione <code>excel</code> la riga 4 (template) è vuota e la riga 5 (rotazione) vale <code>0</code>. Dalla
+riga 8 il file contiene, in quest'ordine:</p>
+<ol>
+  <li>una linea per ogni <strong>stile di riga speciale</strong> (anche nessuna);</li>
+  <li>una linea con la sola parola <code>colonna</code>;</li>
+  <li>una linea per ogni <strong>colonna</strong> del foglio, nell'ordine A, B, C…;</li>
+  <li><code>fine</code>, seguita dai dati dell'invio come negli altri modelli.</li>
+</ol>
+<pre>1&lt;TAB&gt;nome=Intestazione&lt;TAB&gt;carattere=ksn11n&lt;TAB&gt;sfondo=grigio&lt;TAB&gt;testo=si
+u3-u1&lt;TAB&gt;nome=Totali&lt;TAB&gt;carattere=ksn12n&lt;TAB&gt;sfondo=giallo
+colonna
+1&lt;TAB&gt;larghezza=8
+0
+8&lt;TAB&gt;carattere=cnn11n&lt;TAB&gt;larghezza=14&lt;TAB&gt;allineamento=destra
+12
+fine</pre>
+<p>Ogni voce di una linea è separata dalle altre da un <strong>tabulatore</strong>. Dopo la prima voce vengono, in
+qualsiasi ordine, le voci facoltative <code>chiave=valore</code>; quelle sconosciute o con valori sbagliati
+vengono ignorate.</p>
+
+<h3>Linee delle righe speciali</h3>
+<p>La prima voce dice a quali righe si applica lo stile: numeri e intervalli separati da virgole, con
+<code>u1</code> per l'ultima riga, <code>u2</code> per la penultima e così via (per esempio
+<code>1-2, u1</code>). Le righe che il foglio non ha vengono ignorate.</p>
+<div class="tabella"><table>
+  <tr><th>Voce</th><th>Valore</th></tr>
+  <tr><td><code>nome=</code></td><td>nome dello stile, usato solo dall'editor (può contenere spazi)</td></tr>
+  <tr><td><code>carattere=</code></td><td>codice di formato con il colore (6 caratteri, come sopra); senza
+      questa voce ogni cella tiene il carattere della sua colonna</td></tr>
+  <tr><td><code>sfondo=</code></td><td><code>grigio</code>, <code>giallo</code>, <code>azzurro</code>,
+      <code>verde</code> o <code>arancio</code> (tutti chiari)</td></tr>
+  <tr><td><code>allineamento=</code></td><td><code>sinistra</code>, <code>centro</code> o <code>destra</code>;
+      senza questa voce vale quello della colonna</td></tr>
+  <tr><td><code>testo=si</code></td><td>i valori restano testo e non prendono il formato della colonna</td></tr>
+</table></div>
+<p>Le righe speciali valgono più delle colonne. Se una riga appartiene a più stili vale l'ultimo.</p>
+
+<h3>Linee delle colonne</h3>
+<p>La prima voce è il numero del <strong>formato dei valori</strong> (tabella qui sotto). Le colonne che non hanno
+una linea prendono il formato generale e il carattere predefinito di Excel.</p>
+<div class="tabella"><table>
+  <tr><th>Voce</th><th>Valore</th></tr>
+  <tr><td><code>carattere=</code></td><td>codice di formato con il colore (6 caratteri, come sopra) per le celle
+      della colonna</td></tr>
+  <tr><td><code>larghezza=</code></td><td>larghezza in caratteri, da 1 a 255 (senza questa voce: automatica)</td></tr>
+  <tr><td><code>allineamento=</code></td><td><code>sinistra</code>, <code>centro</code> o <code>destra</code>
+      (senza questa voce: come fa Excel)</td></tr>
+</table></div>
+<div class="nota">I <code>.gui</code> Excel creati prima del 21/10/2026 non hanno la linea <code>colonna</code>:
+il servizio li legge ancora, considerando tutte le linee come colonne e la prima riga come testo. Le voci
+<code>intestazione=</code> delle prime versioni dell'editor Excel non sono più usate: al loro posto c'è la riga
+speciale <em>Intestazione</em>. Le versioni di FileGUY precedenti al 21/10/2026 non conoscono le righe
+speciali: i modelli nuovi vanno usati con il servizio aggiornato.</div>
+<div class="tabella"><table>
+  <tr><th>Numero</th><th>Formato</th><th>Numero</th><th>Formato</th></tr>
+  <tr><td>0</td><td>generale (il testo così com'è)</td><td>13</td><td>data 20-ott-2026</td></tr>
+  <tr><td>1</td><td>numero intero 1234</td><td>14</td><td>giorno e mese 20-ott</td></tr>
+  <tr><td>2</td><td>numero con 2 decimali 1234,56</td><td>15</td><td>mese e anno ott 2026</td></tr>
+  <tr><td>3</td><td>intero con le migliaia 1.234</td><td>16</td><td>ora 1:30 PM</td></tr>
+  <tr><td>4</td><td>decimali con le migliaia 1.234,56</td><td>17</td><td>ora con i secondi 1:30:55 PM</td></tr>
+  <tr><td>5</td><td>valuta intera 1.234 €</td><td>18</td><td>ora 13:30</td></tr>
+  <tr><td>6, 7</td><td>valuta intera, negativi in rosso</td><td>19</td><td>ora con i secondi 13:30:55</td></tr>
+  <tr><td>8</td><td>valuta con decimali, negativi in rosso</td><td>20</td><td>data e ora 20/10/2026 13:30</td></tr>
+  <tr><td>9</td><td>percentuale 12%</td><td>21</td><td>ingegneristico 1,2E+3</td></tr>
+  <tr><td>10</td><td>percentuale con decimali 12,50%</td><td>22</td><td>minuti e secondi 30:55</td></tr>
+  <tr><td>11</td><td>scientifico 1,23E+03</td><td>23</td><td>testo</td></tr>
+  <tr><td>12</td><td>data 20/10/2026</td><td>24</td><td>valuta con decimali 1.234,56 €</td></tr>
+</table></div>
 
 </div>
 </body>
