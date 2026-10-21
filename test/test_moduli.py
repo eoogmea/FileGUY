@@ -139,6 +139,15 @@ def whatsapp_numeri_e_richieste():
 
 @prova
 def config_linux_cifrata_salva_e_rilegge():
+    # Su Windows è una simulazione e serve la libreria cryptography, che requirements.txt installa solo su
+    # Linux (su Windows si usa DPAPI): se manca si salta, su Linux la prova vera è in test_linux.py
+    try:
+        import cryptography  # noqa: F401
+    except ImportError:
+        if os.name == "nt":
+            print("config_linux_cifrata_salva_e_rilegge: saltata (cryptography non installata su Windows)")
+            return
+        raise
     import config_sicuro
     vecchio_nome, vecchio_xdg = os.name, os.environ.get("XDG_CONFIG_HOME")
     machine_id = os.path.join(cartella, "machine-id")
