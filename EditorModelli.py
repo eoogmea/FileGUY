@@ -86,6 +86,25 @@ def dimensiona(finestra, larghezza, altezza, minima=None):
         finestra.minsize(min(minima[0], larghezza), min(minima[1], altezza))
 
 
+# Se un font non è installato (es. Consolas o Calibri su Linux) l'editor mostra quello che il servizio usa al
+# suo posto nel PDF (SingleGUY.FONT_SOSTITUTI), così le colonne si vedono come nel documento
+FAMIGLIE_SOSTITUTE = {"o": "DejaVu Sans Mono", "h": "Helvetica", "k": "Helvetica", "v": "Helvetica",
+                      "u": "Helvetica", "g": "Times New Roman"}
+_famiglie_disponibili = None
+
+
+def famiglia_tk(lettera):
+    """Il carattere con cui l'editor mostra il font della lettera del .gui (serve una finestra già creata)."""
+    global _famiglie_disponibili
+    if _famiglie_disponibili is None:
+        import tkinter.font as tkfont
+        _famiglie_disponibili = set(tkfont.families())
+    famiglia = FONT[lettera][1]
+    if famiglia in _famiglie_disponibili:
+        return famiglia
+    return FAMIGLIE_SOSTITUTE.get(lettera, famiglia)
+
+
 def leggi_preferenze():
     """Preferenze dell'utente (modelli recenti, zoom), comuni a EditorModelli ed EditorExcel."""
     try:
@@ -220,7 +239,7 @@ class DialogoSegnaposto(tk.Toplevel):
         ttk.Checkbutton(corpo, text="Lascia punteggiatura e simboli (/ . , : - €): date, importi e righe di "
                                     "separazione restano riconoscibili", variable=self.simboli,
                         command=self._anteprima).grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 6))
-        self.esempio = tk.Text(corpo, height=12, width=86, wrap="none", font=("Consolas", 9), background="#f6f6f6")
+        self.esempio = tk.Text(corpo, height=12, width=86, wrap="none", font=(famiglia_tk("o"), 9), background="#f6f6f6")
         self.esempio.grid(row=3, column=0, columnspan=3, sticky="we")
         pulsanti = ttk.Frame(corpo)
         pulsanti.grid(row=4, column=0, columnspan=3, sticky="e", pady=(10, 0))
@@ -403,7 +422,7 @@ class EditorModelli(tk.Tk):
 
         ttk.Label(riquadro, text="Dati dell'invio\n(righe dopo \"fine\")").grid(row=2, column=0, sticky="nw",
                                                                              pady=(4, 0))
-        self.coda = tk.Text(riquadro, height=3, width=60, font=("Consolas", 9), undo=True)
+        self.coda = tk.Text(riquadro, height=3, width=60, font=(famiglia_tk("o"), 9), undo=True)
         self.coda.grid(row=2, column=1, columnspan=8, sticky="we", pady=(4, 0))
         self.coda.bind("<<Modified>>", self._coda_modificata)
         ttk.Label(riquadro, text="{nome} = nome del file di testo, senza .txt", foreground="gray").grid(
@@ -470,7 +489,7 @@ class EditorModelli(tk.Tk):
         # undo=True serve solo quando il testo si modifica (i formati non entrano nell'annulla)
         self.testo = tk.Text(cornice, wrap="none", undo=True, padx=8, pady=8, spacing1=2, spacing3=2, height=10,
                              exportselection=False, inactiveselectbackground="#9cc3ee",
-                             font=(FONT[PREDEFINITO[0]][1], self._dimensione_vista(PREDEFINITO[3])),
+                             font=(famiglia_tk(PREDEFINITO[0]), self._dimensione_vista(PREDEFINITO[3])),
                              xscrollcommand=self._scorrimento_orizzontale, yscrollcommand=self._scorrimento,
                              insertwidth=2)
         self.testo.pack(side="left", fill="both", expand=True)
@@ -563,10 +582,10 @@ class EditorModelli(tk.Tk):
             if colonna == COLONNA_MASSIMA:
                 # Oltre la colonna 99 il formato non può cambiare
                 self.righello.create_line(x, 0, x, altezza, fill="red")
-                self.righello.create_text(x + 2, 1, anchor="nw", text=str(colonna), fill="red", font=("Consolas", 7))
+                self.righello.create_text(x + 2, 1, anchor="nw", text=str(colonna), fill="red", font=(famiglia_tk("o"), 7))
             elif colonna % 10 == 0:
                 self.righello.create_line(x, altezza - 7, x, altezza, fill="gray")
-                self.righello.create_text(x + 1, 1, anchor="nw", text=str(colonna), fill="gray", font=("Consolas", 7))
+                self.righello.create_text(x + 1, 1, anchor="nw", text=str(colonna), fill="gray", font=(famiglia_tk("o"), 7))
             elif colonna % 5 == 0:
                 self.righello.create_line(x, altezza - 4, x, altezza, fill="gray")
             else:
@@ -583,7 +602,7 @@ class EditorModelli(tk.Tk):
             if riga > len(self.righe):
                 break
             self.numeri.create_text(38, posizione[1] + posizione[3] // 2, anchor="e", text=str(riga),
-                                    fill="gray", font=("Consolas", 9))
+                                    fill="gray", font=(famiglia_tk("o"), 9))
             indice = self.testo.index(indice + "+1line")
             if int(indice.split(".")[0]) == riga:
                 break
@@ -638,7 +657,7 @@ class EditorModelli(tk.Tk):
                 dimensione = self._dimensione_vista(s)
                 nome = "v|%s|%d|%s|%s" % (f, dimensione, stile, colore)
                 # Il bianco si vede solo su uno sfondo scuro
-                self.testo.tag_configure(nome, font=(FONT[f][1], dimensione, stile), foreground="#" + colore,
+                self.testo.tag_configure(nome, font=(famiglia_tk(f), dimensione, stile), foreground="#" + colore,
                                          background="#8a8a8a" if c == "w" else "")
                 self.testo.tag_add(nome, indice, indice + "+%dc" % len(valore))
         self.testo.tag_raise("sel")
@@ -916,7 +935,7 @@ class EditorModelli(tk.Tk):
         if nuovo == self.zoom:
             return
         self.zoom = nuovo
-        self.testo.configure(font=(FONT[PREDEFINITO[0]][1], self._dimensione_vista(PREDEFINITO[3])))
+        self.testo.configure(font=(famiglia_tk(PREDEFINITO[0]), self._dimensione_vista(PREDEFINITO[3])))
         self._aggiorna_vista()
         self._messaggio("Zoom %d%% (solo nell'editor: il documento non cambia)" % round(nuovo * 100))
         self.preferenze["zoom"] = nuovo

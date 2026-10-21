@@ -238,13 +238,15 @@ def casi(modelli=None):
          uscite=["docx_telegram.docx"], chiamate=["tg_sendMessage", "tg_sendDocument"])
 
     # --- Barcode, immagini, exe (solo .gui, niente .txt) ---
+    # Percorsi completi come li scrive il gestionale, con il separatore del sistema (\ su Windows, / su Linux)
     barcode_righe = ["barcode_doc", "barcode", "2",
-                     "123456789012", "ean13", "300,500", "400,600", "@LAVORO@\\barcode_doc.pdf", "0",
-                     "ABC-123", "code128", "100,100", "300,160", "@LAVORO@\\barcode_doc.pdf", "0"]
+                     "123456789012", "ean13", "300,500", "400,600", "@LAVORO@" + os.sep + "barcode_doc.pdf", "0",
+                     "ABC-123", "code128", "100,100", "300,160", "@LAVORO@" + os.sep + "barcode_doc.pdf", "0"]
     caso("barcode", barcode_righe, txt=None, lavoro_extra=["barcode_doc.pdf"],
          uscite=["@LAVORO@barcode_doc.pdf"])
     immagini_righe = ["immagini_doc", "immagini", "1",
-                      "@LAVORO@\\logo.png", "100,100", "400,280", "@LAVORO@\\immagini_doc.pdf", "0"]
+                      "@LAVORO@" + os.sep + "logo.png", "100,100", "400,280",
+                      "@LAVORO@" + os.sep + "immagini_doc.pdf", "0"]
 
     def controlla_immagine(config):
         doc = pymupdf.open(os.path.join(config["cartella_lavoro"], "immagini_doc.pdf"))

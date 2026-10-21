@@ -125,6 +125,15 @@ def crea_con_servizio(word, nome):
     return os.path.join(lavoro, intestazione["uscita"])
 
 
+def famiglia_nel_pdf(nome_pdf):
+    """La famiglia (senza spazi) del font che il servizio usa davvero per un nome del PDF: dipende dal
+    computer, per esempio su Linux al posto di Calibri c'è Helvetica e al posto di Consolas DejaVu Sans Mono."""
+    import re
+    nome = pymupdf.Font(fontfile=servizio().trova_font(nome_pdf)).name
+    # Lo stile dopo la famiglia: "Regular", "Bold", ma DejaVu chiama "Book" il normale
+    return re.sub(r"\s+(Regular|Book|Bold|Italic|Oblique)\b.*$", "", nome).replace(" ", "")
+
+
 @prova
 def servizio_applica_formati_pdf():
     doc = pymupdf.open(crea_con_servizio(False, "pdf"))
@@ -133,19 +142,20 @@ def servizio_applica_formati_pdf():
         for riga in blocco.get("lines", []):
             for span in riga["spans"]:
                 pezzi[span["text"].strip()] = (span["font"], round(span["size"]), "%06X" % span["color"])
-    # testo: (inizio del nome del font, grassetto, dimensione, colore)
+    # testo: (font del .gui come lo chiama il servizio, grassetto, dimensione, colore)
     attesi = {
-        "INFAS SERVICE S.r.l.": ("TimesNewRoman", True, 14, "000000"),
-        "Fattura n. 123 del 20/10/2026": ("CourierNew", True, 12, "0000FF"),
-        "Cliente:": (("Arial", "Helvetica"), False, 10, "FF0000"),
-        "Mario Rossi": ("TimesNewRoman", True, 14, "000000"),
-        "Totale: 1.234,56 €": ("CourierNew", True, 12, "0000FF"),
+        "INFAS SERVICE S.r.l.": ("Times", True, 14, "000000"),
+        "Fattura n. 123 del 20/10/2026": ("Courier", True, 12, "0000FF"),
+        "Cliente:": ("Helvetica", False, 10, "FF0000"),
+        "Mario Rossi": ("Times", True, 14, "000000"),
+        "Totale: 1.234,56 €": ("Courier", True, 12, "0000FF"),
         "Descrizione con accenti: città, perché, più, così": ("Calibri", True, 11, "008000"),
         "Testo bianco su fondo scuro": ("Georgia", False, 10, "FFFFFF"),
         "Verdana:": ("Verdana", False, 9, "000000"),
         "e Segoe UI": ("SegoeUI", True, 10, "000000"),
     }
-    for testo, (font, grassetto, dimensione, colore) in attesi.items():
+    for testo, (nome_pdf, grassetto, dimensione, colore) in attesi.items():
+        font = famiglia_nel_pdf(nome_pdf)
         assert testo in pezzi, "manca %r in %r" % (testo, list(pezzi))
         trovato_font, trovata_dimensione, trovato_colore = pezzi[testo]
         assert trovato_font.replace(" ", "").startswith(font) and trovata_dimensione == dimensione \
@@ -392,7 +402,9 @@ def font_a_larghezza_fissa_nel_pdf_e_in_word():
         (modulo.docx if word else modulo.pdf)(guida, config)
     font_pdf = {re.sub(r"^[A-Z]{6}\+", "", s["font"]) for b in pymupdf.open(os.path.join(cartella_prova, "fissi.pdf"))[0]
                 .get_text("dict")["blocks"] for l in b["lines"] for s in l["spans"]}
-    for atteso in ("CourierNew", "Consolas", "DejaVuSansMono", "IBMPlexMono", "LiberationMono"):
+    # Il font che il servizio usa su questo computer (su Linux Consolas diventa DejaVu Sans Mono)
+    for lettera in modello_gui.FONT_FISSI:
+        atteso = famiglia_nel_pdf(modulo.FONT_CODICI[lettera][0])
         assert any(atteso in nome.replace(" ", "").replace("-", "") for nome in font_pdf), (atteso, font_pdf)
     nomi_word = {run.font.name for run in Document(os.path.join(cartella_prova, "fissi.docx")).paragraphs[0].runs}
     assert {"Courier New", "Consolas", "DejaVu Sans Mono", "IBM Plex Mono", "Liberation Mono"} <= nomi_word, nomi_word

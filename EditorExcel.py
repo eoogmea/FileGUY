@@ -29,8 +29,8 @@ from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
 from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, MAX_ANNULLA, MAX_RECENTI, NOMI_COLORI, NOMI_FONT,
-                           SceltaDescritta, apri_con_avviso, apri_guida, dimensiona, leggi_preferenze,
-                           scrivi_preferenze)
+                           SceltaDescritta, apri_con_avviso, apri_guida, dimensiona, famiglia_tk,
+                           leggi_preferenze, scrivi_preferenze)
 from config_sicuro import carica_config
 from modello_gui import (COLORI, FONT, FORMATI_EXCEL, PREDEFINITO_EXCEL, SFONDI, campi_excel,
                          colonna_excel_vuota, righe_excel, stile_riga_vuoto, valore_excel)
@@ -133,7 +133,7 @@ def testo_mostrato(testo, codice):
 def font_tk(formato, zoom=1.0):
     font, grassetto, corsivo, dimensione, _ = formato or PREDEFINITO_EXCEL
     stile = " ".join(n for n, attivo in (("bold", grassetto), ("italic", corsivo)) if attivo) or "normal"
-    return (FONT[font][1], max(1, int(round(dimensione * zoom))), stile)
+    return (famiglia_tk(font), max(1, int(round(dimensione * zoom))), stile)
 
 
 class GruppoCarattere(ttk.LabelFrame):
@@ -312,7 +312,7 @@ class EditorExcel(tk.Tk):
         ttk.Entry(riquadro, textvariable=self.destinatario, width=28).grid(row=0, column=5, sticky="we")
         ttk.Label(riquadro, text="Dati dell'invio\n(righe dopo \"fine\")").grid(row=1, column=0, sticky="nw",
                                                                              pady=(4, 0))
-        self.coda = tk.Text(riquadro, height=3, width=60, font=("Consolas", 9), undo=True)
+        self.coda = tk.Text(riquadro, height=3, width=60, font=(famiglia_tk("o"), 9), undo=True)
         self.coda.grid(row=1, column=1, columnspan=5, sticky="we", pady=(4, 0))
         self.coda.bind("<<Modified>>", self._coda_modificata)
         ttk.Label(riquadro, text="{nome} = nome del file di testo, senza .txt", foreground="gray").grid(
