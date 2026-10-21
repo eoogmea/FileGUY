@@ -17,3 +17,4 @@ build/
 
 # Ambiente Python dei test su Linux
 .venv-linux/
+.venv-windows/
