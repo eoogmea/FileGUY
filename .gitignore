@@ -14,3 +14,6 @@ build/
 # Log del servizio
 *.log
 *.log.[0-9]
+
+# Ambiente Python dei test su Linux
+.venv-linux/

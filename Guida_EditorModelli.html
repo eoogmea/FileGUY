@@ -206,7 +206,8 @@ testo</strong>: lo sfondo diventa giallo chiaro e puoi scrivere, incollare, tagl
   <li>Procurati un file di testo tipico, per esempio una fattura appena uscita dal gestionale, e salvalo in una
       cartella qualsiasi.</li>
   <li>Scegli <strong>File &gt; Nuovo da testo di esempio…</strong> (<kbd>Ctrl</kbd>+<kbd>N</kbd>) e apri quel
-      file.</li>
+      file. Se preferisci lavorare su un testo neutro, scegli invece <strong>File &gt; Nuovo da testo con
+      segnaposto x…</strong> (vedi <a href="#segnaposto">Il testo con le x</a>).</li>
   <li>Nel riquadro <strong>Documento</strong> scegli se creare un <strong>PDF</strong> o un
       <strong>Word</strong>. Per il PDF scegli anche il <strong>template</strong>, se il documento va stampato su
       un modulo.</li>
@@ -285,10 +286,49 @@ cursore è su un carattere, la barra di formattazione mostra il suo formato.</p>
       sia i modelli recenti sia lo zoom.</td></tr>
 </table></div>
 
+<h3 id="segnaposto">Il testo con le x</h3>
+<p>Un modello vale per tutte le fatture, ma il testo di esempio è quello di una fattura sola: un nome corto o un
+importo piccolo non fanno vedere quanto spazio serve davvero. Per questo puoi sostituire il testo con delle
+<strong>x</strong>:</p>
+<ul>
+  <li><strong>File &gt; Nuovo da testo con segnaposto x…</strong> apre un testo di esempio e lo trasforma
+      subito;</li>
+  <li><strong>Modifica &gt; Sostituisci il testo con segnaposto x…</strong> trasforma il testo già aperto,
+      tenendo la formattazione che hai già fatto.</li>
+</ul>
+<p>Ogni <em>campo</em> (le parole separate da un solo spazio, per esempio <code>Mario Rossi S.p.A.</code>) diventa
+tutto x. Si può scegliere:</p>
+<div class="tabella"><table>
+  <tr><th>Opzione</th><th>Effetto</th></tr>
+  <tr><td><strong>x in più dopo ogni campo</strong></td><td>Allunga ogni campo di qualche x, per fare spazio a nomi
+      e importi più lunghi di quelli dell'esempio. Le x in più occupano solo gli spazi che seguono il campo e ne
+      lasciano sempre almeno uno: il campo dopo resta nella sua colonna.</td></tr>
+  <tr><td><strong>Lascia punteggiatura e simboli</strong></td><td>Lascia <code>/ . , : - €</code> e gli altri
+      simboli: <code>20/10/2026</code> diventa <code>xx/xx/xxxx</code>, <code>1.234,56</code> diventa
+      <code>x.xxx,xx</code>, e le righe di trattini restano com'erano. Senza questa spunta diventa x tutto ciò che
+      non è uno spazio.</td></tr>
+</table></div>
+<p>La finestra mostra in anteprima le prime righe prima e dopo. Il file di testo di partenza non cambia: il testo
+con le x va nella copia salvata accanto al modello, e l'anteprima (<kbd>F5</kbd>) mostra il documento con le
+x.</p>
+
 <h2 id="font">6. Caratteri e colori</h2>
 <h3>Caratteri</h3>
+<p>Per i modelli i più utili sono quelli <strong>a larghezza fissa</strong>: tutte le lettere e gli spazi sono
+larghi uguale, quindi il testo resta incolonnato come nel file del gestionale. Nell'elenco dell'editor sono i
+primi.</p>
 <div class="tabella"><table>
   <tr><th>Carattere</th><th>Tipo</th><th>Note</th></tr>
+  <tr><td style="font-family:'Courier New'">Courier</td><td>a larghezza fissa</td><td>il classico delle stampanti;
+      un po' sottile</td></tr>
+  <tr><td style="font-family:Consolas">Consolas</td><td>a larghezza fissa</td><td>moderno e molto leggibile; è di
+      Windows: su Linux al suo posto si usa DejaVu Sans Mono</td></tr>
+  <tr><td style="font-family:'DejaVu Sans Mono'">DejaVu Sans Mono</td><td>a larghezza fissa</td><td>chiaro e
+      robusto, ben leggibile anche piccolo</td></tr>
+  <tr><td style="font-family:'IBM Plex Mono'">IBM Plex Mono</td><td>a larghezza fissa</td><td>elegante, adatto
+      anche alle intestazioni</td></tr>
+  <tr><td style="font-family:'Liberation Mono'">Liberation Mono</td><td>a larghezza fissa</td><td>stesse larghezze
+      del Courier: un modello pensato in Courier resta allineato</td></tr>
   <tr><td style="font-family:'Times New Roman'">Times</td><td>proporzionale, con grazie</td><td>è il formato di
       base dei documenti</td></tr>
   <tr><td style="font-family:Arial">Helvetica</td><td>proporzionale, senza grazie</td><td>nel PDF usa i file
@@ -301,11 +341,14 @@ cursore è su un carattere, la barra di formattazione mostra il suo formato.</p>
       intestazioni</td></tr>
   <tr><td style="font-family:'Segoe UI'">Segoe UI</td><td>proporzionale, senza grazie</td><td>il carattere di
       Windows</td></tr>
-  <tr><td style="font-family:'Courier New'">Courier</td><td>a larghezza fissa</td><td>lettere e spazi hanno tutti
-      la stessa larghezza: è l'unico che mantiene allineate le colonne</td></tr>
 </table></div>
-<p>Su Linux Calibri, Verdana, Segoe UI e Georgia di solito non sono installati: in quel caso il servizio usa
-Helvetica al posto dei primi tre e Times al posto di Georgia.</p>
+<p>DejaVu Sans Mono, IBM Plex Mono e Liberation Mono sono nella cartella <code>Fonts</code> del programma
+(hanno licenze libere, che sono nella stessa cartella): nel PDF funzionano su ogni computer, anche su Linux. Nei
+documenti <strong>Word</strong> ed <strong>Excel</strong> invece il carattere viene solo indicato per nome: se sul
+computer di chi apre il documento non è installato, Word o Excel ne usano uno simile.</p>
+<p>Su Linux Calibri, Verdana, Segoe UI, Georgia e Consolas di solito non sono installati: in quel caso il
+servizio usa Helvetica al posto dei primi tre, Times al posto di Georgia e DejaVu Sans Mono al posto di
+Consolas.</p>
 
 <div class="nota"><strong>Attenzione alle colonne allineate con gli spazi.</strong> Nei caratteri
 <em>proporzionali</em> ogni lettera ha la sua larghezza (una “i” è molto più stretta di una “M”) e anche lo
@@ -336,13 +379,13 @@ documento lo sfondo è quello del template: su un foglio bianco il testo bianco 
   <tr><td><strong>Tipo</strong></td><td><strong>PDF</strong>, anche su template, oppure <strong>Word</strong>
       (<code>.docx</code>).</td></tr>
   <tr><td><strong>Azione</strong> (PDF)</td><td>
-      <code>file</code>: crea il PDF nella cartella di output.<br>
-      <code>pdf</code>: lo crea e lo apre a schermo sul computer dove gira il servizio (su Linux con il
-      visualizzatore PDF predefinito).<br>
-      <code>stampa</code>: lo crea e lo stampa sul computer dove gira il servizio, con la stampante scelta in
-      ConfigManager o, se non ne è stata scelta una, con quella predefinita. Su Linux la stampa passa da
-      CUPS.</td></tr>
-  <tr><td><strong>Azione</strong> (Word)</td><td><code>docx</code>: crea il documento Word nella cartella di
+      In tutti e tre i casi il PDF viene creato nella cartella di output; cambia quello che succede dopo.<br>
+      <strong>Crea solo il file</strong>: nient'altro, il PDF resta nella cartella di output.<br>
+      <strong>Crea e apri a schermo</strong>: il PDF si apre anche a schermo, nel visualizzatore PDF predefinito (Acrobat, Edge…),
+      come con un doppio clic.<br>
+      <strong>Crea e stampa</strong>: il PDF viene anche stampato, sulla stampante scelta in ConfigManager o, se non ne è
+      stata scelta una, su quella predefinita. Su Linux la stampa passa da CUPS.</td></tr>
+  <tr><td><strong>Azione</strong> (Word)</td><td><strong>Crea il documento Word</strong>: crea il .docx nella cartella di
       output.</td></tr>
   <tr><td><strong>Template PDF</strong></td><td>Il modulo su cui stampare il testo, scelto tra i PDF della
       cartella dei template. Se lo lasci vuoto, il testo va su un foglio bianco A4. Se il template è orizzontale,
@@ -355,10 +398,14 @@ documento lo sfondo è quello del template: su un foglio bianco il testo bianco 
   <tr><td><strong>Invio</strong>, <strong>Destinatario</strong>, <strong>Dati dell'invio</strong></td><td>Vedi il
       capitolo seguente.</td></tr>
 </table></div>
+<div class="nota">L'apertura a schermo e la stampa avvengono sul <strong>computer dove gira il servizio</strong>
+(<code>back</code> e <code>SingleGUY</code>), che non è per forza quello dove usi l'editor. Se il servizio gira
+su un server a cui non lavora nessuno, l'azione <code>pdf</code> non serve: usa <code>file</code>, oppure
+<code>stampa</code> se a quel computer è collegata la stampante giusta.</div>
 
 <h2 id="invio">8. Inviare il documento per email, Telegram o WhatsApp</h2>
 <p>Dopo aver creato il documento, il servizio può anche spedirlo. Scegli il canale nel campo
-<strong>Invio</strong> (<code>0</code> vuol dire nessun invio) e compila gli altri campi come spiegato qui sotto.
+<strong>Invio</strong> (<em>Nessun invio</em> se non va spedito) e compila gli altri campi come spiegato qui sotto.
 In tutti i campi puoi usare <code>{nome}</code>.</p>
 
 <h3>Email</h3>
@@ -398,7 +445,10 @@ esattamente quello che il servizio produrrà.</p>
       computer.</li>
   <li><strong>Word</strong>: il documento si apre in Word (su Linux, di solito in LibreOffice).</li>
 </ul>
-<p>L'anteprima non invia nulla e non stampa nulla: crea solo un file temporaneo.</p>
+<p>L'anteprima <strong>non tiene conto dell'azione e dell'invio</strong>: non apre il PDF nel visualizzatore,
+non stampa e non invia nulla, ma crea solo un file temporaneo da guardare nella finestra dell'editor. Per
+provare l'azione o l'invio bisogna far elaborare un file di testo dal servizio, per esempio con
+<a href="#applicare">Applica a file di testo</a>.</p>
 
 <h2 id="salvare">10. Salvare e riaprire un modello</h2>
 <ul>
@@ -487,13 +537,20 @@ predefinito di Excel: Calibri 11 nero.</p>
 riga di totale in fondo. Per queste righe si preparano degli <strong>stili</strong> nella scheda
 <strong>Righe speciali</strong>. Un modello nuovo ne ha già uno, <em>Intestazione</em>, per la riga 1.</p>
 <ol class="passi">
-  <li>Fai clic sui <strong>numeri di riga</strong> a sinistra della tabella per scegliere le righe
-      (<kbd>Ctrl</kbd>+clic aggiunge o toglie una riga, <kbd>Maiusc</kbd>+clic prende tutte quelle in mezzo).</li>
-  <li>Premi <strong>Nuovo</strong>: lo stile nasce con le righe scelte. Per cambiare le righe di uno stile già
-      fatto, scegli le righe e premi <strong>Righe scelte</strong>, oppure scrivile nel campo
-      <strong>Righe</strong>.</li>
+  <li>Apri la scheda <strong>Righe speciali</strong>. Finché è aperta, un clic su una cella della tabella
+      sceglie la sua <strong>riga</strong> invece della colonna: le righe scelte hanno un bordo blu e il numero
+      blu. <kbd>Ctrl</kbd>+clic aggiunge o toglie una riga, <kbd>Maiusc</kbd>+clic prende tutte quelle in mezzo,
+      le frecce <kbd>↑</kbd> <kbd>↓</kbd> passano alla riga vicina. Un clic sulla lettera di una colonna riporta
+      alla scheda Colonne.</li>
+  <li>Se la riga scelta ha già uno stile, lo stile si apre nel pannello e lo modifichi subito. Attenzione: le
+      modifiche valgono per tutte le righe di quello stile.</li>
+  <li>Se la riga non ha uno stile, premi <strong>Nuovo</strong>: lo stile nasce con le righe scelte. Per
+      cambiare le righe di uno stile già fatto, scegli le righe e premi <strong>Righe scelte</strong>, oppure
+      scrivile nel campo <strong>Righe</strong>.</li>
   <li>Decidi carattere, sfondo, allineamento e se i valori devono restare testo.</li>
 </ol>
+<p>Per dare a una sola riga un aspetto diverso da quello del suo stile, sceglila e crea uno stile
+<strong>Nuovo</strong>: lo stile nuovo va in fondo all'elenco e quindi vale più dell'altro.</p>
 <p>Nel campo <strong>Righe</strong> puoi scrivere numeri e intervalli separati da virgole, contando dalla prima
 riga oppure dall'ultima con la lettera <code>u</code>:</p>
 <div class="tabella"><table>
@@ -589,13 +646,14 @@ testo (con la codifica di Windows o in UTF-8) con una voce per riga:</p>
 <div class="tabella"><table>
   <tr><th>Riga</th><th>Contenuto</th><th>Nel modello</th></tr>
   <tr><td>1</td><td>nome del file di testo</td><td><code>{nome}.txt</code></td></tr>
-  <tr><td>2</td><td>azione: <code>file</code>, <code>pdf</code>, <code>stampa</code>, <code>docx</code>,
+  <tr><td>2</td><td>azione: <code>file</code> (nell'editor “Crea solo il file”), <code>pdf</code> (“Crea e apri a
+      schermo”), <code>stampa</code> (“Crea e stampa”), <code>docx</code> (“Crea il documento Word”),
       <code>excel</code> (il servizio conosce anche <code>barcode</code>, <code>immagini</code> ed
       <code>exe</code>)</td><td></td></tr>
   <tr><td>3</td><td>nome del documento da creare</td><td>per esempio <code>{nome}.pdf</code></td></tr>
   <tr><td>4</td><td>template PDF (vuota = nessuno)</td><td></td></tr>
   <tr><td>5</td><td>rotazione in gradi</td><td></td></tr>
-  <tr><td>6</td><td>invio: <code>0</code>, <code>email</code>, <code>telegram</code> o <code>whatsapp</code></td><td></td></tr>
+  <tr><td>6</td><td>invio: <code>0</code> (nell'editor “Nessun invio”), <code>email</code>, <code>telegram</code> o <code>whatsapp</code></td><td></td></tr>
   <tr><td>7</td><td>destinatario (Telegram o WhatsApp)</td><td></td></tr>
   <tr><td>dalla 8</td><td>una <strong>linea di formato</strong> per ogni riga del testo (per Excel, le
       <a href="#linee-excel">righe speciali e una linea per ogni colonna</a>)</td><td></td></tr>
@@ -617,8 +675,10 @@ parte quando trova il <code>.gui</code>.</p>
 <h3>Codice di formato</h3>
 <div class="tabella"><table>
   <tr><th>Posizione</th><th>Significato</th><th>Valori</th></tr>
-  <tr><td>1</td><td>carattere</td><td><code>t</code> Times, <code>h</code> Helvetica/Arial, <code>c</code> Courier,
-      <code>k</code> Calibri, <code>v</code> Verdana, <code>g</code> Georgia, <code>u</code> Segoe UI</td></tr>
+  <tr><td>1</td><td>carattere</td><td>a larghezza fissa: <code>c</code> Courier, <code>o</code> Consolas,
+      <code>d</code> DejaVu Sans Mono, <code>p</code> IBM Plex Mono, <code>l</code> Liberation Mono;<br>
+      proporzionali: <code>t</code> Times, <code>h</code> Helvetica/Arial, <code>k</code> Calibri,
+      <code>v</code> Verdana, <code>g</code> Georgia, <code>u</code> Segoe UI</td></tr>
   <tr><td>2</td><td>grassetto</td><td><code>s</code> sì, <code>n</code> no</td></tr>
   <tr><td>3</td><td>corsivo</td><td><code>s</code> sì, <code>n</code> no</td></tr>
   <tr><td>4-5</td><td>dimensione in punti</td><td>da <code>01</code> a <code>99</code></td></tr>

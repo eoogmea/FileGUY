@@ -12,7 +12,8 @@ Struttura del .gui (una voce per riga):
 Linea di formato: "<numero di riga 3 cifre>\\t<codice>" oppure, con più formati sulla riga,
 "<numero>\\t<codice> <da> <a>\\t<codice> <da> <a>..." con da/a di 2 cifre (colonne 0-99).
 Codice: <font><grassetto s/n><corsivo s/n><dimensione 2 cifre>[<colore>]       es. tsn12 o tsn12r
-    font:   t Times, h Helvetica (Arial), c Courier, k Calibri, v Verdana, g Georgia, u Segoe UI
+    font a larghezza fissa: c Courier, o Consolas, d DejaVu Sans Mono, p IBM Plex Mono, l Liberation Mono
+    font proporzionali:     t Times, h Helvetica (Arial), k Calibri, v Verdana, g Georgia, u Segoe UI
     colore: n nero, r rosso, v verde, b blu, w bianco. In Word c'è sempre; nel PDF si può omettere
             (= nero), ma sulla stessa riga i codici devono essere tutti con o tutti senza colore.
 Una riga senza codice mantiene il formato della riga prima.
@@ -42,16 +43,23 @@ import os
 
 from piattaforma import leggi_testo
 
-# Font: lettera del codice -> (nome mostrato, nome in Word e nell'editor)
+# Font: lettera del codice -> (nome mostrato, nome in Word/Excel e nell'editor).
+# Prima quelli a larghezza fissa, che mantengono le colonne del testo (i più utili nei modelli)
 FONT = {
+    "c": ("Courier", "Courier New"),
+    "o": ("Consolas", "Consolas"),
+    "d": ("DejaVu Sans Mono", "DejaVu Sans Mono"),
+    "p": ("IBM Plex Mono", "IBM Plex Mono"),
+    "l": ("Liberation Mono", "Liberation Mono"),
     "t": ("Times", "Times New Roman"),
     "h": ("Helvetica", "Arial"),
-    "c": ("Courier", "Courier New"),
     "k": ("Calibri", "Calibri"),
     "v": ("Verdana", "Verdana"),
     "g": ("Georgia", "Georgia"),
     "u": ("Segoe UI", "Segoe UI"),
 }
+# Font a larghezza fissa (tutte le lettere e gli spazi larghi uguali)
+FONT_FISSI = ["c", "o", "d", "p", "l"]
 # Colori: lettera del codice -> (nome, RRGGBB come in SingleGUY)
 COLORI = {
     "n": ("nero", "000000"),
@@ -65,6 +73,14 @@ COLORI_LETTI = dict(COLORI, g=COLORI["v"])
 AZIONI_PDF = ["file", "pdf", "stampa"]
 AZIONI_WORD = ["docx"]
 INVII = ["0", "email", "telegram", "whatsapp"]
+# Come gli editor mostrano azioni e invii (nel .gui restano i codici qui sopra)
+DESCRIZIONI_AZIONI = {
+    "file": "Crea solo il file",
+    "pdf": "Crea e apri a schermo",
+    "stampa": "Crea e stampa",
+    "docx": "Crea il documento Word",
+}
+DESCRIZIONI_INVII = {"0": "Nessun invio", "email": "Email", "telegram": "Telegram", "whatsapp": "WhatsApp"}
 # Le colonne nei codici hanno 2 cifre: un formato può cambiare solo fino alla colonna 99
 COLONNA_MASSIMA = 99
 SEGNAPOSTO = "{nome}"
@@ -421,6 +437,41 @@ def leggi_formati(linee, righe_testo, word):
             formati_riga[c] = ultimo
         corrente = ultimo
         risultato.append(formati_riga)
+    return risultato
+
+
+def testo_segnaposto(righe, in_piu=3, simboli=True, carattere="x"):
+    """Il testo con "x" al posto dei caratteri, per preparare un modello valido per tutte le fatture.
+
+    Un campo è un pezzo di riga con le parole separate da un solo spazio (due o più spazi separano
+    i campi): diventa tutto x, spazi interni compresi. Con simboli=True punteggiatura e simboli
+    (/ . , : - €...) restano, così si riconoscono date, importi e righe di separazione.
+    in_piu: x aggiunte dopo ogni campo per fare spazio a testi più lunghi; occupano solo gli spazi
+    che seguono, lasciandone almeno uno, quindi i campi dopo restano nella stessa colonna.
+    """
+    import re
+    risultato = []
+    for riga in righe:
+        caratteri = list(riga)
+        campi = list(re.finditer(r"\S+(?: \S+)*", riga))
+        for n, campo in enumerate(campi):
+            cambiato = False
+            for posizione in range(campo.start(), campo.end()):
+                c = riga[posizione]
+                if c == " " or not simboli or c.isalnum():
+                    caratteri[posizione] = carattere
+                    cambiato = True
+            if not cambiato:
+                # Solo simboli (es. una riga di trattini): resta com'è
+                continue
+            if n + 1 < len(campi):
+                spazio = campi[n + 1].start() - campo.end() - 1
+            else:
+                spazio = in_piu
+            aggiunte = max(0, min(in_piu, spazio))
+            fine = campo.end()
+            caratteri[fine:fine + aggiunte] = [carattere] * aggiunte
+        risultato.append("".join(caratteri))
     return risultato
 
 

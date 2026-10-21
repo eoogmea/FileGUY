@@ -57,7 +57,7 @@ from modello_gui import (ALLINEAMENTI, FORMATI_EXCEL, SFONDI, campi_excel, colon
 #BARCODE
 import barcode
 from barcode.writer import ImageWriter
-import fitz
+import pymupdf
 
 def main(name, config):
     # Sostituisce al file .txt la terminazione .gui per vedere se esiste
@@ -172,10 +172,10 @@ def barcode_add(guida, config):
         # la posizione è data da due vertici opposti partendo da quello alto a sx
         x0, y0 = guida[5 + i].replace("\n", "").split(",")
         x1, y1 = guida[6 + i].replace("\n", "").split(",")
-        image_rectangle = fitz.Rect(int(x0), int(y0), int(x1), int(y1))
+        image_rectangle = pymupdf.Rect(int(x0), int(y0), int(x1), int(y1))
 
         # retrieve the page of the PDF
-        doc = fitz.open(guida[7 + i].replace("\n", ""))
+        doc = pymupdf.open(guida[7 + i].replace("\n", ""))
         page = doc[int(guida[8 + i].replace("\n", ""))]
 
         # add the image
@@ -193,10 +193,10 @@ def image_add(guida,config):
         percorso = guida[3 + i].replace("\n", "")
         x0, y0 = guida[4 + i].replace("\n", "").split(",")
         x1, y1 = guida[5 + i].replace("\n", "").split(",")
-        image_rectangle = fitz.Rect(int(x0), int(y0), int(x1), int(y1))
+        image_rectangle = pymupdf.Rect(int(x0), int(y0), int(x1), int(y1))
 
         # retrieve the page of the PDF
-        doc = fitz.open(guida[6 + i].replace("\n", ""))
+        doc = pymupdf.open(guida[6 + i].replace("\n", ""))
         page = doc[int(guida[7 + i].replace("\n", ""))]
 
         # add the image
@@ -313,7 +313,7 @@ def pdf(guida, config):
     orientamento = "P"
     nome_templ = guida[3].replace("\n", "")
     if nome_templ != "":
-        with fitz.open(config["cartella_template"] + os.sep + nome_templ) as doc_templ:
+        with pymupdf.open(config["cartella_template"] + os.sep + nome_templ) as doc_templ:
             if doc_templ[0].mediabox.width > doc_templ[0].mediabox.height:
                 orientamento = "L"
     pdf = FPDF(orientation=orientamento)
@@ -880,9 +880,16 @@ FONT_CODICI = {
     "v": ("Verdana", "Verdana"),
     "g": ("Georgia", "Georgia"),
     "u": ("SegoeUI", "Segoe UI"),
+    #A larghezza fissa: Consolas è di Windows, gli altri sono nella cartella Fonts (licenze libere)
+    "o": ("Consolas", "Consolas"),
+    "d": ("DejaVuSansMono", "DejaVu Sans Mono"),
+    "p": ("IBMPlexMono", "IBM Plex Mono"),
+    "l": ("LiberationMono", "Liberation Mono"),
 }
 # Font che di solito ci sono solo su Windows -> font della cartella Fonts da usare se mancano
-FONT_SOSTITUTI = {"Calibri": "Helvetica", "Verdana": "Helvetica", "SegoeUI": "Helvetica", "Georgia": "Times"}
+# (al posto di Consolas un altro a larghezza fissa, così le colonne restano allineate)
+FONT_SOSTITUTI = {"Calibri": "Helvetica", "Verdana": "Helvetica", "SegoeUI": "Helvetica", "Georgia": "Times",
+                  "Consolas": "DejaVuSansMono"}
 # Nome usato nel PDF -> (file nella cartella Fonts, file del sistema se manca)
 FONT_PDF = {
     "Times": ("times.ttf", "times.ttf"),
@@ -913,6 +920,22 @@ FONT_PDF = {
     "SegoeUIBold": ("segoeuib.ttf", "segoeuib.ttf"),
     "SegoeUIBoldIt": ("segoeuiz.ttf", "segoeuiz.ttf"),
     "SegoeUIIt": ("segoeuii.ttf", "segoeuii.ttf"),
+    "Consolas": ("consola.ttf", "consola.ttf"),
+    "ConsolasBold": ("consolab.ttf", "consolab.ttf"),
+    "ConsolasBoldIt": ("consolaz.ttf", "consolaz.ttf"),
+    "ConsolasIt": ("consolai.ttf", "consolai.ttf"),
+    "DejaVuSansMono": ("DejaVuSansMono.ttf", "DejaVuSansMono.ttf"),
+    "DejaVuSansMonoBold": ("DejaVuSansMono-Bold.ttf", "DejaVuSansMono-Bold.ttf"),
+    "DejaVuSansMonoBoldIt": ("DejaVuSansMono-BoldOblique.ttf", "DejaVuSansMono-BoldOblique.ttf"),
+    "DejaVuSansMonoIt": ("DejaVuSansMono-Oblique.ttf", "DejaVuSansMono-Oblique.ttf"),
+    "IBMPlexMono": ("IBMPlexMono-Regular.ttf", "IBMPlexMono-Regular.ttf"),
+    "IBMPlexMonoBold": ("IBMPlexMono-Bold.ttf", "IBMPlexMono-Bold.ttf"),
+    "IBMPlexMonoBoldIt": ("IBMPlexMono-BoldItalic.ttf", "IBMPlexMono-BoldItalic.ttf"),
+    "IBMPlexMonoIt": ("IBMPlexMono-Italic.ttf", "IBMPlexMono-Italic.ttf"),
+    "LiberationMono": ("LiberationMono-Regular.ttf", "LiberationMono-Regular.ttf"),
+    "LiberationMonoBold": ("LiberationMono-Bold.ttf", "LiberationMono-Bold.ttf"),
+    "LiberationMonoBoldIt": ("LiberationMono-BoldItalic.ttf", "LiberationMono-BoldItalic.ttf"),
+    "LiberationMonoIt": ("LiberationMono-Italic.ttf", "LiberationMono-Italic.ttf"),
 }
 # Lettera del colore nei codici del .gui -> RGB (g = verde, come v, per i .gui vecchi)
 COLORI_TESTO = {

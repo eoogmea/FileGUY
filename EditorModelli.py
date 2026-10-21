@@ -30,7 +30,11 @@ from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
 from config_sicuro import carica_config
-from piattaforma import apri_file, cartella_utente, leggi_testo
+from piattaforma import apri_file, cartella_utente, console_sicura, leggi_testo, registra_font
+
+# L'exe dell'editor non ha la console: i messaggi scritti su stdout/stderr (es. gli avvisi di
+# PyPDF2 nell'anteprima con un template) farebbero fallire l'operazione
+console_sicura()
 from modello_gui import COLONNA_MASSIMA, COLORI, FONT, PREDEFINITO
 
 if getattr(sys, "frozen", False):
@@ -38,6 +42,9 @@ if getattr(sys, "frozen", False):
 else:
     CARTELLA_PROGRAMMA = os.path.dirname(os.path.abspath(__file__))
 CARTELLA_MODELLI = os.path.join(CARTELLA_PROGRAMMA, "ModelliGUI")
+# I font della cartella Fonts (Helvetica, DejaVu Sans Mono, IBM Plex Mono...) anche nell'editor,
+# prima di creare le finestre (vale anche per EditorExcel, che importa questo modulo)
+registra_font(os.path.join(CARTELLA_PROGRAMMA, "Fonts"))
 # La guida sta accanto al programma; nell'exe creato con PyInstaller anche dentro l'exe
 GUIDA = "Guida_EditorModelli.html"
 
@@ -64,6 +71,19 @@ def apri_con_avviso(percorso, genitore):
         apri_file(percorso)
     except (OSError, RuntimeError) as e:
         messagebox.showerror("Apri", "Impossibile aprire " + percorso + ":\n" + str(e), parent=genitore)
+
+
+def dimensiona(finestra, larghezza, altezza, minima=None):
+    """Dimensione iniziale della finestra: quella indicata, ma al massimo l'85% dello schermo
+    (sui portatili e con lo zoom di Windows lo schermo è piccolo). La finestra va al centro,
+    un po' in alto per lasciare posto alla barra delle applicazioni."""
+    schermo_x, schermo_y = finestra.winfo_screenwidth(), finestra.winfo_screenheight()
+    larghezza = min(larghezza, int(schermo_x * 0.85))
+    altezza = min(altezza, int(schermo_y * 0.85))
+    finestra.geometry("%dx%d+%d+%d" % (larghezza, altezza, max(0, (schermo_x - larghezza) // 2),
+                                       max(0, (schermo_y - altezza) // 3)))
+    if minima:
+        finestra.minsize(min(minima[0], larghezza), min(minima[1], altezza))
 
 
 def leggi_preferenze():
@@ -94,6 +114,34 @@ def apri_guida(genitore):
             apri_con_avviso(percorso, genitore)
             return
     messagebox.showerror("Guida", "Guida non trovata: " + os.path.join(CARTELLA_PROGRAMMA, GUIDA), parent=genitore)
+
+
+class SceltaDescritta(ttk.Combobox):
+    """Tendina che mostra le descrizioni ma tiene nella variabile il codice del .gui
+    (es. mostra "Crea e stampa", la variabile vale "stampa")."""
+
+    def __init__(self, genitore, variabile, descrizioni, **opzioni):
+        self._vista = tk.StringVar()
+        super().__init__(genitore, textvariable=self._vista, state="readonly", **opzioni)
+        self.variabile = variabile
+        self.imposta_scelte(descrizioni)
+        self.bind("<<ComboboxSelected>>", lambda e: self.variabile.set(self._codici[self._vista.get()]))
+        # Se il codice cambia da programma (modello aperto, tipo cambiato) si aggiorna la descrizione
+        variabile.trace_add("write", lambda *a: self._mostra())
+
+    def imposta_scelte(self, descrizioni):
+        """descrizioni: {codice: descrizione}, nell'ordine in cui vanno mostrate."""
+        self._descrizioni = dict(descrizioni)
+        self._codici = {descrizione: codice for codice, descrizione in descrizioni.items()}
+        self.configure(values=list(self._descrizioni.values()))
+        self._mostra()
+
+    def codici(self):
+        return list(self._descrizioni)
+
+    def _mostra(self):
+        codice = self.variabile.get()
+        self._vista.set(self._descrizioni.get(codice, codice))
 
 
 def tag_logico(tag):
@@ -145,6 +193,73 @@ class DialogoNumeri(tk.Toplevel):
         self.destroy()
 
 
+class DialogoSegnaposto(tk.Toplevel):
+    """Opzioni del testo con le x, con l'anteprima delle prime righe: risultato = (x in più, simboli) o None."""
+
+    def __init__(self, genitore, righe):
+        super().__init__(genitore)
+        self.title("Testo con segnaposto x")
+        self.transient(genitore)
+        self.resizable(False, False)
+        self.righe = righe
+        self.risultato = None
+        self.in_piu = tk.StringVar(value="3")
+        self.simboli = tk.BooleanVar(value=True)
+        corpo = ttk.Frame(self, padding=12)
+        corpo.pack(fill="both", expand=True)
+        ttk.Label(corpo, text="Ogni carattere del testo diventa una x, così il modello vale per tutti i documenti "
+                              "e si vede subito dove andrà ogni dato. Il file di partenza non cambia: il testo con "
+                              "le x va nella copia salvata accanto al modello.", wraplength=520,
+                  justify="left").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        ttk.Label(corpo, text="x in più dopo ogni campo").grid(row=1, column=0, sticky="w")
+        voce = ttk.Spinbox(corpo, from_=0, to=30, textvariable=self.in_piu, width=5, command=self._anteprima)
+        voce.grid(row=1, column=1, sticky="w", padx=(6, 0))
+        voce.bind("<KeyRelease>", lambda e: self._anteprima())
+        ttk.Label(corpo, text="per fare spazio a nomi e importi più lunghi (le colonne dopo non si spostano)",
+                  foreground="gray").grid(row=1, column=2, sticky="w", padx=(6, 0))
+        ttk.Checkbutton(corpo, text="Lascia punteggiatura e simboli (/ . , : - €): date, importi e righe di "
+                                    "separazione restano riconoscibili", variable=self.simboli,
+                        command=self._anteprima).grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 6))
+        self.esempio = tk.Text(corpo, height=12, width=86, wrap="none", font=("Consolas", 9), background="#f6f6f6")
+        self.esempio.grid(row=3, column=0, columnspan=3, sticky="we")
+        pulsanti = ttk.Frame(corpo)
+        pulsanti.grid(row=4, column=0, columnspan=3, sticky="e", pady=(10, 0))
+        ttk.Button(pulsanti, text="Annulla", command=self.destroy).pack(side="right")
+        ttk.Button(pulsanti, text="Sostituisci", command=self._ok).pack(side="right", padx=(0, 6))
+        self.bind("<Return>", lambda e: self._ok())
+        self.bind("<Escape>", lambda e: self.destroy())
+        self._anteprima()
+        self.grab_set()
+        voce.focus_set()
+
+    def _valori(self):
+        testo = self.in_piu.get().strip()
+        if not testo.isdigit() or int(testo) > 30:
+            return None
+        return int(testo), self.simboli.get()
+
+    def _anteprima(self):
+        valori = self._valori()
+        self.esempio.configure(state="normal")
+        self.esempio.delete("1.0", "end")
+        if valori is None:
+            self.esempio.insert("1.0", "Scrivi un numero da 0 a 30")
+        else:
+            # Le prime righe con del testo, prima e dopo
+            prime = [r for r in self.righe if r.strip()][:6]
+            dopo = modello_gui.testo_segnaposto(prime, *valori)
+            self.esempio.insert("1.0", "\n".join(prime) + "\n\ndiventa:\n\n" + "\n".join(dopo))
+        self.esempio.configure(state="disabled")
+
+    def _ok(self):
+        valori = self._valori()
+        if valori is None:
+            messagebox.showerror(self.title(), "x in più: scrivi un numero da 0 a 30", parent=self)
+            return
+        self.risultato = valori
+        self.destroy()
+
+
 def chiedi_numeri(genitore, titolo, spiegazione, campi):
     finestra = DialogoNumeri(genitore, titolo, spiegazione, campi)
     genitore.wait_window(finestra)
@@ -154,8 +269,7 @@ def chiedi_numeri(genitore, titolo, spiegazione, campi):
 class EditorModelli(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.geometry("1150x760")
-        self.minsize(900, 500)
+        dimensiona(self, 1060, 680, minima=(820, 460))
         try:
             self.config_servizio = carica_config()
         except Exception:
@@ -205,6 +319,7 @@ class EditorModelli(tk.Tk):
         menu = tk.Menu(self)
         file = tk.Menu(menu, tearoff=False)
         file.add_command(label="Nuovo da testo di esempio...", command=self.nuovo, accelerator="Ctrl+N")
+        file.add_command(label="Nuovo da testo con segnaposto x...", command=self.nuovo_segnaposto)
         file.add_command(label="Apri modello...", command=self.apri, accelerator="Ctrl+O")
         self.menu_recenti = tk.Menu(file, tearoff=False, postcommand=self._elenca_recenti)
         file.add_cascade(label="Modelli recenti", menu=self.menu_recenti)
@@ -225,6 +340,8 @@ class EditorModelli(tk.Tk):
         modifica.add_separator()
         modifica.add_command(label="Selezione a blocco...", command=self.dialogo_blocco, accelerator="Alt+trascina")
         modifica.add_command(label="Copia il formato di una riga su altre righe...", command=self.dialogo_copia_riga)
+        modifica.add_separator()
+        modifica.add_command(label="Sostituisci il testo con segnaposto x...", command=self.segnaposto)
         menu.add_cascade(label="Modifica", menu=modifica)
         vista = tk.Menu(menu, tearoff=False)
         vista.add_command(label="Ingrandisci", command=lambda: self.cambia_zoom(1), accelerator="Ctrl++")
@@ -262,7 +379,7 @@ class EditorModelli(tk.Tk):
                         command=self._cambia_tipo).pack(side="left", padx=(6, 0))
 
         ttk.Label(riquadro, text="Azione").grid(row=0, column=2, sticky="w", padx=(16, 4))
-        self.scelta_azione = ttk.Combobox(riquadro, textvariable=self.azione, width=8, state="readonly")
+        self.scelta_azione = SceltaDescritta(riquadro, self.azione, {}, width=22)
         self.scelta_azione.grid(row=0, column=3, sticky="w")
 
         ttk.Label(riquadro, text="Template PDF").grid(row=0, column=4, sticky="w", padx=(16, 4))
@@ -279,8 +396,7 @@ class EditorModelli(tk.Tk):
         ttk.Entry(riquadro, textvariable=self.uscita, width=24).grid(row=1, column=1, columnspan=3, sticky="we",
                                                                      pady=(4, 0))
         ttk.Label(riquadro, text="Invio").grid(row=1, column=4, sticky="w", padx=(16, 4), pady=(4, 0))
-        ttk.Combobox(riquadro, textvariable=self.invio, width=10, values=modello_gui.INVII,
-                     state="readonly").grid(row=1, column=5, sticky="w", pady=(4, 0))
+        SceltaDescritta(riquadro, self.invio, modello_gui.DESCRIZIONI_INVII, width=12).grid(row=1, column=5, sticky="w", pady=(4, 0))
         ttk.Label(riquadro, text="Destinatario").grid(row=1, column=6, sticky="w", padx=(16, 4), pady=(4, 0))
         ttk.Entry(riquadro, textvariable=self.destinatario, width=28).grid(row=1, column=7, columnspan=2,
                                                                            sticky="we", pady=(4, 0))
@@ -352,7 +468,7 @@ class EditorModelli(tk.Tk):
         # exportselection=False: la selezione non si perde quando si clicca o si scrive in un altro campo,
         # e resta visibile (inactiveselectbackground) mentre si usano le tendine
         # undo=True serve solo quando il testo si modifica (i formati non entrano nell'annulla)
-        self.testo = tk.Text(cornice, wrap="none", undo=True, padx=8, pady=8, spacing1=2, spacing3=2,
+        self.testo = tk.Text(cornice, wrap="none", undo=True, padx=8, pady=8, spacing1=2, spacing3=2, height=10,
                              exportselection=False, inactiveselectbackground="#9cc3ee",
                              font=(FONT[PREDEFINITO[0]][1], self._dimensione_vista(PREDEFINITO[3])),
                              xscrollcommand=self._scorrimento_orizzontale, yscrollcommand=self._scorrimento,
@@ -972,8 +1088,9 @@ class EditorModelli(tk.Tk):
 
     def _cambia_tipo(self, iniziale=False):
         word = self.word.get()
-        self.scelta_azione.configure(values=modello_gui.AZIONI_WORD if word else modello_gui.AZIONI_PDF)
-        if self.azione.get() not in self.scelta_azione.cget("values"):
+        azioni = modello_gui.AZIONI_WORD if word else modello_gui.AZIONI_PDF
+        self.scelta_azione.imposta_scelte({a: modello_gui.DESCRIZIONI_AZIONI[a] for a in azioni})
+        if self.azione.get() not in self.scelta_azione.codici():
             self.azione.set("docx" if word else "file")
         stato = "disabled" if word else "normal"
         self.scelta_template.configure(state=stato)
@@ -993,19 +1110,55 @@ class EditorModelli(tk.Tk):
             cartella) else []
         self.scelta_template.configure(values=[""] + nomi)
 
+    def nuovo_segnaposto(self):
+        """Nuovo modello da un testo di esempio, con le x al posto dei caratteri."""
+        if self.nuovo():
+            self.segnaposto()
+
+    def segnaposto(self, opzioni=None):
+        """Sostituisce il testo di esempio con le x, tenendo la formattazione già fatta.
+
+        opzioni: (x in più, simboli); senza, le chiede con una finestra.
+        """
+        if not self.righe:
+            self._messaggio("Prima apri un testo di esempio")
+            return False
+        if opzioni is None:
+            finestra = DialogoSegnaposto(self, self.righe)
+            self.wait_window(finestra)
+            opzioni = finestra.risultato
+            if opzioni is None:
+                return False
+        nuove = modello_gui.testo_segnaposto(self.righe, *opzioni)
+        # Le colonne non cambiano, quindi i formati restano; le x aggiunte in fondo alla riga
+        # prendono il formato dell'ultimo carattere
+        formati = self._formati_testo()
+        for n, riga in enumerate(nuove):
+            ultimo = formati[n][-1] if formati[n] else PREDEFINITO
+            formati[n] = formati[n] + [ultimo] * (len(riga) - len(formati[n]))
+        self._mostra_testo(nuove, formati)
+        # Il testo con le x va nella copia accanto al modello, al salvataggio
+        self.testo_cambiato = True
+        self._segna_modificato()
+        self._messaggio("Testo sostituito con le x: al salvataggio va nella copia accanto al modello "
+                        "(il file di partenza non cambia)")
+        return True
+
     def nuovo(self):
+        """Nuovo modello da un testo di esempio; False se non è stato scelto nessun testo."""
         if not self._conferma_perdita():
-            return
+            return False
         percorso = filedialog.askopenfilename(parent=self, title="Testo di esempio (es. una fattura)",
                                               filetypes=[("File di testo", "*.txt"), ("Tutti i file", "*.*")])
         if not percorso:
-            return
+            return False
         self.percorso_testo = percorso
         self.percorso_modello = None
         self._imposta_intestazione(modello_gui.nuovo_modello(self.word.get()))
         self._mostra_testo(self._leggi_testo(percorso))
         self.modificato = False
         self._aggiorna_titolo()
+        return True
 
     def apri(self):
         if not self._conferma_perdita():
@@ -1207,10 +1360,10 @@ class EditorModelli(tk.Tk):
 class FinestraAnteprima(tk.Toplevel):
     def __init__(self, genitore, percorso):
         super().__init__(genitore)
-        import fitz
+        import pymupdf
         self.title("Anteprima - " + os.path.basename(genitore.percorso_modello or "nuovo modello"))
-        self.geometry("820x900")
-        self.documento = fitz.open(percorso)
+        dimensiona(self, 820, 900)
+        self.documento = pymupdf.open(percorso)
         self.percorso = percorso
         self.pagina = 0
         self.zoom = tk.StringVar(value="100%")

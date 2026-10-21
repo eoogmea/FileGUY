@@ -284,6 +284,62 @@ def finestra_colonne_righe_salva_anteprima_applica():
         app.destroy()
 
 
+@prova
+def finestra_modalita_righe():
+    """Con la scheda "Righe speciali" aperta il clic sceglie righe e apre il loro stile."""
+    import EditorExcel
+    import EditorModelli
+    EditorModelli.FILE_PREFERENZE = os.path.join(cartella, "preferenze_righe.json")
+    app = EditorExcel.EditorExcel()
+    try:
+        app._mostra_testo(TESTO)
+        app.stili.append(dict(modello_gui.stile_riga_vuoto(), righe="u1", nome="Totale", sfondo="giallo"))
+        app._aggiorna_tutto()
+        app.update()
+        # Scheda Colonne: il clic su una cella sceglie la colonna
+        app._clic_cella(Clic(app.celle[2][3]))
+        assert app.selezionate == [3] and not app.righe_selezionate
+        app.schede.select(1)
+        app.update()
+        assert app._modalita_righe()
+        # Ora lo stesso clic sceglie la riga 3, che non ha stile: nessuno stile aperto
+        app._clic_cella(Clic(app.celle[2][3]))
+        assert app.righe_selezionate == {3} and app.stile_corrente is None
+        assert "Nuovo" in app.stato.cget("text")
+        assert app.celle[2][0].cget("highlightbackground") == EditorExcel.BORDO_RIGA_SCELTA
+        assert app.celle[2][3].cget("background") == EditorExcel.SFONDO, "la colonna non va evidenziata"
+        # Clic sull'ultima riga: si apre il suo stile, che si modifica subito
+        app._clic_cella(Clic(app.celle[4][1]))
+        assert app.righe_selezionate == {5} and app.stili[app.stile_corrente]["nome"] == "Totale"
+        assert app.nome_stile.get() == "Totale"
+        app.sfondo_stile.set("azzurro chiaro" if "azzurro chiaro" in EditorExcel.NOMI_SFONDI else "azzurro")
+        app._sfondo_stile_cambiato()
+        assert app.stili[1]["sfondo"] == "azzurro"
+        # Il bordo segna la riga scelta ma lo sfondo (nuovo) si vede
+        assert app.celle[4][1].cget("background") == "#DDEBF7"
+        assert app.celle[4][1].cget("highlightbackground") == EditorExcel.BORDO_RIGA_SCELTA
+        # Ctrl+clic su una riga di un altro stile: stili diversi, nessuno aperto
+        app._clic_cella(Clic(app.celle[0][0], stato=0x4))
+        assert app.righe_selezionate == {1, 5} and app.stile_corrente is None
+        # Maiusc+clic e "Nuovo": uno stile con le righe 2-4
+        app._clic_cella(Clic(app.celle[1][0]))
+        app._clic_cella(Clic(app.celle[3][0], stato=0x1))
+        assert app.righe_selezionate == {2, 3, 4}
+        app.nuovo_stile()
+        assert app.stili[-1]["righe"] == "2-4" and app.stile_corrente == len(app.stili) - 1
+        # Frecce su e giù
+        app._sposta_riga(-1, Clic(None))
+        assert app.righe_selezionate == {1}
+        # Clic sulla lettera di una colonna: si torna alle colonne
+        app._clic_cella(Clic(app.lettere[2]))
+        app.update()
+        assert not app._modalita_righe() and app.selezionate == [2]
+        assert app.celle[0][0].cget("highlightbackground") != EditorExcel.BORDO_RIGA_SCELTA
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
 shutil.rmtree(cartella, ignore_errors=True)
 for nome, errore in risultati:
     print("[%s] %s" % ("OK " if errore is None else "ERR", nome))

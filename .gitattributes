@@ -1,0 +1,2 @@
+# Gli script per Linux devono avere gli a capo di Linux anche se il repository passa da Windows
+*.sh text eol=lf

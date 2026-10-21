@@ -1,6 +1,6 @@
 """Stampa di un PDF senza Ghostscript, su Windows e su Linux.
 
-Windows: le pagine vengono trasformate in immagini con PyMuPDF (fitz) e mandate alla stampante
+Windows: le pagine vengono trasformate in immagini con PyMuPDF e mandate alla stampante
 con le funzioni di stampa di Windows (pywin32), librerie già usate dal programma.
 Linux e macOS: il PDF viene mandato a CUPS con il comando lp (pacchetto cups-client, presente
 in tutte le distribuzioni con la stampa configurata), o lpr se lp manca. CUPS stampa i PDF da solo.
@@ -66,7 +66,7 @@ def _stampa_cups(percorso, stampante):
 
 
 def _stampa_windows(percorso, stampante, file_uscita):
-    import fitz
+    import pymupdf
     import win32con
     import win32print
     import win32ui
@@ -84,7 +84,7 @@ def _stampa_windows(percorso, stampante, file_uscita):
         dpi_x = dc.GetDeviceCaps(win32con.LOGPIXELSX)
         dpi_y = dc.GetDeviceCaps(win32con.LOGPIXELSY)
 
-        doc = fitz.open(percorso)
+        doc = pymupdf.open(percorso)
         dc.StartDoc(os.path.basename(percorso), file_uscita)
         try:
             for pagina in doc:

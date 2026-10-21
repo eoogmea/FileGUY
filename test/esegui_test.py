@@ -20,7 +20,7 @@ import sys
 import traceback
 import types
 
-import fitz
+import pymupdf
 from PIL import Image
 
 CARTELLA_TEST = os.path.dirname(os.path.abspath(__file__))
@@ -88,7 +88,7 @@ def casi(modelli=None):
     def testo_pdf(nome, *attesi, pagine=None):
         """Controlla che ogni testo atteso compaia una sola volta e il numero di pagine."""
         def controllo(config):
-            doc = fitz.open(os.path.join(config["cartella_output"], nome))
+            doc = pymupdf.open(os.path.join(config["cartella_output"], nome))
             testo_doc = "".join(p.get_text() for p in doc)
             errori = []
             if pagine is not None and doc.page_count != pagine:
@@ -247,7 +247,7 @@ def casi(modelli=None):
                       "@LAVORO@\\logo.png", "100,100", "400,280", "@LAVORO@\\immagini_doc.pdf", "0"]
 
     def controlla_immagine(config):
-        doc = fitz.open(os.path.join(config["cartella_lavoro"], "immagini_doc.pdf"))
+        doc = pymupdf.open(os.path.join(config["cartella_lavoro"], "immagini_doc.pdf"))
         box = doc[0].get_image_bbox(doc[0].get_images(full=True)[0])
         doc.close()
         # logo 200x120 nel rettangolo 300x180: deve riempirlo
@@ -477,9 +477,9 @@ def controlla_log(config, caso):
 
 
 def crea_template(percorso):
-    doc = fitz.open()
+    doc = pymupdf.open()
     pagina = doc.new_page(width=595, height=842)
-    pagina.draw_rect(fitz.Rect(20, 20, 575, 822), color=(0, 0, 1))
+    pagina.draw_rect(pymupdf.Rect(20, 20, 575, 822), color=(0, 0, 1))
     pagina.insert_text((40, 810), "MODELLO DI PROVA", fontsize=9, color=(0, 0, 1))
     doc.save(percorso)
     doc.close()
@@ -534,7 +534,7 @@ def prepara_caso(caso):
 
 
 def controlla_pdf(percorso):
-    doc = fitz.open(percorso)
+    doc = pymupdf.open(percorso)
     try:
         testo = "".join(p.get_text() for p in doc)
         return "%d pag., %d caratteri di testo" % (doc.page_count, len(testo.strip()))

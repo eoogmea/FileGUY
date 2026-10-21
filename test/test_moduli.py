@@ -11,7 +11,7 @@ import sys
 import tempfile
 import traceback
 
-import fitz
+import pymupdf
 
 CARTELLA_PROGRAMMA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, CARTELLA_PROGRAMMA)
@@ -38,7 +38,7 @@ def stampa_su_microsoft_print_to_pdf():
         return
     from stampa_pdf import stampa_pdf
     sorgente = os.path.join(cartella, "da_stampare.pdf")
-    doc = fitz.open()
+    doc = pymupdf.open()
     for n in range(2):
         pagina = doc.new_page(width=595, height=842)
         pagina.insert_text((72, 100), "Pagina di prova %d" % (n + 1), fontsize=20)
@@ -47,7 +47,7 @@ def stampa_su_microsoft_print_to_pdf():
     uscita = os.path.join(cartella, "stampato.pdf")
     stampa_pdf(sorgente, "Microsoft Print to PDF", uscita)
     assert os.path.isfile(uscita), "la stampante virtuale non ha creato il file"
-    stampato = fitz.open(uscita)
+    stampato = pymupdf.open(uscita)
     assert stampato.page_count == 2, "pagine stampate: %d" % stampato.page_count
     stampato.close()
 
@@ -351,6 +351,29 @@ def registro_scrive_e_ruota():
     finally:
         registro.DIMENSIONE_MASSIMA = vecchio
         registro._percorso = None
+
+
+@prova
+def programmi_senza_console():
+    # Negli exe senza console (editor, ConfigManager) stdout e stderr sono None: un avviso di PyPDF2
+    # (es. "Xref table not zero-indexed" di alcuni template) faceva fallire l'anteprima
+    import subprocess
+    for modulo in ("EditorModelli", "EditorExcel", "ConfigManager"):
+        # PyPDF2 cambia il gestore degli avvisi quando apre un PDF (PdfFileReader), poi lo usa
+        codice = ("import io, sys, warnings\nsys.stdout = sys.stderr = None\nimport %s\n"
+                  "import pymupdf, PyPDF2, PyPDF2.utils\n"
+                  "doc = pymupdf.open()\ndoc.new_page()\n"
+                  "PyPDF2.PdfFileReader(io.BytesIO(doc.tobytes()))\n"
+                  "warnings.warn('Xref table not zero-indexed', PyPDF2.utils.PdfReadWarning)\n"
+                  "print('scritto su stdout')\n" % modulo)
+        # In un file (non con -c): PyPDF2 1.26 vuole un percorso nel nome del file che dà l'avviso
+        script = os.path.join(cartella, "senza_console_%s.py" % modulo)
+        with open(script, "w", encoding="utf-8") as f:
+            f.write("import sys\nsys.path.insert(0, %r)\n" % CARTELLA_PROGRAMMA + codice)
+        risultato = subprocess.run([sys.executable, script], cwd=CARTELLA_PROGRAMMA, timeout=120,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        assert risultato.returncode == 0, "%s senza console: il programma si ferma (codice %d)" % (
+            modulo, risultato.returncode)
 
 
 @prova

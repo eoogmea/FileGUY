@@ -13,7 +13,7 @@ import sys
 import tempfile
 import traceback
 
-import fitz
+import pymupdf
 from docx import Document
 
 CARTELLA_PROGRAMMA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,8 +25,8 @@ risultati = []
 cartella = tempfile.mkdtemp(prefix="infas_modelli_")
 CARTELLA_TEMPLATE = os.path.join(cartella, "template")
 os.makedirs(CARTELLA_TEMPLATE)
-modello_pdf = fitz.open()
-modello_pdf.new_page(width=595, height=842).draw_rect(fitz.Rect(20, 20, 575, 822), color=(0, 0, 1))
+modello_pdf = pymupdf.open()
+modello_pdf.new_page(width=595, height=842).draw_rect(pymupdf.Rect(20, 20, 575, 822), color=(0, 0, 1))
 modello_pdf.save(os.path.join(CARTELLA_TEMPLATE, "modello.pdf"))
 
 RIGHE = [
@@ -127,7 +127,7 @@ def crea_con_servizio(word, nome):
 
 @prova
 def servizio_applica_formati_pdf():
-    doc = fitz.open(crea_con_servizio(False, "pdf"))
+    doc = pymupdf.open(crea_con_servizio(False, "pdf"))
     pezzi = {}
     for blocco in doc[0].get_text("dict")["blocks"]:
         for riga in blocco.get("lines", []):
@@ -237,7 +237,7 @@ def finestra_formatta_salva_anteprima_applica():
 
         # Anteprima PDF con il codice del servizio
         pdf = app.crea_documento(tempfile.mkdtemp(dir=cartella))
-        assert pdf and fitz.open(pdf)[0].get_text().count("Mario Rossi") == 1
+        assert pdf and pymupdf.open(pdf)[0].get_text().count("Mario Rossi") == 1
         app.FinestraAnteprima = EditorModelli.FinestraAnteprima(app, pdf)
         app.update()
         app.FinestraAnteprima._chiudi()
@@ -366,6 +366,92 @@ def finestra_aiuti_alla_formattazione():
         formati = app._formati_testo()
         app.apri_recente(modello)
         assert app._formati_testo() == formati
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
+@prova
+def font_a_larghezza_fissa_nel_pdf_e_in_word():
+    """Ogni font a larghezza fissa finisce davvero nel PDF (e con il suo nome in Word)."""
+    import re
+    righe = ["Riga %s grassetto corsivo 0123456789" % lettera for lettera in modello_gui.FONT_FISSI]
+    formati = [[(lettera, True, True, 11, "n")] * len(righe[n]) for n, lettera in enumerate(modello_gui.FONT_FISSI)]
+    cartella_prova = tempfile.mkdtemp(dir=cartella)
+    with open(os.path.join(cartella_prova, "fissi.txt"), "w") as f:
+        f.write("\n".join(righe) + "\n")
+    modulo = servizio()
+    config = {"cartella_lavoro": cartella_prova, "cartella_template": CARTELLA_TEMPLATE,
+              "cartella_output": cartella_prova}
+    for word, uscita in ((False, "fissi.pdf"), (True, "fissi.docx")):
+        intestazione = dict(modello_gui.nuovo_modello(word), testo="fissi.txt", uscita=uscita)
+        modello_gui.scrivi_gui(os.path.join(cartella_prova, "fissi.gui"), intestazione,
+                               modello_gui.linee_formato(formati, word))
+        with open(os.path.join(cartella_prova, "fissi.gui")) as f:
+            guida = f.readlines()
+        (modulo.docx if word else modulo.pdf)(guida, config)
+    font_pdf = {re.sub(r"^[A-Z]{6}\+", "", s["font"]) for b in pymupdf.open(os.path.join(cartella_prova, "fissi.pdf"))[0]
+                .get_text("dict")["blocks"] for l in b["lines"] for s in l["spans"]}
+    for atteso in ("CourierNew", "Consolas", "DejaVuSansMono", "IBMPlexMono", "LiberationMono"):
+        assert any(atteso in nome.replace(" ", "").replace("-", "") for nome in font_pdf), (atteso, font_pdf)
+    nomi_word = {run.font.name for run in Document(os.path.join(cartella_prova, "fissi.docx")).paragraphs[0].runs}
+    assert {"Courier New", "Consolas", "DejaVu Sans Mono", "IBM Plex Mono", "Liberation Mono"} <= nomi_word, nomi_word
+
+
+@prova
+def testo_segnaposto():
+    import re
+    righe = ["DITTA ESEMPIO S.r.l.                FATTURA N. 123/2026",
+             "A001      Viti 4x30       100      0,15       15,00",
+             "--------------------------------------------------", "", "Spett.le"]
+    x = modello_gui.testo_segnaposto(righe, 3)
+    assert x[0] == "xxxxxxxxxxxxxxx.x.x.xxx             xxxxxxxxx.xxxx/xxxxxxx", x[0]
+    assert x[1] == "xxxxxxx   xxxxxxxxxxxx    xxxxxx   x,xxxxx    xx,xxxxx", x[1]
+    assert x[2] == righe[2] and x[3] == "" and x[4] == "xxxxx.xxxxx"
+    assert modello_gui.testo_segnaposto(["a-b  c"], 0, simboli=False) == ["xxx  x"]
+    # In ogni caso i campi restano nella loro colonna, con almeno uno spazio prima
+    for in_piu in (0, 5, 30):
+        for simboli in (True, False):
+            for prima, dopo in zip(righe, modello_gui.testo_segnaposto(righe, in_piu, simboli)):
+                for campo in re.finditer(r"\S+(?: \S+)*", prima):
+                    s = campo.start()
+                    assert dopo[s] != " " and (s == 0 or dopo[s - 1] == " "), (in_piu, prima, dopo)
+
+
+@prova
+def finestra_segnaposto():
+    import EditorModelli
+    from tkinter import filedialog
+    EditorModelli.FILE_PREFERENZE = os.path.join(cartella, "preferenze_x.json")
+    esempio = os.path.join(cartella, "fattura_x.txt")
+    with open(esempio, "w") as f:
+        f.write("\n".join(RIGHE) + "\n")
+    modello = os.path.join(cartella, "modelli_x", "fattura_x.gui")
+    os.makedirs(os.path.dirname(modello))
+    filedialog.askopenfilename = lambda *a, **k: esempio
+    filedialog.asksaveasfilename = lambda *a, **k: modello
+    app = EditorModelli.EditorModelli()
+    try:
+        assert app.nuovo()
+        # Riga 4 in Courier grassetto, poi le x: la formattazione resta sulle stesse colonne
+        app.testo.tag_add("sel", "4.0", "4.end")
+        app._imposta("f", "c")
+        app._alterna("b")
+        prima = app._formati_testo()[3]
+        assert app.segnaposto((2, True))
+        assert app.righe[3] == modello_gui.testo_segnaposto([RIGHE[3]], 2)[0], app.righe[3]
+        # Niente più lettere o cifre: solo x, spazi e simboli (: . , €)
+        assert not any(c.isalnum() and c != "x" for c in app.righe[3]), app.righe[3]
+        assert app._formati_testo()[3][:len(prima)] == prima
+        assert app.testo_cambiato and app.modificato
+        assert app.salva()
+        with open(modello[:-4] + ".txt") as f:
+            assert f.read().split("\n")[3] == app.righe[3]
+        with open(esempio) as f:
+            assert f.read().split("\n") == RIGHE + [""], "il file di partenza è cambiato"
+        # Riaprendo il modello c'è il testo con le x
+        app.apri_modello(modello)
+        assert app.righe[3] == modello_gui.testo_segnaposto([RIGHE[3]], 2)[0]
     finally:
         app.modificato = False
         app.destroy()

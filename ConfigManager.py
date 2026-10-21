@@ -9,6 +9,10 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import config_sicuro
 from config_sicuro import CAMPI, ConfigError
+from piattaforma import console_sicura
+
+# Senza console (exe di ConfigManager) i messaggi su stdout/stderr farebbero fallire l'operazione
+console_sicura()
 
 
 # (campo, etichetta, tipo) - tipo: "cartella", "file", "stampante", "segreto" o "testo"

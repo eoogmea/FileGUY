@@ -29,11 +29,15 @@ from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
 from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, MAX_ANNULLA, MAX_RECENTI, NOMI_COLORI, NOMI_FONT,
-                           apri_con_avviso, apri_guida, leggi_preferenze, scrivi_preferenze)
+                           SceltaDescritta, apri_con_avviso, apri_guida, dimensiona, leggi_preferenze,
+                           scrivi_preferenze)
 from config_sicuro import carica_config
 from modello_gui import (COLORI, FONT, FORMATI_EXCEL, PREDEFINITO_EXCEL, SFONDI, campi_excel,
                          colonna_excel_vuota, righe_excel, stile_riga_vuoto, valore_excel)
-from piattaforma import leggi_testo
+from piattaforma import console_sicura, leggi_testo
+
+# Senza console (exe dell'editor) i messaggi su stdout/stderr farebbero fallire l'operazione
+console_sicura()
 
 # Righe del testo mostrate nella tabella (l'anteprima usa tutto il testo)
 RIGHE_MOSTRATE = 60
@@ -56,6 +60,8 @@ SFONDO_LETTERE = "#ececec"
 SFONDO_LETTERE_SELEZIONE = "#b9d6f5"
 # Numero di una riga che ha uno stile speciale
 SFONDO_RIGA_SPECIALE = "#e2d9f3"
+# Bordo delle celle delle righe scelte nella scheda "Righe speciali"
+BORDO_RIGA_SCELTA = "#2f6fc4"
 
 
 def intervalli(numeri):
@@ -186,8 +192,7 @@ class GruppoCarattere(ttk.LabelFrame):
 class EditorExcel(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.geometry("1200x780")
-        self.minsize(950, 560)
+        dimensiona(self, 1100, 690, minima=(880, 560))
         try:
             self.config_servizio = carica_config()
         except Exception:
@@ -301,8 +306,8 @@ class EditorExcel(tk.Tk):
         ttk.Label(riquadro, text="Documento creato").grid(row=0, column=0, sticky="w")
         ttk.Entry(riquadro, textvariable=self.uscita, width=24).grid(row=0, column=1, sticky="w")
         ttk.Label(riquadro, text="Invio").grid(row=0, column=2, sticky="w", padx=(16, 4))
-        ttk.Combobox(riquadro, textvariable=self.invio, width=10, values=modello_gui.INVII,
-                     state="readonly").grid(row=0, column=3, sticky="w")
+        SceltaDescritta(riquadro, self.invio, modello_gui.DESCRIZIONI_INVII, width=12).grid(
+            row=0, column=3, sticky="w")
         ttk.Label(riquadro, text="Destinatario").grid(row=0, column=4, sticky="w", padx=(16, 4))
         ttk.Entry(riquadro, textvariable=self.destinatario, width=28).grid(row=0, column=5, sticky="we")
         ttk.Label(riquadro, text="Dati dell'invio\n(righe dopo \"fine\")").grid(row=1, column=0, sticky="nw",
@@ -389,19 +394,23 @@ class EditorExcel(tk.Tk):
         self.bind_class("CellaExcel", "<Button-5>", lambda e: self.tela.yview_scroll(1, "units"))
         self.tela.bind("<Left>", lambda e: self._sposta_selezione(-1, e))
         self.tela.bind("<Right>", lambda e: self._sposta_selezione(1, e))
+        self.tela.bind("<Up>", lambda e: self._sposta_riga(-1, e))
+        self.tela.bind("<Down>", lambda e: self._sposta_riga(1, e))
+        # La scheda aperta decide se i clic sulla tabella scelgono colonne o righe
+        self.schede.bind("<<NotebookTabChanged>>", lambda e: self._scheda_cambiata())
         # I numeri di riga hanno il tag "NumeroRigaExcel": clic per scegliere le righe speciali
         self.bind_class("NumeroRigaExcel", "<Button-1>", self._clic_numero_riga)
         for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             self.bind_class("NumeroRigaExcel", evento, self.bind_class("CellaExcel", evento))
 
     def _crea_scheda_righe(self, scheda):
-        ttk.Label(scheda, text="Titoli, intestazione, totali... con una formattazione diversa dal resto. "
-                               "Valgono più della formattazione delle colonne; se una riga è in più stili, "
-                               "vale quello più in basso nell'elenco.", wraplength=340, justify="left",
+        ttk.Label(scheda, text="Clic su una riga della tabella: se ha uno stile lo modifichi qui sotto, "
+                               "altrimenti premi \"Nuovo\". Vale lo stile più in basso nell'elenco.",
+                  wraplength=340, justify="left",
                   foreground="gray").pack(anchor="w", pady=(0, 6))
         elenco = ttk.Frame(scheda)
         elenco.pack(fill="x")
-        self.lista_stili = tk.Listbox(elenco, height=6, exportselection=False, activestyle="none")
+        self.lista_stili = tk.Listbox(elenco, height=4, exportselection=False, activestyle="none")
         self.lista_stili.pack(side="left", fill="x", expand=True)
         self.lista_stili.bind("<<ListboxSelect>>", lambda e: self._scegli_stile())
         pulsanti = ttk.Frame(elenco)
@@ -425,8 +434,8 @@ class EditorExcel(tk.Tk):
         voce_righe.bind("<FocusOut>", lambda e: self._righe_stile_cambiate())
         ttk.Button(r, text="Righe scelte", command=self.usa_righe_scelte).grid(row=1, column=2, sticky="w",
                                                                               padx=(4, 0), pady=(6, 0))
-        ttk.Label(r, text="es. 1-3, 10, u1   (u1 = ultima riga, u2 = penultima). Clic sui numeri di riga "
-                          "della tabella e poi \"Righe scelte\".", foreground="gray", wraplength=320,
+        ttk.Label(r, text="es. 1-3, 10, u1   (u1 = ultima riga, u2 = penultima). Oppure fai clic sulle "
+                          "righe della tabella e poi \"Righe scelte\".", foreground="gray", wraplength=320,
                   justify="left").grid(row=2, column=0, columnspan=3, sticky="w")
         ttk.Checkbutton(r, text="Carattere proprio (senza: quello della colonna)", variable=self.carattere_proprio,
                         command=self._carattere_stile_cambiato).grid(row=3, column=0, columnspan=3, sticky="w",
@@ -451,7 +460,11 @@ class EditorExcel(tk.Tk):
     # --- Tabella -------------------------------------------------------------
 
     def _cella(self, testo, riga, colonna, **opzioni):
-        etichetta = tk.Label(self.griglia, text=testo, padx=4, pady=1, borderwidth=0, **opzioni)
+        # Il bordo (highlight) segna le righe scelte senza coprire il loro sfondo
+        etichetta = tk.Label(self.griglia, text=testo, padx=4, pady=1, borderwidth=0, highlightthickness=1,
+                             **opzioni)
+        # riga: numero della riga del foglio (0 = le lettere delle colonne)
+        etichetta.riga = riga
         etichetta.colonna = colonna
         etichetta.bindtags(("CellaExcel",) + etichetta.bindtags())
         etichetta.grid(row=riga, column=colonna + 1, sticky="nsew", padx=(0, 1), pady=(0, 1))
@@ -501,7 +514,7 @@ class EditorExcel(tk.Tk):
 
     def _aggiorna_numeri_riga(self):
         for etichetta in self.numeri_riga:
-            if etichetta.riga in self.righe_selezionate:
+            if etichetta.riga in self.righe_selezionate and self._modalita_righe():
                 sfondo = SFONDO_LETTERE_SELEZIONE
             elif etichetta.riga in self.stile_della_riga:
                 sfondo = SFONDO_RIGA_SPECIALE
@@ -509,22 +522,63 @@ class EditorExcel(tk.Tk):
                 sfondo = SFONDO_LETTERE
             etichetta.configure(background=sfondo)
 
+    def _modalita_righe(self):
+        """Con la scheda "Righe speciali" aperta i clic sulla tabella scelgono righe, non colonne."""
+        return self.schede.index("current") == 1
+
+    def _scheda_cambiata(self):
+        self._aggiorna_tutto()
+        if self._modalita_righe():
+            self._messaggio("Righe speciali: fai clic su una riga della tabella per sceglierla (Ctrl+clic e "
+                            "Maiusc+clic per più righe, frecce su e giù per spostarti)")
+        else:
+            self._messaggio("Colonne: fai clic su una colonna per sceglierla (Ctrl+clic e Maiusc+clic per più "
+                            "colonne)")
+
     def _clic_numero_riga(self, evento):
-        riga = evento.widget.riga
-        if evento.state & 0x1 and self.righe_selezionate:
-            # Maiusc: dall'ultima riga scelta a questa
+        # Il clic sul numero di riga sceglie la riga anche dalla scheda Colonne
+        if not self._modalita_righe():
+            self.schede.select(1)
+        self.tela.focus_set()
+        self.seleziona_righe(evento.widget.riga, evento.state)
+
+    def seleziona_righe(self, riga, stato=0):
+        """Sceglie la riga (con Maiusc fino a questa, con Ctrl aggiunta o tolta) e mostra il suo stile."""
+        if stato & 0x1 and self.righe_selezionate:
+            # Maiusc: dalla riga scelta più vicina a questa
             vicina = min(self.righe_selezionate, key=lambda n: abs(n - riga))
             self.righe_selezionate |= set(range(min(vicina, riga), max(vicina, riga) + 1))
-        elif evento.state & 0x4:
+        elif stato & 0x4:
             self.righe_selezionate ^= {riga}
         else:
             self.righe_selezionate = {riga}
-        self._aggiorna_numeri_riga()
-        stile = self.stile_della_riga.get(riga)
-        self._messaggio("Righe scelte: " + (intervalli(self.righe_selezionate) or "nessuna")
-                        + ("   -   riga %d: stile \"%s\"" % (riga, stile["nome"] or stile["righe"]) if stile else ""))
-        # Le righe si usano nella scheda delle righe speciali
-        self.schede.select(1)
+        scelte = intervalli(self.righe_selezionate) or "nessuna"
+        stili = {id(self.stile_della_riga[n]): self.stile_della_riga[n]
+                 for n in self.righe_selezionate if n in self.stile_della_riga}
+        senza_stile = [n for n in self.righe_selezionate if n not in self.stile_della_riga]
+        if len(stili) == 1 and not senza_stile:
+            # Tutte le righe scelte hanno lo stesso stile: si apre per modificarlo
+            stile = next(iter(stili.values()))
+            self.stile_corrente = next(i for i, s in enumerate(self.stili) if s is stile)
+            self._messaggio("Righe %s: stile \"%s\" (righe %s). Modificalo nel pannello a sinistra."
+                            % (scelte, stile["nome"] or "senza nome", stile["righe"]))
+        elif not stili:
+            self.stile_corrente = None
+            self._messaggio("Righe %s: nessuno stile. Premi \"Nuovo\" per crearne uno con queste righe." % scelte)
+        else:
+            self.stile_corrente = None
+            self._messaggio("Righe %s: hanno stili diversi. Scegline una sola, oppure premi \"Nuovo\" per dare "
+                            "a tutte uno stile nuovo." % scelte)
+        self._aggiorna_tutto()
+        self._mostra_stile()
+
+    def _sposta_riga(self, passo, evento):
+        if not self._modalita_righe() or not self.celle:
+            return
+        corrente = max(self.righe_selezionate) if passo > 0 and self.righe_selezionate else \
+            min(self.righe_selezionate or {1})
+        nuova = max(1, min(len(self.celle), corrente + passo))
+        self.seleziona_righe(nuova, evento.state & 0x1)
 
     def _valore_grezzo(self, riga, colonna):
         campi = self.righe[riga]
@@ -534,8 +588,11 @@ class EditorExcel(tk.Tk):
         if c >= len(self.lettere):
             return
         colonna = self.colonne[c]
-        selezionata = c in self.selezionate
-        self.lettere[c].configure(background=SFONDO_LETTERE_SELEZIONE if selezionata else SFONDO_LETTERE)
+        # Nella scheda delle righe speciali si vedono le righe scelte, non le colonne
+        modalita_righe = self._modalita_righe()
+        selezionata = c in self.selezionate and not modalita_righe
+        sfondo_lettera = SFONDO_LETTERE_SELEZIONE if selezionata else SFONDO_LETTERE
+        self.lettere[c].configure(background=sfondo_lettera, highlightbackground=sfondo_lettera)
         vuoto = stile_riga_vuoto()
         stili = [self.stile_della_riga.get(r + 1, vuoto) for r in range(len(self.celle))]
         # Valore che il servizio scriverà nella cella: testo nelle righe "come testo", altrimenti convertito
@@ -562,12 +619,20 @@ class EditorExcel(tk.Tk):
             if colore == "w" and not stile["sfondo"]:
                 # Il bianco si vede solo su uno sfondo scuro
                 sfondo = "#6f8fb0" if selezionata else "#8a8a8a"
+            riga_scelta = modalita_righe and r + 1 in self.righe_selezionate
             etichetta.configure(text=testi[r], font=font_tk(formato), foreground="#" + COLORI[colore][1],
-                                background=sfondo, anchor=ancora, width=larghezza)
+                                background=sfondo, anchor=ancora, width=larghezza,
+                                highlightbackground=BORDO_RIGA_SCELTA if riga_scelta else sfondo)
 
     def _clic_cella(self, evento):
         c = evento.widget.colonna
         self.tela.focus_set()
+        if self._modalita_righe():
+            if evento.widget.riga > 0:
+                self.seleziona_righe(evento.widget.riga, evento.state)
+                return
+            # Clic sulla lettera di una colonna: si torna alle colonne
+            self.schede.select(0)
         if evento.state & 0x1 and self.selezionate:
             # Maiusc: dalla colonna scelta prima a questa
             inizio = self.selezionate[0]
@@ -580,7 +645,7 @@ class EditorExcel(tk.Tk):
             self.seleziona([c])
 
     def _sposta_selezione(self, passo, evento):
-        if not self.colonne:
+        if not self.colonne or self._modalita_righe():
             return
         corrente = self.selezionate[-1] if self.selezionate else 0
         nuova = max(0, min(len(self.colonne) - 1, corrente + passo))
@@ -809,7 +874,7 @@ class EditorExcel(tk.Tk):
                 self.righe_selezionate = righe_excel(stile["righe"], len(self.righe))
             except ValueError:
                 self.righe_selezionate = set()
-            self._aggiorna_numeri_riga()
+            self._aggiorna_tutto()
             self._mostra_stile()
 
     def nuovo_stile(self):
@@ -869,7 +934,7 @@ class EditorExcel(tk.Tk):
 
     def usa_righe_scelte(self):
         if not self.righe_selezionate:
-            self._messaggio("Prima fai clic sui numeri di riga della tabella (Ctrl+clic e Maiusc+clic per più "
+            self._messaggio("Prima fai clic sulle righe della tabella (Ctrl+clic e Maiusc+clic per più "
                             "righe)")
             return
         if self.stile_corrente is None:

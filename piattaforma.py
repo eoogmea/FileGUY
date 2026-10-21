@@ -29,6 +29,41 @@ else:
     ]
 
 
+def console_sicura():
+    """Nei programmi senza console (gli editor e ConfigManager creati con PyInstaller) sys.stdout e
+    sys.stderr sono None: chi ci scrive fallisce, per esempio PyPDF2 quando segnala un difetto di
+    un template ("Xref table not zero-indexed"). Li manda a un file vuoto, così i messaggi si perdono
+    ma il programma continua."""
+    for nome in ("stdout", "stderr"):
+        if getattr(sys, nome) is None:
+            setattr(sys, nome, open(os.devnull, "w", encoding="utf-8"))
+
+
+def registra_font(cartella):
+    """Rende i font della cartella (es. Fonts del programma) disponibili alle finestre del programma,
+    senza installarli nel sistema: così l'editor mostra il testo con gli stessi caratteri del PDF.
+    Restituisce quanti file sono stati registrati (0 se non si può: il programma va avanti lo stesso)."""
+    if not os.path.isdir(cartella):
+        return 0
+    file_font = [os.path.join(cartella, f) for f in os.listdir(cartella) if f.lower().endswith((".ttf", ".otf"))]
+    try:
+        if WINDOWS:
+            import ctypes
+            # FR_PRIVATE: i font valgono solo per questo programma e spariscono quando si chiude
+            aggiungi = ctypes.windll.gdi32.AddFontResourceExW
+            return sum(1 for f in file_font if aggiungi(f, 0x10, None) > 0)
+        if not MACOS:
+            import ctypes
+            import ctypes.util
+            # fontconfig (usato da Tk su Linux): aggiunge la cartella per questo programma
+            libreria = ctypes.util.find_library("fontconfig")
+            if libreria and ctypes.CDLL(libreria).FcConfigAppFontAddDir(None, cartella.encode()):
+                return len(file_font)
+    except (OSError, AttributeError):
+        pass
+    return 0
+
+
 def cartella_utente():
     """Cartella delle impostazioni dell'utente (modelli recenti, zoom...).
 
