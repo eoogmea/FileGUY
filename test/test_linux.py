@@ -133,18 +133,16 @@ def font_della_cartella_nell_editor():
     try:
         famiglie = set(tkfont.families())
         for lettera in modello_gui.FONT_FISSI:
-            famiglia = modello_gui.FONT[lettera][1]
+            # Il carattere che l'editor usa davvero: se il font manca (Consolas) quello che lo sostituisce nel PDF
+            originale = modello_gui.FONT[lettera][1]
+            famiglia = EditorModelli.famiglia_tk(lettera)
+            assert famiglia in famiglie, "l'editor non ha un carattere per %s" % originale
             nel_sistema = famiglia in sistema
-            disponibile = famiglia in famiglie
-            if not disponibile:
-                nota("Editor: %s NON disponibile (nel sistema: %s); l'editor usa un altro carattere"
-                     % (famiglia, "sì" if nel_sistema else "no"))
-                continue
             font = tkfont.Font(family=famiglia, size=11)
             fissa = font.measure("iiiiiiiiii") == font.measure("MMMMMMMMMM")
-            nota("Editor: %-16s %s, %s" % (famiglia, "installato nel sistema" if nel_sistema
-                                           else "dalla cartella Fonts", "larghezza fissa" if fissa else
-                                           "NON a larghezza fissa"))
+            nota("Editor: %-16s %s%s, %s" % (originale, "" if famiglia == originale else "mostrato con %s, " % famiglia,
+                                             "installato nel sistema" if nel_sistema else "dalla cartella Fonts",
+                                             "larghezza fissa" if fissa else "NON a larghezza fissa"))
             assert fissa, famiglia
         # Questi sono nella cartella Fonts: devono esserci sempre
         for famiglia in ("DejaVu Sans Mono", "IBM Plex Mono", "Liberation Mono"):
