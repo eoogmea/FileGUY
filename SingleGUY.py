@@ -706,11 +706,15 @@ def excel(guida, config):
     wb.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
 
 
-def dati_email(guida):
-    """Destinatario, oggetto, secondo allegato e testo di un invio email.
+PREFISSO_ALLEGATO = "allegato:"
 
-    Con l'indirizzo nella linea 7 del .gui, dopo "fine" ci sono l'oggetto, una riga vuota
-    e il testo del messaggio (anche su più righe).
+
+def dati_email(guida):
+    """Destinatario, oggetto, altri allegati (lista) e testo di un invio email.
+
+    Con l'indirizzo nella linea 7 del .gui, dopo "fine" ci sono l'oggetto, le eventuali righe
+    "allegato: <percorso>" (una per allegato), una riga vuota e il testo del messaggio
+    (anche su più righe).
     Con la linea 7 vuota (i .gui di prima) dopo "fine" ci sono l'indirizzo, l'oggetto,
     un eventuale secondo allegato e il testo del messaggio.
     """
@@ -719,16 +723,36 @@ def dati_email(guida):
     if destinatario != "":
         oggetto = coda[0] if len(coda) > 0 else ""
         testo = coda[1:]
-        # La riga vuota tra oggetto e testo
+        allegati = []
+        while testo and testo[0].strip().lower().startswith(PREFISSO_ALLEGATO):
+            allegati.append(testo.pop(0).strip()[len(PREFISSO_ALLEGATO):].strip())
+        # La riga vuota tra oggetto (o allegati) e testo
         if testo and testo[0].strip() == "":
             testo = testo[1:]
-        return destinatario, oggetto, "", "\n".join(testo)
+        return destinatario, oggetto, [a for a in allegati if a], "\n".join(testo)
     coda += [""] * (3 - len(coda))
-    return coda[0].strip(), coda[1], coda[2].strip(), "\n".join(coda[3:])
+    return coda[0].strip(), coda[1], [coda[2].strip()] if coda[2].strip() else [], "\n".join(coda[3:])
+
+
+def allegato_email(percorso):
+    with open(percorso, "rb") as attachment:
+        # Add file as application/octet-stream
+        # Email client can usually download this automatically as attachment
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(attachment.read())
+    # Encode file in ASCII characters to send by email
+    encoders.encode_base64(part)
+    # Add header as key/value pair to attachment part
+    part.add_header(
+        "Content-Disposition",
+        #Solo il nome del file, non tutto il percorso
+        "attachment", filename=os.path.basename(percorso),
+    )
+    return part
 
 
 def email_send(guida, config):
-    receiver_email, subject, filename2, body = dati_email(guida)
+    receiver_email, subject, altri_allegati, body = dati_email(guida)
 
     port = int(config["email_smtp_porta"])  # For SSL
 
@@ -757,47 +781,21 @@ def email_send(guida, config):
     # Add body to email
     message.attach(MIMEText(body, "plain"))
 
-    # Open PDF file in binary mode
-    with open(filename, "rb") as attachment:
-        # Add file as application/octet-stream
-        # Email client can usually download this automatically as attachment
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment.read())
-    # Encode file in ASCII characters to send by email
-    encoders.encode_base64(part)
-    # Add header as key/value pair to attachment part
-    part.add_header(
-        "Content-Disposition",
-        #Solo il nome del file, non tutto il percorso
-        "attachment", filename=os.path.basename(filename),
-    )
-
-    # Add attachment to message and convert message to string
-    message.attach(part)
-
-    if filename2 != "":
-        with open(filename2, "rb") as attachment:
-            # Add file as application/octet-stream
-            # Email client can usually download this automatically as attachment
-            part2 = MIMEBase("application", "octet-stream")
-            part2.set_payload(attachment.read())
-        # Encode file in ASCII characters to send by email
-        encoders.encode_base64(part2)
-        # Add header as key/value pair to attachment part
-        part2.add_header(
-            "Content-Disposition",
-            "attachment", filename=os.path.basename(filename2),
-        )
-
-        # Add attachment to message and convert message to string
-        message.attach(part2)
+    # Il documento creato e poi gli altri allegati
+    for percorso in [filename] + altri_allegati:
+        message.attach(allegato_email(percorso))
 
     #il messaggio che sarà inviato
     text = message.as_string()
 
     #invia la mail
     with smtplib.SMTP_SSL(config["email_smtp_server"], port, context=context) as server:
-        server.login(sender_email, password)
+        try:
+            server.login(sender_email, password)
+        except (smtplib.SMTPAuthenticationError, smtplib.SMTPServerDisconnected) as e:
+            raise RuntimeError("il server di posta " + config["email_smtp_server"] + " non accetta mittente e "
+                               "password (con Gmail serve una password per le app di 16 caratteri, non quella "
+                               "dell'account): correggili in ConfigManager. Risposta: " + str(e)) from e
         server.sendmail(sender_email, receiver_email, text)
 
 

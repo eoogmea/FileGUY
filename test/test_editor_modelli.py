@@ -145,9 +145,11 @@ def email_di_prima_nel_formato_nuovo():
     assert vecchia["coda"] == ["Oggetto {nome}", "", "Riga 1", "Riga 2"], vecchia["coda"]
     senza_testo = intestazione("", ["c@x.it", "Oggetto"])
     assert modello_gui.aggiorna_email(senza_testo) and senza_testo["coda"] == ["Oggetto"]
-    # Già nuova, con il secondo allegato o senza email: resta com'è
+    con_allegato = intestazione("", ["c@x.it", "Oggetto", "C:\\allegato.pdf", "Testo"])
+    assert modello_gui.aggiorna_email(con_allegato)
+    assert con_allegato["coda"] == ["Oggetto", "allegato: C:\\allegato.pdf", "", "Testo"], con_allegato["coda"]
+    # Già nuova o senza email: resta com'è
     for invariata in (intestazione("c@x.it", ["Oggetto", "", "Testo"]),
-                      intestazione("", ["c@x.it", "Oggetto", "C:\\allegato.pdf", "Testo"]),
                       dict(intestazione("", ["doc.pdf", "Testo"]), invio="telegram")):
         prima = dict(invariata)
         assert not modello_gui.aggiorna_email(invariata) and invariata == prima

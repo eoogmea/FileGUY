@@ -433,7 +433,8 @@ class EditorModelli(tk.Tk):
 
     def _aggiorna_aiuto_coda(self):
         aiuti = {
-            "email": "Destinatario: l'indirizzo email.  Dati dell'invio: l'oggetto, una riga vuota e il testo",
+            "email": "Destinatario: l'indirizzo email.  Dati dell'invio: l'oggetto, eventuali righe "
+                     "\"allegato: <percorso>\", una riga vuota e il testo",
             "telegram": "Destinatario: telegram <chat>.  Dati dell'invio: il documento da mandare e il testo",
             "whatsapp": "Destinatario: whatsapp <numero>.  Dati dell'invio: il documento da mandare e il testo",
         }

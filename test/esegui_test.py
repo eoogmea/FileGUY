@@ -153,6 +153,13 @@ def casi(modelli=None):
                                            "Testo del messaggio"]),
          uscite=["pdf_email_2_allegati.pdf"], chiamate=["smtp_sendmail"],
          controllo=lambda config: controlla_email("Due allegati", ["pdf_email_2_allegati.pdf", "allegato2.txt"]))
+    caso("pdf_email_piu_allegati", gui("pdf_email_piu_allegati.txt", "file", "pdf_email_piu_allegati.pdf",
+                                       invio="email", destinatario="cliente@example.com",
+                                       coda=["Tre allegati", "allegato: @ALLEGATO2@", "Allegato: @ALLEGATO3@", "",
+                                             "Testo del messaggio"]),
+         uscite=["pdf_email_piu_allegati.pdf"], chiamate=["smtp_sendmail"],
+         controllo=lambda config: controlla_email("Tre allegati", ["pdf_email_piu_allegati.pdf", "allegato2.txt",
+                                                                   "allegato3.txt"], "Testo del messaggio"))
     caso("pdf_telegram", gui("pdf_telegram.txt", "file", "pdf_telegram.pdf", invio="telegram",
                              destinatario="telegram 123456789",
                              coda=["pdf_telegram.pdf", "Ecco il documento", "seconda riga"]),
@@ -530,8 +537,12 @@ def prepara_caso(caso):
     with open(allegato2, "w") as f:
         f.write("secondo allegato\n")
 
+    allegato3 = os.path.join(base, "allegato3.txt")
+    with open(allegato3, "w") as f:
+        f.write("terzo allegato\n")
+
     righe = [r.replace("@LAVORO@", cartelle["lavoro"]).replace("@ALLEGATO2@", allegato2)
-             for r in caso["gui"]]
+             .replace("@ALLEGATO3@", allegato3) for r in caso["gui"]]
     if caso["txt"] is not None:
         with open(os.path.join(cartelle["lavoro"], caso["nome"] + ".txt"), "w") as f:
             f.write(caso["txt"])

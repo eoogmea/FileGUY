@@ -411,17 +411,22 @@ In tutti i campi puoi usare <code>{nome}</code>.</p>
 <h3>Email</h3>
 <p>Nel campo <strong>Destinatario</strong> scrivi l'indirizzo email, per esempio
 <code>cliente@esempio.it</code>. Nei <strong>Dati dell'invio</strong>:</p>
-<pre>Fattura {nome}                ← oggetto
-                              ← riga vuota
-Buongiorno,                   ← il testo del messaggio, su quante righe vuoi
+<pre>Fattura {nome}                       ← oggetto
+allegato: C:\documenti\condizioni.pdf ← altri allegati, uno per riga (facoltativi)
+allegato: C:\documenti\listino.pdf
+                                     ← riga vuota
+Buongiorno,                          ← il testo del messaggio, su quante righe vuoi
 in allegato la fattura.
 
 Cordiali saluti</pre>
-<p>Il documento creato è sempre allegato. Indirizzo del mittente e server di posta si impostano in
-ConfigManager.</p>
+<p>Il documento creato è sempre allegato. Gli altri allegati vanno scritti con il percorso completo, sul computer
+dove gira il servizio. Indirizzo del mittente e server di posta si impostano in ConfigManager.</p>
+<div class="nota">Con Gmail la password da mettere in ConfigManager non è quella dell'account ma una
+<strong>password per le app</strong> (16 lettere): si crea nell'account Google, in Sicurezza, dopo aver attivato
+la verifica in due passaggi.</div>
 <div class="nota">Nei modelli fatti prima l'indirizzo era la prima riga dei Dati dell'invio: il servizio li legge
-ancora così. Aprendoli, l'editor sposta l'indirizzo nel campo Destinatario; salvali per aggiornarli. Un modello
-con il secondo allegato resta nel formato di prima.</div>
+ancora così. Aprendoli, l'editor sposta l'indirizzo nel campo Destinatario (e il secondo allegato in una riga
+<code>allegato:</code>); salvali per aggiornarli.</div>
 
 <h3>Telegram</h3>
 <p>Nel campo <strong>Destinatario</strong> scrivi <code>telegram</code> seguito dall'identificativo della chat, per
