@@ -240,6 +240,7 @@ def finestra_colonne_righe_salva_anteprima_applica():
         assert app.salva(), messaggi
         intestazione, linee = modello_gui.leggi_gui(modello)
         assert intestazione["azione"] == "excel" and intestazione["uscita"] == "{nome}.xlsx", intestazione
+        assert intestazione["testo"] == os.path.splitext(os.path.basename(modello))[0] + ".txt", intestazione
         assert linee == ["1\tnome=Intestazione\tcarattere=hsn12b\tsfondo=grigio\ttesto=si",
                          "u1\tnome=Totale generale\tcarattere=ksn11n\tsfondo=giallo",
                          "colonna",
