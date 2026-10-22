@@ -1251,12 +1251,6 @@ class EditorModelli(tk.Tk):
                                                     defaultextension=".gui", filetypes=[("Modelli", "*.gui")])
             if not percorso:
                 return False
-        lavoro = self.config_servizio.get("cartella_lavoro", "")
-        if lavoro and os.path.normcase(os.path.abspath(os.path.dirname(percorso))) == \
-                os.path.normcase(os.path.abspath(lavoro)):
-            messagebox.showerror("Modello", "Non salvare il modello nella cartella di lavoro: il servizio "
-                                 "proverebbe a elaborarlo. Usa ad esempio " + CARTELLA_MODELLI, parent=self)
-            return False
         modello_gui.scrivi_gui(percorso, self._intestazione(), linee)
         # Copia del testo di esempio accanto al modello, per poterlo riaprire
         copia_testo = os.path.splitext(percorso)[0] + ".txt"

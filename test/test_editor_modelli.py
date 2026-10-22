@@ -294,10 +294,6 @@ def finestra_formatta_salva_anteprima_applica():
         modulo = servizio()
         modulo.main("esempio.txt", dict(app.config_servizio))
         assert os.path.isfile(os.path.join(lavoro, "esempio.pdf")), os.listdir(lavoro)
-
-        # Il modello non si può salvare nella cartella di lavoro
-        app.percorso_modello = os.path.join(lavoro, "x.gui")
-        assert not app.salva() and "cartella di lavoro" in messaggi[-1][1]
     finally:
         app.modificato = False
         app.destroy()
