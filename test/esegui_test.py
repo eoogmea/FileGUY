@@ -137,7 +137,16 @@ def casi(modelli=None):
                           coda=["cliente@example.com", "Invio fattura 123", "",
                                 "Buongiorno,", "in allegato la fattura."]),
          uscite=["pdf_email.pdf"], chiamate=["smtp_login", "smtp_sendmail"],
-         controllo=lambda config: controlla_email("Invio fattura 123", ["pdf_email.pdf"]))
+         controllo=lambda config: controlla_email("Invio fattura 123", ["pdf_email.pdf"],
+                                                  "Buongiorno,\nin allegato la fattura.", "cliente@example.com"))
+    caso("pdf_email_destinatario", gui("pdf_email_destinatario.txt", "file", "pdf_email_destinatario.pdf",
+                                       "modello.pdf", invio="email", destinatario="cliente@example.com",
+                                       coda=["Fattura 123", "", "Buongiorno,", "", "in allegato la fattura.",
+                                             "Saluti"]),
+         uscite=["pdf_email_destinatario.pdf"], chiamate=["smtp_login", "smtp_sendmail"],
+         controllo=lambda config: controlla_email("Fattura 123", ["pdf_email_destinatario.pdf"],
+                                                  "Buongiorno,\n\nin allegato la fattura.\nSaluti",
+                                                  "cliente@example.com"))
     caso("pdf_email_2_allegati", gui("pdf_email_2_allegati.txt", "file", "pdf_email_2_allegati.pdf",
                                      invio="email",
                                      coda=["cliente@example.com", "Due allegati", "@ALLEGATO2@",
@@ -284,7 +293,7 @@ def casi(modelli=None):
     return c
 
 
-def controlla_email(oggetto, allegati):
+def controlla_email(oggetto, allegati, testo=None, destinatario=None):
     inviate = [d for n, d in chiamate if n == "smtp_sendmail"]
     if not inviate:
         return ["nessuna email"]
@@ -292,6 +301,13 @@ def controlla_email(oggetto, allegati):
     errori = []
     if messaggio["Subject"] != oggetto:
         errori.append("oggetto %r invece di %r" % (messaggio["Subject"], oggetto))
+    if destinatario is not None and a != destinatario:
+        errori.append("destinatario %r invece di %r" % (a, destinatario))
+    if testo is not None:
+        corpo = next(p for p in messaggio.walk() if p.get_content_type() == "text/plain")
+        corpo = corpo.get_payload(decode=True).decode(corpo.get_content_charset() or "utf-8")
+        if corpo != testo:
+            errori.append("testo %r invece di %r" % (corpo, testo))
     nomi = [p.get_filename() for p in messaggio.walk() if p.get_filename()]
     if nomi != allegati:
         errori.append("allegati %r invece di %r" % (nomi, allegati))

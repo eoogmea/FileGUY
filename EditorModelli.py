@@ -422,12 +422,24 @@ class EditorModelli(tk.Tk):
 
         ttk.Label(riquadro, text="Dati dell'invio\n(righe dopo \"fine\")").grid(row=2, column=0, sticky="nw",
                                                                              pady=(4, 0))
-        self.coda = tk.Text(riquadro, height=3, width=60, font=(famiglia_tk("o"), 9), undo=True)
+        self.coda = tk.Text(riquadro, height=5, width=60, font=(famiglia_tk("o"), 9), undo=True)
         self.coda.grid(row=2, column=1, columnspan=8, sticky="we", pady=(4, 0))
         self.coda.bind("<<Modified>>", self._coda_modificata)
-        ttk.Label(riquadro, text="{nome} = nome del file di testo, senza .txt", foreground="gray").grid(
-            row=3, column=1, columnspan=8, sticky="w")
+        self.aiuto_coda = ttk.Label(riquadro, foreground="gray")
+        self.aiuto_coda.grid(row=3, column=1, columnspan=8, sticky="w")
+        self.invio.trace_add("write", lambda *a: self._aggiorna_aiuto_coda())
+        self._aggiorna_aiuto_coda()
         riquadro.columnconfigure(8, weight=1)
+
+    def _aggiorna_aiuto_coda(self):
+        aiuti = {
+            "email": "Destinatario: l'indirizzo email.  Dati dell'invio: l'oggetto, una riga vuota e il testo",
+            "telegram": "Destinatario: telegram <chat>.  Dati dell'invio: il documento da mandare e il testo",
+            "whatsapp": "Destinatario: whatsapp <numero>.  Dati dell'invio: il documento da mandare e il testo",
+        }
+        testo = aiuti.get(self.invio.get(), "")
+        self.aiuto_coda.configure(text=(testo + "   -   " if testo else "") +
+                                  "{nome} = nome del file di testo, senza .txt")
 
     def _crea_barra(self):
         barra = ttk.Frame(self, padding=(6, 6))
@@ -1205,13 +1217,17 @@ class EditorModelli(tk.Tk):
                 if not percorso_testo:
                     return
         righe = self._leggi_testo(percorso_testo)
+        email_aggiornata = modello_gui.aggiorna_email(intestazione)
         self._imposta_intestazione(intestazione)
         self._mostra_testo(righe, modello_gui.leggi_formati(linee, righe, self.word.get()))
         self.percorso_modello = percorso
         self.percorso_testo = percorso_testo
-        self.modificato = False
+        # Un modello email di prima, portato al formato nuovo, va salvato
+        self.modificato = email_aggiornata
         self._aggiorna_titolo()
         self._aggiungi_recente(percorso)
+        if email_aggiornata:
+            self._messaggio("L'indirizzo email è passato nel campo Destinatario: salva per aggiornare il modello")
 
     def _linee_formato(self):
         try:

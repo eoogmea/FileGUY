@@ -6,8 +6,9 @@ applicandolo a un file di testo (es. fattura_123.txt) {nome} diventa "fattura_12
 Struttura del .gui (una voce per riga):
     0 file di testo        1 azione (pdf, file, stampa, docx)   2 documento da creare
     3 template PDF         4 rotazione                          5 invio (0, email, telegram, whatsapp)
-    6 destinatario         7... formati, una linea per ogni riga del testo, fino a "fine"
-    dopo "fine": dati dell'invio (destinatario email, oggetto, testo del messaggio...)
+    6 destinatario (indirizzo email, "telegram <chat>", "whatsapp <numero>...")
+    7... formati, una linea per ogni riga del testo, fino a "fine"
+    dopo "fine": dati dell'invio (email: oggetto, riga vuota e testo del messaggio)
 
 Linea di formato: "<numero di riga 3 cifre>\\t<codice>" oppure, con più formati sulla riga,
 "<numero>\\t<codice> <da> <a>\\t<codice> <da> <a>..." con da/a di 2 cifre (colonne 0-99).
@@ -487,6 +488,24 @@ def nuovo_modello(word):
         "destinatario": "",
         "coda": [],
     }
+
+
+def aggiorna_email(intestazione):
+    """Porta un modello email di prima al formato nuovo; restituisce True se l'ha cambiato.
+
+    Prima l'indirizzo era la prima linea dopo "fine", seguita da oggetto, secondo allegato e
+    testo; ora l'indirizzo è nel destinatario e dopo "fine" ci sono l'oggetto, una riga vuota
+    e il testo. Con un secondo allegato il modello resta com'è (il formato nuovo non lo ha).
+    """
+    coda = intestazione["coda"]
+    if intestazione["invio"] != "email" or intestazione["destinatario"].strip() or not coda:
+        return False
+    if len(coda) > 2 and coda[2].strip():
+        return False
+    intestazione["destinatario"] = coda[0].strip()
+    testo = coda[3:]
+    intestazione["coda"] = [coda[1] if len(coda) > 1 else ""] + ([""] + testo if testo else [])
+    return True
 
 
 def leggi_gui(percorso):

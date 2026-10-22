@@ -106,8 +106,7 @@ def main(name, config):
     invio = guida[5].replace("\n", "")
     if azione != "" and invio in ("email", "telegram", "whatsapp"):
         if invio == "email":
-            coda = coda_gui(guida)
-            descrizione = "email a " + (coda[0] if len(coda) > 0 else "?")
+            descrizione = "email a " + (dati_email(guida)[0] or "?")
         else:
             descrizione = guida[6].strip()
         funzione = {"email": email_send, "telegram": telegram, "whatsapp": whatsapp}[invio]
@@ -707,35 +706,29 @@ def excel(guida, config):
     wb.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
 
 
+def dati_email(guida):
+    """Destinatario, oggetto, secondo allegato e testo di un invio email.
+
+    Con l'indirizzo nella linea 7 del .gui, dopo "fine" ci sono l'oggetto, una riga vuota
+    e il testo del messaggio (anche su più righe).
+    Con la linea 7 vuota (i .gui di prima) dopo "fine" ci sono l'indirizzo, l'oggetto,
+    un eventuale secondo allegato e il testo del messaggio.
+    """
+    coda = coda_gui(guida)
+    destinatario = guida[6].strip() if len(guida) > 6 else ""
+    if destinatario != "":
+        oggetto = coda[0] if len(coda) > 0 else ""
+        testo = coda[1:]
+        # La riga vuota tra oggetto e testo
+        if testo and testo[0].strip() == "":
+            testo = testo[1:]
+        return destinatario, oggetto, "", "\n".join(testo)
+    coda += [""] * (3 - len(coda))
+    return coda[0].strip(), coda[1], coda[2].strip(), "\n".join(coda[3:])
+
+
 def email_send(guida, config):
-    i = 0
-    body = ""
-    subject = ""
-    receiver_email = ""
-    filename2 = ""
-    #legge le linee dopo fine
-    #la prima è il ricevente
-    #la seconda è l'oggetto
-    #la terza è un eventuale secondo allegato
-    #Quarta e seguenti sono per il messaggio
-    for x in guida:
-        if i == 1 or i == 2:
-            if i == 1:
-                receiver_email = x.replace("\n", "")
-            i += 1
-        if i == 3 or i == 4:
-            if i == 3:
-                subject = x.replace("\n", "")
-            i += 1
-        if i == 5 or i == 6:
-            if i == 5:
-                filename2 = x.replace("\n", "")
-            i += 1
-        if i >= 7:
-            body = body + " " + x
-            i += 1
-        if x[0:4] == "fine":
-            i += 1
+    receiver_email, subject, filename2, body = dati_email(guida)
 
     port = int(config["email_smtp_porta"])  # For SSL
 
@@ -752,7 +745,7 @@ def email_send(guida, config):
     filename = config["cartella_output"] + os.sep + guida[2].replace("\n", "")
 
     if receiver_email == "":
-        raise ValueError("indirizzo del destinatario mancante (prima linea dopo \"fine\")")
+        raise ValueError("indirizzo del destinatario mancante (campo Destinatario, linea 7 del .gui)")
 
     #Forma il messaggio
     message = MIMEMultipart()

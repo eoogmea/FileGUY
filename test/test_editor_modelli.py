@@ -135,6 +135,25 @@ def famiglia_nel_pdf(nome_pdf):
 
 
 @prova
+def email_di_prima_nel_formato_nuovo():
+    def intestazione(destinatario, coda):
+        return dict(modello_gui.nuovo_modello(False), invio="email", destinatario=destinatario, coda=coda)
+
+    vecchia = intestazione("", ["c@x.it", "Oggetto {nome}", "", "Riga 1", "Riga 2"])
+    assert modello_gui.aggiorna_email(vecchia)
+    assert vecchia["destinatario"] == "c@x.it"
+    assert vecchia["coda"] == ["Oggetto {nome}", "", "Riga 1", "Riga 2"], vecchia["coda"]
+    senza_testo = intestazione("", ["c@x.it", "Oggetto"])
+    assert modello_gui.aggiorna_email(senza_testo) and senza_testo["coda"] == ["Oggetto"]
+    # Già nuova, con il secondo allegato o senza email: resta com'è
+    for invariata in (intestazione("c@x.it", ["Oggetto", "", "Testo"]),
+                      intestazione("", ["c@x.it", "Oggetto", "C:\\allegato.pdf", "Testo"]),
+                      dict(intestazione("", ["doc.pdf", "Testo"]), invio="telegram")):
+        prima = dict(invariata)
+        assert not modello_gui.aggiorna_email(invariata) and invariata == prima
+
+
+@prova
 def servizio_applica_formati_pdf():
     doc = pymupdf.open(crea_con_servizio(False, "pdf"))
     pezzi = {}
