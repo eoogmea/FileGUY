@@ -31,7 +31,7 @@ import telepot
 #import cookie
 
 # WHATSAPP (API Cloud di Meta)
-from whatsapp_meta import WhatsApp, WhatsAppError
+from whatsapp_meta import WhatsApp, WhatsAppError, leggi_destinatario, leggi_riga_template
 
 # PDF
 from PyPDF2 import PdfFileWriter, PdfFileReader
@@ -257,29 +257,31 @@ def telegram(guida, config):
 
 def whatsapp(guida, config):
     #Usa le API Cloud di Meta: token e Phone number ID si impostano con ConfigManager.py
-    #La settima linea del .gui è "whatsapp <numero> [<template> [<lingua>]]"
+    #La settima linea del .gui è "whatsapp <numero>" (la parola whatsapp si può omettere)
     #il numero va con il prefisso internazionale (es. 393331234567 o +39 333 1234567)
     #legge le ultime linee del file dopo "fine"
     #la prima linea è il nome del documento nella cartella di output (vuota = nessun documento)
-    #la seconda e seguenti sono il testo del messaggio
+    #Messaggio: la seconda e seguenti sono il testo del messaggio.
     #Senza template il messaggio arriva solo se il destinatario ha scritto al numero
     #aziendale nelle ultime 24 ore (regola di Meta).
-    #Con il template le linee di testo diventano i parametri {{1}}, {{2}}, ... del template
-    #e il documento diventa l'intestazione (il template deve avere un'intestazione Documento)
-    parti = guida[6].replace("\n", "").split()[1:]
-    #il numero può essere scritto con spazi: prende tutte le parti fatte solo di cifre e +-./()
-    numero = ""
-    while len(parti) > 0 and parti[0].strip("+-./()0123456789") == "":
-        numero += parti.pop(0)
+    #Template: la seconda è "template: <nome> [<lingua>]", le seguenti (non vuote) sono i
+    #parametri {{1}}, {{2}}, ... e il documento diventa l'intestazione (il template deve avere
+    #un'intestazione Documento). Nei .gui di prima nome e lingua erano nella linea 7, dopo il numero.
+    numero, template, lingua = leggi_destinatario(guida[6].replace("\n", ""))
     if numero == "":
         raise WhatsAppError("numero del destinatario mancante nella linea 7 del .gui")
-    template = parti[0] if len(parti) > 0 else ""
-    lingua = parti[1] if len(parti) > 1 else config["whatsapp_lingua"]
 
     #prende le linee dopo "fine"
     coda = coda_gui(guida)
     document = coda[0].strip() if len(coda) > 0 else ""
     righe = coda[1:]
+    riga_template = leggi_riga_template(righe[0]) if righe else None
+    if riga_template is not None:
+        template, lingua = riga_template
+        righe = righe[1:]
+        if template == "":
+            raise WhatsAppError("nome del template mancante nella riga \"template:\"")
+    lingua = lingua or config["whatsapp_lingua"]
     doc_path = config["cartella_output"] + os.sep + document if document != "" else None
 
     #Gli errori (WhatsAppError, rete, file mancante) vanno nel log tramite passo_secondario()

@@ -40,6 +40,8 @@ CAMPI = {
     "whatsapp_phone_number_id": "",
     "whatsapp_versione_api": "v23.0",
     "whatsapp_lingua": "it",
+    # Vuoto = ricavato dal token (serve per l'elenco e la creazione dei template)
+    "whatsapp_account_business": "",
     # Vuoto = stampante predefinita del sistema
     "stampante": "",
     # Vuoto = FileGUY.log nella cartella del programma

@@ -40,6 +40,7 @@ SEZIONI = [
         ("whatsapp_phone_number_id", "Phone number ID", "testo"),
         ("whatsapp_versione_api", "Versione API Graph", "testo"),
         ("whatsapp_lingua", "Lingua predefinita dei template", "testo"),
+        ("whatsapp_account_business", "ID account WhatsApp Business (vuoto = dal token)", "testo"),
     ]),
 ]
 

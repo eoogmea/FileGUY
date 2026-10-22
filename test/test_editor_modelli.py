@@ -156,6 +156,166 @@ def email_di_prima_nel_formato_nuovo():
 
 
 @prova
+def whatsapp_destinatario_e_template():
+    def intestazione(invio, destinatario, coda):
+        return dict(modello_gui.nuovo_modello(False), invio=invio, destinatario=destinatario, coda=coda)
+
+    messaggio = {"modo": "messaggio", "template": "", "lingua": ""}
+    # Il prefisso non si vede nell'editor e torna al salvataggio
+    assert modello_gui.invio_da_mostrare(intestazione("whatsapp", "whatsapp +39 333 1234567", ["doc.pdf", "Ciao"])) \
+        == ("+39 333 1234567", ["doc.pdf", "Ciao"], messaggio)
+    assert modello_gui.invio_da_salvare("whatsapp", "+39 333 1234567", ["doc.pdf", "Ciao"], messaggio) \
+        == ("whatsapp +39 333 1234567", ["doc.pdf", "Ciao"])
+    assert modello_gui.invio_da_mostrare(intestazione("telegram", "telegram 123", []))[0] == "123"
+    assert modello_gui.invio_da_salvare("telegram", "123", [], messaggio)[0] == "telegram 123"
+    assert modello_gui.invio_da_salvare("whatsapp", "", [], messaggio)[0] == ""
+    # Template: nella riga dopo il documento; i .gui di prima lo avevano nel destinatario
+    template = {"modo": "template", "template": "fattura", "lingua": "it"}
+    salvato = modello_gui.invio_da_salvare("whatsapp", "393331234567", ["{nome}.pdf", "Mario"], template)
+    assert salvato == ("whatsapp 393331234567", ["{nome}.pdf", "template: fattura it", "Mario"]), salvato
+    assert modello_gui.invio_da_mostrare(intestazione("whatsapp", *salvato)) == \
+        ("393331234567", ["{nome}.pdf", "Mario"], template)
+    assert modello_gui.invio_da_mostrare(intestazione("whatsapp", "whatsapp 393331234567 fattura it",
+                                                      ["{nome}.pdf", "Mario"])) == \
+        ("393331234567", ["{nome}.pdf", "Mario"], template)
+    # Template senza documento: la prima riga resta vuota
+    assert modello_gui.invio_da_salvare("whatsapp", "39333", [], template)[1] == ["", "template: fattura it"]
+
+
+@prova
+def nome_proposto_salva_con_nome():
+    from EditorModelli import proposta_salvataggio
+    modello = os.path.join("C:\\", "modelli", "fattura.gui")
+    assert proposta_salvataggio(modello, "x.txt", "M") == (os.path.dirname(modello), "fattura.gui")
+    assert proposta_salvataggio(None, os.path.join("C:\\", "esempi", "bolla_12.txt"), "M") == ("M", "bolla_12.gui")
+    assert proposta_salvataggio(None, None, "M") == ("M", "")
+
+
+@prova
+def whatsapp_richieste_a_meta():
+    import whatsapp_meta
+
+    class Risposta:
+        def __init__(self, dati):
+            self.dati, self.ok, self.status_code, self.text = dati, True, 200, ""
+
+        def json(self):
+            return self.dati
+
+    class Sessione:
+        def __init__(self):
+            self.headers, self.richieste = {}, []
+
+        def get(self, url, params=None, timeout=None):
+            self.richieste.append(("GET", url, params))
+            if url.endswith("/debug_token"):
+                return Risposta({"data": {"app_id": "app9", "granular_scopes": [
+                    {"scope": "whatsapp_business_messaging", "target_ids": ["x"]},
+                    {"scope": "whatsapp_business_management", "target_ids": ["waba7"]}]}})
+            if url.endswith("/message_templates"):
+                return Risposta({"data": [{"name": "b", "language": "it", "status": "APPROVED", "category": "UTILITY",
+                                           "components": [{"type": "HEADER", "format": "DOCUMENT"},
+                                                          {"type": "BODY", "text": "Ciao {{1}} e {{ 2 }}"}]}],
+                                 "paging": {"next": "https://pagina2"}})
+            return Risposta({"data": [{"name": "a", "language": "en", "status": "PENDING", "category": "MARKETING",
+                                       "components": [{"type": "BODY", "text": "Solo testo"}]}]})
+
+        def post(self, url, params=None, json=None, timeout=None, **altro):
+            self.richieste.append(("POST", url, params or json))
+            return Risposta({"id": "upload:1"} if url.endswith("/uploads") else {"id": "55", "status": "PENDING"})
+
+    wa = whatsapp_meta.WhatsApp("tok", "123")
+    wa.session = Sessione()
+    assert wa.account_business() == "waba7"
+    elenco = wa.elenco_template("waba7")
+    assert [(t["nome"], t["parametri"], t["intestazione"], t["stato"]) for t in elenco] == \
+        [("a", 0, "", "PENDING"), ("b", 2, "DOCUMENT", "APPROVED")], elenco
+    assert wa.session.richieste[-1] == ("GET", "https://pagina2", None)
+    # Creazione con documento: prima il caricamento dell'esempio, poi il template
+    esempio = os.path.join(cartella, "esempio_template.pdf")
+    with open(esempio, "wb") as f:
+        f.write(b"%PDF-1.4 prova")
+    originale = whatsapp_meta.requests.post
+    whatsapp_meta.requests.post = lambda url, data=None, headers=None, timeout=None: Risposta({"h": "HANDLE"})
+    try:
+        assert wa.crea_template("waba7", "nuovo", "it", "UTILITY", "Ciao {{1}}", ["Mario"], esempio, "INFAS") == \
+            ("55", "PENDING")
+    finally:
+        whatsapp_meta.requests.post = originale
+    metodo, url, corpo = wa.session.richieste[-1]
+    assert url.endswith("/v23.0/waba7/message_templates"), url
+    assert corpo == {"name": "nuovo", "language": "it", "category": "UTILITY", "components": [
+        {"type": "HEADER", "format": "DOCUMENT", "example": {"header_handle": ["HANDLE"]}},
+        {"type": "BODY", "text": "Ciao {{1}}", "example": {"body_text": [["Mario"]]}},
+        {"type": "FOOTER", "text": "INFAS"}]}, corpo
+    assert any(u.endswith("/app9/uploads") for _, u, _ in wa.session.richieste)
+    assert whatsapp_meta.leggi_destinatario("whatsapp +39 333 123 fattura en") == ("+39333123", "fattura", "en")
+    assert whatsapp_meta.leggi_riga_template('Template: "fattura"') == ("fattura", "")
+    assert whatsapp_meta.leggi_riga_template("Mario Rossi") is None
+
+
+@prova
+def finestra_template_whatsapp():
+    import EditorModelli
+    from tkinter import messagebox
+
+    class FintoWhatsApp:
+        creati = []
+
+        def elenco_template(self, account):
+            return [{"nome": "fattura", "lingua": "it", "stato": "APPROVED", "categoria": "UTILITY",
+                     "testo": "Buongiorno {{1}}, ecco {{2}}", "intestazione": "DOCUMENT", "parametri": 2}]
+
+        def crea_template(self, account, *argomenti):
+            self.creati.append((account,) + argomenti)
+            return "1", "PENDING"
+
+    messaggi = []
+    for nome in ("showinfo", "showerror"):
+        setattr(messagebox, nome, lambda titolo, testo, _n=nome, **k: messaggi.append((_n, testo)))
+    app = EditorModelli.EditorModelli()
+    finto = FintoWhatsApp()
+    app._whatsapp = lambda: (finto, "waba1")
+    try:
+        app.invio.set("whatsapp")
+        assert app.riga_whatsapp.winfo_manager() == "grid"
+        app.whatsapp_modo.set("template")
+        assert app.scarica_template_whatsapp()
+        assert list(app.scelta_template_whatsapp.cget("values")) == ["fattura (it)"]
+        app.whatsapp_template.set("fattura (it)")
+        app._template_whatsapp_scelto()
+        assert app.whatsapp_template.get() == "fattura" and "2 parametri" in app.aiuto_coda.cget("text")
+        app.destinatario.set("393331234567")
+        app.coda.insert("1.0", "{nome}.pdf\nMario Rossi\nFT1")
+        intestazione = app._intestazione()
+        assert intestazione["destinatario"] == "whatsapp 393331234567"
+        assert intestazione["coda"] == ["{nome}.pdf", "template: fattura it", "Mario Rossi", "FT1"]
+        app.invio.set("email")
+        assert app.riga_whatsapp.winfo_manager() == ""
+        app.invio.set("whatsapp")
+        # Nuovo template: controlli e invio (con un PDF di esempio creato al momento)
+        finestra = EditorModelli.FinestraNuovoTemplate(app)
+        finestra.nome.set("Invio Fattura")
+        finestra.crea()
+        assert messaggi[-1][0] == "showerror" and "minuscole" in messaggi[-1][1]
+        finestra.nome.set("invio_fattura")
+        finestra.esempi.delete("1.0", "end")
+        finestra.esempi.insert("1.0", "Mario Rossi")
+        finestra.crea()
+        assert "esempio" in messaggi[-1][1], messaggi[-1]
+        finestra.esempi.insert("end", "\nFT123")
+        finestra.crea()
+        account, nome, lingua, categoria, testo, esempi, documento, piede = finto.creati[-1]
+        assert (account, nome, lingua, categoria, esempi) == ("waba1", "invio_fattura", "it", "UTILITY",
+                                                              ["Mario Rossi", "FT123"])
+        assert documento and documento.endswith("esempio.pdf") and "{{2}}" in testo
+        assert app.whatsapp_template.get() == "invio_fattura" and messaggi[-1][0] == "showinfo"
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
+@prova
 def servizio_applica_formati_pdf():
     doc = pymupdf.open(crea_con_servizio(False, "pdf"))
     pezzi = {}

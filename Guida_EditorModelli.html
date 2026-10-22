@@ -431,21 +431,38 @@ ancora così. Aprendoli, l'editor sposta l'indirizzo nel campo Destinatario (e i
 <code>allegato:</code>); salvali per aggiornarli.</div>
 
 <h3>Telegram</h3>
-<p>Nel campo <strong>Destinatario</strong> scrivi <code>telegram</code> seguito dall'identificativo della chat, per
-esempio <code>telegram 123456789</code>. Nei <strong>Dati dell'invio</strong>:</p>
+<p>Nel campo <strong>Destinatario</strong> scrivi l'identificativo della chat, per esempio
+<code>123456789</code> (la parola <code>telegram</code> davanti la aggiunge l'editor nel <code>.gui</code>). Nei
+<strong>Dati dell'invio</strong>:</p>
 <pre>{nome}.pdf                    ← documento da mandare (riga vuota = solo il messaggio)
 Ecco il documento richiesto   ← dalla seconda riga in poi: il testo del messaggio</pre>
 
 <h3>WhatsApp</h3>
-<p>Nel campo <strong>Destinatario</strong> scrivi <code>whatsapp</code> seguito dal numero con il prefisso
-internazionale, per esempio <code>whatsapp 393331234567</code>. Per usare un template approvato su Meta aggiungi
-il suo nome e la lingua: <code>whatsapp 393331234567 fattura it</code>. Nei <strong>Dati dell'invio</strong>:</p>
+<p>Nel campo <strong>Destinatario</strong> scrivi il numero con il prefisso internazionale, per esempio
+<code>393331234567</code> o <code>+39 333 1234567</code> (la parola <code>whatsapp</code> davanti la aggiunge
+l'editor nel <code>.gui</code>). Sotto compare la riga <strong>WhatsApp</strong>, dove scegli cosa mandare.</p>
+<p><strong>Messaggio</strong>: un testo libero. Nei <strong>Dati dell'invio</strong>:</p>
 <pre>{nome}.pdf                    ← documento da mandare (riga vuota = nessun documento)
-Buongiorno,                   ← testo del messaggio (con un template: i valori {{1}}, {{2}}…)
+Buongiorno,                   ← dalla seconda riga in poi: il testo del messaggio
 in allegato il documento.</pre>
+<p><strong>Template</strong>: un messaggio preparato e approvato su Meta. Premi <em>Scarica elenco</em> per avere
+nella tendina i template dell'account (nome e lingua); scelto un template, sotto i Dati dell'invio compaiono il
+suo testo, quanti valori vuole e se non è ancora approvato. Nei <strong>Dati dell'invio</strong>:</p>
+<pre>{nome}.pdf                    ← il documento, che va nell'intestazione del template
+Mario Rossi                   ← il valore di {{1}}
+{nome}                        ← il valore di {{2}}, e così via (una riga per valore)</pre>
+<p>Nel <code>.gui</code> l'editor scrive dopo la riga del documento la riga
+<code>template: &lt;nome&gt; &lt;lingua&gt;</code>; si può anche scrivere a mano.</p>
+<p><strong>Nuovo template…</strong> crea un template sull'account di Meta: nome (lettere minuscole, cifre e
+<code>_</code>), lingua, categoria (<em>Utility</em> per fatture e avvisi), testo con i valori
+<code>{{1}}</code>, <code>{{2}}</code>…, un esempio per ogni valore e, se serve mandare il PDF, l'intestazione
+con il documento. Meta lo controlla prima di renderlo usabile, di solito in pochi minuti: lo stato si vede con
+<em>Scarica elenco</em>.</p>
 <div class="nota">WhatsApp ha una regola precisa: senza template, un messaggio arriva solo se il destinatario ha
 scritto al numero aziendale nelle ultime 24 ore. Per scrivere ai clienti in generale serve un template
-approvato.</div>
+approvato. Per scaricare e creare i template il token di ConfigManager deve avere il permesso
+<code>whatsapp_business_management</code>; se l'editor non trova l'account, scrivi l'<em>ID account WhatsApp
+Business</em> in ConfigManager.</div>
 
 <h2 id="anteprima">9. L'anteprima e la filigrana</h2>
 <p>Il comando <strong>Anteprima</strong> (dal menu, dal pulsante a destra della barra o con <kbd>F5</kbd>) crea il
@@ -488,7 +505,8 @@ l'errore compare in basso nella sua finestra.</p>
   <li><strong>File &gt; Apri modello…</strong> riapre un modello insieme al suo testo di esempio. Se il testo non
       c'è più, l'editor te ne chiede uno.</li>
   <li><strong>File &gt; Salva modello con nome…</strong> crea una copia, per esempio per preparare la variante di
-      un modello esistente.</li>
+      un modello esistente. Il nome proposto è quello del modello aperto o, per un modello nuovo, quello del testo
+      di esempio con <code>.gui</code>.</li>
   <li>Quando ci sono modifiche non salvate, il titolo della finestra mostra un <strong>*</strong>.</li>
 </ul>
 

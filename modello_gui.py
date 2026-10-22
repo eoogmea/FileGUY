@@ -6,9 +6,10 @@ applicandolo a un file di testo (es. fattura_123.txt) {nome} diventa "fattura_12
 Struttura del .gui (una voce per riga):
     0 file di testo        1 azione (pdf, file, stampa, docx)   2 documento da creare
     3 template PDF         4 rotazione                          5 invio (0, email, telegram, whatsapp)
-    6 destinatario (indirizzo email, "telegram <chat>", "whatsapp <numero>...")
+    6 destinatario (indirizzo email, "telegram <chat>", "whatsapp <numero>")
     7... formati, una linea per ogni riga del testo, fino a "fine"
-    dopo "fine": dati dell'invio (email: oggetto, righe "allegato: <percorso>", riga vuota e testo)
+    dopo "fine": dati dell'invio (email: oggetto, righe "allegato: <percorso>", riga vuota e testo;
+                 WhatsApp: documento, eventuale "template: <nome> [<lingua>]" e testo o parametri)
 
 Linea di formato: "<numero di riga 3 cifre>\\t<codice>" oppure, con più formati sulla riga,
 "<numero>\\t<codice> <da> <a>\\t<codice> <da> <a>..." con da/a di 2 cifre (colonne 0-99).
@@ -488,6 +489,44 @@ def nuovo_modello(word):
         "destinatario": "",
         "coda": [],
     }
+
+
+def invio_da_mostrare(intestazione):
+    """Destinatario e dati dell'invio come li mostra l'editor, più la scelta WhatsApp.
+
+    Nell'editor il destinatario di Telegram e WhatsApp è senza la parola "telegram"/"whatsapp" e
+    il template WhatsApp si sceglie a parte (nel .gui è la riga "template: <nome> [<lingua>]" dopo
+    quella del documento). Nei .gui di prima nome e lingua del template erano dopo il numero.
+    Restituisce (destinatario, coda, whatsapp) con whatsapp = {"modo", "template", "lingua"}.
+    """
+    from whatsapp_meta import leggi_destinatario, leggi_riga_template
+    invio, destinatario, coda = intestazione["invio"], intestazione["destinatario"].strip(), list(intestazione["coda"])
+    whatsapp = {"modo": "messaggio", "template": "", "lingua": ""}
+    parole = destinatario.split(None, 1)
+    if invio in ("telegram", "whatsapp") and parole and parole[0].lower() == invio:
+        destinatario = parole[1] if len(parole) > 1 else ""
+    if invio == "whatsapp":
+        numero, template, lingua = leggi_destinatario(destinatario)
+        if template:
+            destinatario = numero
+            whatsapp = {"modo": "template", "template": template, "lingua": lingua}
+        riga = leggi_riga_template(coda[1]) if len(coda) > 1 else None
+        if riga is not None:
+            whatsapp = {"modo": "template", "template": riga[0], "lingua": riga[1]}
+            del coda[1]
+    return destinatario, coda, whatsapp
+
+
+def invio_da_salvare(invio, destinatario, coda, whatsapp):
+    """Il contrario di invio_da_mostrare(): (destinatario, coda) da scrivere nel .gui."""
+    destinatario = destinatario.strip()
+    coda = list(coda)
+    if invio in ("telegram", "whatsapp") and destinatario and destinatario.split()[0].lower() != invio:
+        destinatario = invio + " " + destinatario
+    if invio == "whatsapp" and whatsapp["modo"] == "template":
+        riga = "template: " + (whatsapp["template"].strip() + " " + whatsapp["lingua"].strip()).strip()
+        coda = [coda[0] if coda else ""] + [riga] + coda[1:]
+    return destinatario, coda
 
 
 def aggiorna_email(intestazione):

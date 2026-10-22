@@ -171,7 +171,23 @@ def casi(modelli=None):
     caso("pdf_whatsapp_template", gui("pdf_whatsapp_template.txt", "file", "pdf_whatsapp_template.pdf",
                                       invio="whatsapp", destinatario="whatsapp 393331234567 fattura it",
                                       coda=["pdf_whatsapp_template.pdf", "Mario Rossi", "123"]),
-         uscite=["pdf_whatsapp_template.pdf"], chiamate=["wa_template"])
+         uscite=["pdf_whatsapp_template.pdf"], chiamate=["wa_template"],
+         controllo=lambda config: controlla_whatsapp("wa_template", "393331234567", "fattura", "it",
+                                                     ["Mario Rossi", "123"]))
+    # Formato nuovo: il numero senza "whatsapp" e il template nei dati dell'invio
+    caso("pdf_whatsapp_riga_template", gui("pdf_whatsapp_riga_template.txt", "file", "pdf_whatsapp_riga_template.pdf",
+                                           invio="whatsapp", destinatario="+39 333 1234567",
+                                           coda=["pdf_whatsapp_riga_template.pdf", "template: invio_fattura en",
+                                                 "Mario Rossi", "", "FT123"]),
+         uscite=["pdf_whatsapp_riga_template.pdf"], chiamate=["wa_template"],
+         controllo=lambda config: controlla_whatsapp("wa_template", "+393331234567", "invio_fattura", "en",
+                                                     ["Mario Rossi", "FT123"]))
+    caso("pdf_whatsapp_senza_prefisso", gui("pdf_whatsapp_senza_prefisso.txt", "file",
+                                            "pdf_whatsapp_senza_prefisso.pdf", invio="whatsapp",
+                                            destinatario="393331234567",
+                                            coda=["", "Solo testo"]),
+         uscite=["pdf_whatsapp_senza_prefisso.pdf"], chiamate=["wa_testo"],
+         controllo=lambda config: controlla_whatsapp("wa_testo", "393331234567", "Solo testo"))
 
     # --- Excel ---
     testo_excel = ("Codice;Descrizione;Quantita;Prezzo;Data;\n"
@@ -298,6 +314,15 @@ def casi(modelli=None):
                  controllo=testo_pdf(nome + ".pdf", "Cliente:", "città, perché, più, così"),
                  modello=os.path.join(modelli, nome_modello))
     return c
+
+
+def controlla_whatsapp(nome_chiamata, *attesi):
+    """Gli argomenti della chiamata WhatsApp simulata (senza il documento, che varia)."""
+    fatte = [d for n, d in chiamate if n == nome_chiamata]
+    if not fatte:
+        return ["nessuna chiamata " + nome_chiamata]
+    argomenti = tuple(fatte[0][:len(attesi)])
+    return [] if argomenti == attesi else ["%s %r invece di %r" % (nome_chiamata, argomenti, attesi)]
 
 
 def controlla_email(oggetto, allegati, testo=None, destinatario=None):

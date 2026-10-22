@@ -30,7 +30,7 @@ from tkinter import filedialog, messagebox, ttk
 import modello_gui
 from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, MAX_ANNULLA, MAX_RECENTI, NOMI_COLORI, NOMI_FONT,
                            SceltaDescritta, apri_con_avviso, apri_guida, dimensiona, famiglia_tk,
-                           leggi_preferenze, scrivi_preferenze)
+                           leggi_preferenze, proposta_salvataggio, scrivi_preferenze)
 from config_sicuro import carica_config
 from modello_gui import (COLORI, FONT, FORMATI_EXCEL, PREDEFINITO_EXCEL, SFONDI, campi_excel,
                          colonna_excel_vuota, righe_excel, stile_riga_vuoto, valore_excel)
@@ -315,8 +315,6 @@ class EditorExcel(tk.Tk):
         self.coda = tk.Text(riquadro, height=3, width=60, font=(famiglia_tk("o"), 9), undo=True)
         self.coda.grid(row=1, column=1, columnspan=5, sticky="we", pady=(4, 0))
         self.coda.bind("<<Modified>>", self._coda_modificata)
-        ttk.Label(riquadro, text="{nome} = nome del file di testo, senza .txt", foreground="gray").grid(
-            row=2, column=1, columnspan=5, sticky="w")
         riquadro.columnconfigure(5, weight=1)
 
     def _crea_centro(self):
@@ -1064,17 +1062,12 @@ class EditorExcel(tk.Tk):
         percorso = self.percorso_modello
         if con_nome or percorso is None:
             os.makedirs(CARTELLA_MODELLI, exist_ok=True)
+            cartella, nome = proposta_salvataggio(self.percorso_modello, self.percorso_testo, CARTELLA_MODELLI)
             percorso = filedialog.asksaveasfilename(parent=self, title="Salva modello Excel",
-                                                    initialdir=CARTELLA_MODELLI, defaultextension=".gui",
+                                                    initialdir=cartella, initialfile=nome, defaultextension=".gui",
                                                     filetypes=[("Modelli", "*.gui")])
             if not percorso:
                 return False
-        lavoro = self.config_servizio.get("cartella_lavoro", "")
-        if lavoro and os.path.normcase(os.path.abspath(os.path.dirname(percorso))) == \
-                os.path.normcase(os.path.abspath(lavoro)):
-            messagebox.showerror("Modello", "Non salvare il modello nella cartella di lavoro: il servizio "
-                                 "proverebbe a elaborarlo. Usa ad esempio " + CARTELLA_MODELLI, parent=self)
-            return False
         modello_gui.scrivi_gui(percorso, self._intestazione(), modello_gui.linee_excel(self.stili, self.colonne))
         # Copia del testo di esempio accanto al modello, per poterlo riaprire
         copia_testo = os.path.splitext(percorso)[0] + ".txt"
