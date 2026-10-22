@@ -341,6 +341,33 @@ def finestra_modalita_righe():
         app.destroy()
 
 
+@prova
+def finestra_dati_invio():
+    """Lo stesso pannello dei dati dell'invio di EditorModelli: campi diversi per ogni canale."""
+    import EditorExcel
+    app = EditorExcel.EditorExcel()
+    pannello = app.pannello_invio
+    try:
+        assert pannello.winfo_manager() == ""
+        app.invio.set("email")
+        app.destinatario.set("cliente@example.com")
+        pannello.oggetto.set("Listino {nome}")
+        pannello.casella_testo.insert("1.0", "Ecco il listino")
+        intestazione = app._intestazione()
+        assert intestazione["coda"] == ["Listino {nome}", "", "Ecco il listino"], intestazione["coda"]
+        # Un .gui con il template WhatsApp nel destinatario (formato di prima)
+        app._imposta_intestazione(dict(intestazione, invio="whatsapp", destinatario="whatsapp 39333 listino it",
+                                       coda=["{nome}.xlsx", "Mario"]))
+        assert app.destinatario.get() == "39333" and pannello.modo.get() == "template"
+        assert app.etichetta_destinatario.cget("text") == "Numero WhatsApp"
+        intestazione = app._intestazione()
+        assert intestazione["destinatario"] == "whatsapp 39333"
+        assert intestazione["coda"] == ["{nome}.xlsx", "template: listino it", "Mario"], intestazione["coda"]
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
 shutil.rmtree(cartella, ignore_errors=True)
 for nome, errore in risultati:
     print("[%s] %s" % ("OK " if errore is None else "ERR", nome))

@@ -264,7 +264,8 @@ def finestra_template_whatsapp():
 
         def elenco_template(self, account):
             return [{"nome": "fattura", "lingua": "it", "stato": "APPROVED", "categoria": "UTILITY",
-                     "testo": "Buongiorno {{1}}, ecco {{2}}", "intestazione": "DOCUMENT", "parametri": 2}]
+                     "testo": "Buongiorno {{1}}, ecco {{2}}", "intestazione": "DOCUMENT", "parametri": 2,
+                     "testo_intestazione": "", "piede": "INFAS"}]
 
         def crea_template(self, account, *argomenti):
             self.creati.append((account,) + argomenti)
@@ -275,26 +276,62 @@ def finestra_template_whatsapp():
         setattr(messagebox, nome, lambda titolo, testo, _n=nome, **k: messaggi.append((_n, testo)))
     app = EditorModelli.EditorModelli()
     finto = FintoWhatsApp()
-    app._whatsapp = lambda: (finto, "waba1")
+    pannello = app.pannello
+    pannello.whatsapp = lambda: (finto, "waba1")
     try:
+        # Nessun invio: niente pannello
+        assert pannello.winfo_manager() == "" and app.etichetta_destinatario.cget("text") == "Destinatario"
+        # Email: oggetto, allegati in più e testo
+        app.invio.set("email")
+        assert pannello.winfo_manager() == "grid" and app.etichetta_destinatario.cget("text") == "Indirizzo email"
+        pannello.oggetto.set("Fattura {nome}")
+        pannello.allegati.append("C:\\doc\\condizioni.pdf")
+        pannello.casella_testo.insert("1.0", "Buongiorno,\n\nin allegato.")
+        assert app._intestazione()["coda"] == ["Fattura {nome}", "allegato: C:\\doc\\condizioni.pdf", "",
+                                               "Buongiorno,", "", "in allegato."]
+        # Telegram: documento (vuoto = quello creato) e testo; il testo resta passando da un canale all'altro
+        app.invio.set("telegram")
+        assert app._intestazione()["coda"] == ["{nome}.pdf", "Buongiorno,", "", "in allegato."]
+        pannello.manda_documento.set(False)
+        assert app._intestazione()["coda"][0] == ""
+        pannello.manda_documento.set(True)
+        # WhatsApp: messaggio o template
         app.invio.set("whatsapp")
-        assert app.riga_whatsapp.winfo_manager() == "grid"
-        app.whatsapp_modo.set("template")
-        assert app.scarica_template_whatsapp()
-        assert list(app.scelta_template_whatsapp.cget("values")) == ["fattura (it)"]
-        app.whatsapp_template.set("fattura (it)")
-        app._template_whatsapp_scelto()
-        assert app.whatsapp_template.get() == "fattura" and "2 parametri" in app.aiuto_coda.cget("text")
+        assert app.etichetta_destinatario.cget("text") == "Numero WhatsApp"
+        pannello.casella_testo.delete("1.0", "end")
+        pannello.modo.set("template")
+        pannello._modo_cambiato()
+        # Senza token l'elenco non si scarica da solo: valori uno per riga
+        assert pannello.casella_valori is not None and pannello.dati_template is None
+        assert pannello.scarica_template()
+        pannello.nome_template.set("fattura (it)")
+        pannello._template_scelto()
+        assert pannello.nome_template.get() == "fattura" and pannello.dati_template is not None
+        # Template conosciuto: un campo per valore e l'anteprima del messaggio
+        app.update()
+        assert len(pannello.variabili_valori) == 2
+        anteprima = pannello.anteprima.get("1.0", "end-1c")
+        assert "Buongiorno {{1}}, ecco {{2}}" in anteprima and "INFAS" in anteprima, anteprima
+        assert "{nome}.pdf" in anteprima
         app.destinatario.set("393331234567")
-        app.coda.insert("1.0", "{nome}.pdf\nMario Rossi\nFT1")
+        for valore, testo in zip(pannello.variabili_valori, ("Mario Rossi", "FT1")):
+            valore.set(testo)
+        anteprima = pannello.anteprima.get("1.0", "end-1c")
+        assert "Buongiorno Mario Rossi, ecco FT1" in anteprima, anteprima
+        assert pannello.anteprima.tag_ranges("campo")
+        pannello._attiva_campo(2)
+        attivo = pannello.anteprima.tag_ranges("attivo")
+        assert pannello.anteprima.get(attivo[0], attivo[1]) == "FT1"
         intestazione = app._intestazione()
         assert intestazione["destinatario"] == "whatsapp 393331234567"
-        assert intestazione["coda"] == ["{nome}.pdf", "template: fattura it", "Mario Rossi", "FT1"]
+        assert intestazione["coda"] == ["{nome}.pdf", "template: fattura it", "Mario Rossi", "FT1"],             intestazione["coda"]
+        # Riaprendo i dati (come da un modello salvato) i campi riprendono i valori
         app.invio.set("email")
-        assert app.riga_whatsapp.winfo_manager() == ""
-        app.invio.set("whatsapp")
+        app._imposta_intestazione(dict(intestazione))
+        assert [v.get() for v in pannello.variabili_valori] == ["Mario Rossi", "FT1"]
+        assert pannello.documento.get() == "" and pannello.manda_documento.get()
         # Nuovo template: controlli e invio (con un PDF di esempio creato al momento)
-        finestra = EditorModelli.FinestraNuovoTemplate(app)
+        finestra = EditorModelli.FinestraNuovoTemplate(pannello)
         finestra.nome.set("Invio Fattura")
         finestra.crea()
         assert messaggi[-1][0] == "showerror" and "minuscole" in messaggi[-1][1]
@@ -309,7 +346,7 @@ def finestra_template_whatsapp():
         assert (account, nome, lingua, categoria, esempi) == ("waba1", "invio_fattura", "it", "UTILITY",
                                                               ["Mario Rossi", "FT123"])
         assert documento and documento.endswith("esempio.pdf") and "{{2}}" in testo
-        assert app.whatsapp_template.get() == "invio_fattura" and messaggi[-1][0] == "showinfo"
+        assert pannello.nome_template.get() == "invio_fattura" and messaggi[-1][0] == "showinfo"
     finally:
         app.modificato = False
         app.destroy()

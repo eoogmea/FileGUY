@@ -332,11 +332,6 @@ class EditorModelli(tk.Tk):
         self.uscita = tk.StringVar(value=modello_gui.SEGNAPOSTO + ".pdf")
         self.invio = tk.StringVar(value="0")
         self.destinatario = tk.StringVar()
-        self.whatsapp_modo = tk.StringVar(value="messaggio")
-        self.whatsapp_template = tk.StringVar()
-        self.whatsapp_lingua = tk.StringVar(value=self.config_servizio.get("whatsapp_lingua") or "it")
-        # Template scaricati da Meta (dict di WhatsApp.elenco_template)
-        self.elenco_template_whatsapp = []
 
         self._crea_menu()
         self._crea_impostazioni()
@@ -345,8 +340,7 @@ class EditorModelli(tk.Tk):
         self.stato = ttk.Label(self, text="File > Nuovo da testo di esempio per iniziare", foreground="gray",
                                padding=(8, 2))
         self.stato.pack(side="bottom", fill="x")
-        for variabile in (self.azione, self.template, self.rotazione, self.uscita, self.invio, self.destinatario,
-                          self.whatsapp_modo, self.whatsapp_template, self.whatsapp_lingua):
+        for variabile in (self.azione, self.template, self.rotazione, self.uscita, self.invio, self.destinatario):
             variabile.trace_add("write", lambda *a: self._segna_modificato())
         self._cambia_tipo(iniziale=True)
         self._aggiorna_titolo()
@@ -438,122 +432,22 @@ class EditorModelli(tk.Tk):
                                                                      pady=(4, 0))
         ttk.Label(riquadro, text="Invio").grid(row=1, column=4, sticky="w", padx=(16, 4), pady=(4, 0))
         SceltaDescritta(riquadro, self.invio, modello_gui.DESCRIZIONI_INVII, width=12).grid(row=1, column=5, sticky="w", pady=(4, 0))
-        ttk.Label(riquadro, text="Destinatario").grid(row=1, column=6, sticky="w", padx=(16, 4), pady=(4, 0))
-        ttk.Entry(riquadro, textvariable=self.destinatario, width=28).grid(row=1, column=7, columnspan=2,
-                                                                           sticky="we", pady=(4, 0))
-
-        # WhatsApp: messaggio libero o template approvato su Meta (visibile solo con l'invio WhatsApp)
-        self.riga_whatsapp = ttk.Frame(riquadro)
-        ttk.Label(self.riga_whatsapp, text="WhatsApp").pack(side="left")
-        for testo, valore in (("Messaggio", "messaggio"), ("Template", "template")):
-            ttk.Radiobutton(self.riga_whatsapp, text=testo, variable=self.whatsapp_modo, value=valore,
-                            command=self._aggiorna_aiuto_coda).pack(side="left", padx=(8, 0))
-        self.scelta_template_whatsapp = ttk.Combobox(self.riga_whatsapp, textvariable=self.whatsapp_template,
-                                                     width=26)
-        self.scelta_template_whatsapp.pack(side="left", padx=(12, 0))
-        self.scelta_template_whatsapp.bind("<<ComboboxSelected>>", lambda e: self._template_whatsapp_scelto())
-        ttk.Label(self.riga_whatsapp, text="Lingua").pack(side="left", padx=(8, 4))
-        self.scelta_lingua_whatsapp = ttk.Entry(self.riga_whatsapp, textvariable=self.whatsapp_lingua, width=6)
-        self.scelta_lingua_whatsapp.pack(side="left")
-        self.pulsanti_template = [
-            ttk.Button(self.riga_whatsapp, text="Scarica elenco", command=self.scarica_template_whatsapp),
-            ttk.Button(self.riga_whatsapp, text="Nuovo template...", command=self.nuovo_template_whatsapp)]
-        for pulsante in self.pulsanti_template:
-            pulsante.pack(side="left", padx=(8, 0))
-
-        ttk.Label(riquadro, text="Dati dell'invio\n(righe dopo \"fine\")").grid(row=3, column=0, sticky="nw",
-                                                                             pady=(4, 0))
-        self.coda = tk.Text(riquadro, height=5, width=60, font=(famiglia_tk("o"), 9), undo=True)
-        self.coda.grid(row=3, column=1, columnspan=8, sticky="we", pady=(4, 0))
-        self.coda.bind("<<Modified>>", self._coda_modificata)
-        self.aiuto_coda = ttk.Label(riquadro, foreground="gray", wraplength=900, justify="left")
-        self.aiuto_coda.grid(row=4, column=1, columnspan=8, sticky="w")
-        self.invio.trace_add("write", lambda *a: self._aggiorna_aiuto_coda())
-        self.whatsapp_template.trace_add("write", lambda *a: self._aggiorna_aiuto_coda())
-        self._aggiorna_aiuto_coda()
+        self.etichetta_destinatario = ttk.Label(riquadro, text="Destinatario")
+        self.etichetta_destinatario.grid(row=1, column=6, sticky="w", padx=(16, 4), pady=(4, 0))
+        self.campo_destinatario = ttk.Entry(riquadro, textvariable=self.destinatario, width=28)
+        self.campo_destinatario.grid(row=1, column=7, columnspan=2, sticky="we", pady=(4, 0))
+        # Sotto: i dati dell'invio, diversi per email, Telegram e WhatsApp
+        self.pannello = PannelloInvio(riquadro, self)
+        self.pannello.grid(row=2, column=0, columnspan=9, sticky="we")
+        self.invio.trace_add("write", lambda *a: self._invio_cambiato())
+        self._invio_cambiato()
         riquadro.columnconfigure(8, weight=1)
 
-    def _aggiorna_aiuto_coda(self):
+    def _invio_cambiato(self):
         invio = self.invio.get()
-        template = invio == "whatsapp" and self.whatsapp_modo.get() == "template"
-        aiuti = {
-            "email": "Destinatario: l'indirizzo email.  Dati dell'invio: l'oggetto, eventuali righe "
-                     "\"allegato: <percorso>\", una riga vuota e il testo",
-            "telegram": "Destinatario: l'identificativo della chat.  Dati dell'invio: il documento da mandare "
-                        "(riga vuota = nessuno) e il testo",
-            "whatsapp": "Destinatario: il numero con il prefisso (es. 393331234567).  Dati dell'invio: il documento "
-                        "da mandare (riga vuota = nessuno) e il testo. Senza template arriva solo a chi ha scritto "
-                        "al numero aziendale nelle ultime 24 ore",
-        }
-        testo = aiuti.get(invio, "")
-        if template:
-            testo = ("Destinatario: il numero con il prefisso.  Dati dell'invio: il documento (l'intestazione del "
-                     "template, riga vuota = nessuno) e poi un valore per riga per {{1}}, {{2}}...")
-            dati = self._dati_template_whatsapp()
-            if dati:
-                testo += "\nTemplate: \"%s\"  -  %d parametri%s%s" % (
-                    " ".join(dati["testo"].split()), dati["parametri"],
-                    ", intestazione " + dati["intestazione"].lower() if dati["intestazione"] else "",
-                    "" if dati["stato"] == "APPROVED" else "  -  stato: " + dati["stato"])
-        self.aiuto_coda.configure(text=testo)
-        if invio == "whatsapp":
-            self.riga_whatsapp.grid(row=2, column=1, columnspan=8, sticky="w", pady=(4, 0))
-        else:
-            self.riga_whatsapp.grid_remove()
-        stato = "normal" if template else "disabled"
-        for elemento in [self.scelta_template_whatsapp, self.scelta_lingua_whatsapp] + self.pulsanti_template:
-            elemento.configure(state=stato)
-
-    # --- Template WhatsApp -----------------------------------------------------
-
-    def _dati_template_whatsapp(self):
-        """I dati del template scelto, se è nell'elenco scaricato da Meta."""
-        nome, lingua = self.whatsapp_template.get().strip(), self.whatsapp_lingua.get().strip()
-        for dati in self.elenco_template_whatsapp:
-            if dati["nome"] == nome and (not lingua or dati["lingua"] == lingua):
-                return dati
-        return None
-
-    def _template_whatsapp_scelto(self):
-        # Nell'elenco i template sono "nome (lingua)"
-        testo = self.whatsapp_template.get()
-        if testo.endswith(")") and " (" in testo:
-            nome, lingua = testo[:-1].rsplit(" (", 1)
-            self.whatsapp_lingua.set(lingua)
-            self.whatsapp_template.set(nome)
-        self._aggiorna_aiuto_coda()
-
-    def _whatsapp(self):
-        """Il collegamento alle API di Meta e l'id dell'account WhatsApp Business."""
-        from whatsapp_meta import WhatsApp
-        config = self.config_servizio
-        messenger = WhatsApp(config.get("whatsapp_token", ""), config.get("whatsapp_phone_number_id", ""),
-                             config.get("whatsapp_versione_api") or "v23.0")
-        return messenger, config.get("whatsapp_account_business", "").strip() or messenger.account_business()
-
-    def scarica_template_whatsapp(self, avvisa=True):
-        self.configure(cursor="watch")
-        self.update_idletasks()
-        try:
-            messenger, account = self._whatsapp()
-            self.elenco_template_whatsapp = messenger.elenco_template(account)
-        except Exception as e:
-            if avvisa:
-                messagebox.showerror("Template WhatsApp", "Non riesco a scaricare i template da Meta:\n\n" + str(e),
-                                     parent=self)
-            return False
-        finally:
-            self.configure(cursor="")
-        self.scelta_template_whatsapp.configure(values=["%s (%s)" % (t["nome"], t["lingua"])
-                                                        for t in self.elenco_template_whatsapp])
-        approvati = sum(t["stato"] == "APPROVED" for t in self.elenco_template_whatsapp)
-        self._messaggio("Template WhatsApp: %d, di cui %d approvati" % (len(self.elenco_template_whatsapp),
-                                                                        approvati))
-        self._aggiorna_aiuto_coda()
-        return True
-
-    def nuovo_template_whatsapp(self):
-        FinestraNuovoTemplate(self)
+        self.etichetta_destinatario.configure(text=ETICHETTE_DESTINATARIO.get(invio, "Destinatario"))
+        self.campo_destinatario.configure(state="disabled" if invio == "0" else "normal")
+        self.pannello.ricostruisci()
 
     def _crea_barra(self):
         barra = ttk.Frame(self, padding=(6, 6))
@@ -1211,11 +1105,8 @@ class EditorModelli(tk.Tk):
         return leggi_testo(percorso).split("\n")
 
     def _intestazione(self):
-        testo_coda = self.coda.get("1.0", "end-1c")
-        destinatario, coda = modello_gui.invio_da_salvare(
-            self.invio.get(), self.destinatario.get(), testo_coda.split("\n") if testo_coda else [],
-            {"modo": self.whatsapp_modo.get(), "template": self.whatsapp_template.get(),
-             "lingua": self.whatsapp_lingua.get()})
+        destinatario, coda = modello_gui.invio_da_salvare(self.invio.get(), self.destinatario.get(),
+                                                          self.pannello.righe(), self.pannello.scelta_whatsapp())
         return {
             "testo": modello_gui.SEGNAPOSTO + ".txt",
             "azione": self.azione.get(),
@@ -1237,13 +1128,7 @@ class EditorModelli(tk.Tk):
         self.invio.set(intestazione["invio"] if intestazione["invio"] in modello_gui.INVII else "0")
         destinatario, coda, whatsapp = modello_gui.invio_da_mostrare(intestazione)
         self.destinatario.set(destinatario)
-        self.whatsapp_modo.set(whatsapp["modo"])
-        self.whatsapp_template.set(whatsapp["template"])
-        self.whatsapp_lingua.set(whatsapp["lingua"] or self.config_servizio.get("whatsapp_lingua") or "it")
-        self.coda.delete("1.0", "end")
-        self.coda.insert("1.0", "\n".join(coda))
-        self.coda.edit_modified(False)
-        self._aggiorna_aiuto_coda()
+        self.pannello.imposta(coda, whatsapp)
 
     def _cambia_tipo(self, iniziale=False):
         word = self.word.get()
@@ -1552,11 +1437,6 @@ class EditorModelli(tk.Tk):
             self._aggiorna_titolo()
             self._programma_filigrana()
 
-    def _coda_modificata(self, evento):
-        if self.coda.edit_modified():
-            self._segna_modificato()
-            self.coda.edit_modified(False)
-
     def _aggiorna_titolo(self):
         nome = os.path.basename(self.percorso_modello) if self.percorso_modello else "nuovo modello"
         self.title("Editor modelli - " + nome + (" *" if self.modificato else ""))
@@ -1632,19 +1512,370 @@ class FinestraAnteprima(tk.Toplevel):
         self.destroy()
 
 
+ETICHETTE_DESTINATARIO = {"0": "Destinatario", "email": "Indirizzo email", "telegram": "Chat Telegram",
+                          "whatsapp": "Numero WhatsApp"}
+
+
+class PannelloInvio(ttk.Frame):
+    """I dati dell'invio (le righe dopo "fine" del .gui) con campi diversi per ogni canale.
+
+    Email: oggetto, allegati in più e testo. Telegram e WhatsApp: il documento da mandare e il
+    testo; con un template WhatsApp un campo per ogni valore e l'anteprima del messaggio.
+    editor: la finestra con le variabili invio, uscita, config_servizio e i metodi
+    _segna_modificato e _messaggio (EditorModelli o EditorExcel).
+    """
+
+    def __init__(self, genitore, editor):
+        super().__init__(genitore)
+        self.editor = editor
+        lingua = editor.config_servizio.get("whatsapp_lingua") or "it"
+        # Lo stato resta qui anche quando i campi si rifanno (cambiando canale o template)
+        self.modo = tk.StringVar(value="messaggio")
+        self.nome_template = tk.StringVar()
+        self.lingua = tk.StringVar(value=lingua)
+        self.elenco_template = []
+        self.oggetto = tk.StringVar()
+        self.allegati = []
+        self.manda_documento = tk.BooleanVar(value=True)
+        self.documento = tk.StringVar()
+        self.testo = ""
+        self.valori = []
+        self.campo_attivo = None
+        self.dati_template = None
+        self.casella_testo = None
+        self.casella_valori = None
+        for variabile in (self.modo, self.nome_template, self.lingua, self.oggetto, self.manda_documento,
+                          self.documento):
+            variabile.trace_add("write", lambda *a: self.editor._segna_modificato())
+        self.columnconfigure(1, weight=1)
+
+    # --- Dati -----------------------------------------------------------------------
+
+    def imposta(self, coda, whatsapp):
+        """Riempie i campi con le righe dopo "fine" (e la scelta WhatsApp di invio_da_mostrare)."""
+        # Le caselle mostrano ancora i dati di prima: non vanno rilette
+        self.casella_testo = self.casella_valori = None
+        self.modo.set(whatsapp["modo"])
+        self.nome_template.set(whatsapp["template"])
+        self.lingua.set(whatsapp["lingua"] or self.editor.config_servizio.get("whatsapp_lingua") or "it")
+        invio = self.editor.invio.get()
+        campi = modello_gui.campi_invio(invio, whatsapp["modo"], coda)
+        self.oggetto.set(campi["oggetto"])
+        self.allegati = campi["allegati"]
+        # Il documento creato si mostra come campo vuoto: segue il nome del documento anche se cambia
+        documento = campi["documento"]
+        self.manda_documento.set(documento != "" if coda else invio != "whatsapp" or whatsapp["modo"] != "template")
+        self.documento.set("" if documento == self.editor.uscita.get().strip() else documento)
+        self.testo = campi["testo"]
+        self.valori = campi["valori"]
+        self.ricostruisci()
+
+    def _leggi_caselle(self):
+        """Il testo e i valori scritti nelle caselle di più righe."""
+        if self.casella_testo is not None and self.casella_testo.winfo_exists():
+            self.testo = self.casella_testo.get("1.0", "end-1c")
+        if self.casella_valori is not None and self.casella_valori.winfo_exists():
+            self.valori = [r for r in self.casella_valori.get("1.0", "end-1c").split("\n") if r.strip()]
+
+    def righe(self):
+        """Le righe da scrivere dopo "fine"."""
+        self._leggi_caselle()
+        documento = ""
+        if self.manda_documento.get():
+            documento = self.documento.get().strip() or self.editor.uscita.get().strip()
+        if self._template() and self.dati_template and self.dati_template["intestazione"] != "DOCUMENT":
+            documento = ""
+        campi = {"oggetto": self.oggetto.get(), "allegati": self.allegati, "documento": documento,
+                 "testo": self.testo, "valori": self.valori}
+        return modello_gui.coda_invio(self.editor.invio.get(), self.modo.get(), campi)
+
+    def scelta_whatsapp(self):
+        return {"modo": self.modo.get(), "template": self.nome_template.get(), "lingua": self.lingua.get()}
+
+    def _template(self):
+        return self.editor.invio.get() == "whatsapp" and self.modo.get() == "template"
+
+    # --- Campi --------------------------------------------------------------------
+
+    def ricostruisci(self):
+        """Rifà i campi per il canale scelto (e, con WhatsApp, per messaggio o template)."""
+        self._leggi_caselle()
+        for figlio in self.winfo_children():
+            figlio.destroy()
+        self.casella_testo = self.casella_valori = None
+        self.anteprima = None
+        invio = self.editor.invio.get()
+        if invio not in ("email", "telegram", "whatsapp"):
+            self.grid_remove()
+            return
+        self.grid()
+        riga = 0
+        if invio == "whatsapp":
+            riga = self._riga_whatsapp(riga)
+        if invio == "email":
+            riga = self._campi_email(riga)
+        elif self._template():
+            self.dati_template = self._cerca_template()
+            riga = self._campi_template(riga)
+        else:
+            riga = self._riga_documento(riga)
+            riga = self._casella_testo(riga)
+        ttk.Label(self, text=self._aiuto(invio), foreground="gray", wraplength=900, justify="left").grid(
+            row=riga, column=1, sticky="w")
+
+    def _etichetta(self, riga, testo):
+        ttk.Label(self, text=testo).grid(row=riga, column=0, sticky="nw", pady=(4, 0), padx=(0, 6))
+
+    def _riga_whatsapp(self, riga):
+        self._etichetta(riga, "Cosa mandare")
+        cornice = ttk.Frame(self)
+        cornice.grid(row=riga, column=1, sticky="w", pady=(4, 0))
+        for testo, valore in (("Messaggio libero", "messaggio"), ("Template approvato da Meta", "template")):
+            ttk.Radiobutton(cornice, text=testo, variable=self.modo, value=valore,
+                            command=self._modo_cambiato).pack(side="left", padx=(0, 10))
+        if self.modo.get() == "template":
+            valori = ["%s (%s)" % (t["nome"], t["lingua"]) for t in self.elenco_template]
+            scelta = ttk.Combobox(cornice, textvariable=self.nome_template, values=valori, width=30)
+            scelta.pack(side="left", padx=(6, 0))
+            scelta.bind("<<ComboboxSelected>>", lambda e: self._template_scelto())
+            # Un nome scritto a mano vale con Invio (la tendina vale appena si sceglie)
+            scelta.bind("<Return>", lambda e: self.ricostruisci())
+            ttk.Label(cornice, text="Lingua").pack(side="left", padx=(8, 4))
+            ttk.Entry(cornice, textvariable=self.lingua, width=6).pack(side="left")
+            ttk.Button(cornice, text="Scarica elenco", command=self.scarica_template).pack(side="left", padx=(8, 0))
+            ttk.Button(cornice, text="Nuovo template...",
+                       command=lambda: FinestraNuovoTemplate(self)).pack(side="left", padx=(6, 0))
+        return riga + 1
+
+    def _campi_email(self, riga):
+        self._etichetta(riga, "Oggetto")
+        ttk.Entry(self, textvariable=self.oggetto).grid(row=riga, column=1, sticky="we", pady=(4, 0))
+        riga += 1
+        self._etichetta(riga, "Allegati in più")
+        cornice = ttk.Frame(self)
+        cornice.grid(row=riga, column=1, sticky="we", pady=(4, 0))
+        self.elenco_allegati = tk.Listbox(cornice, height=3, activestyle="none")
+        self.elenco_allegati.pack(side="left", fill="x", expand=True)
+        for allegato in self.allegati:
+            self.elenco_allegati.insert("end", allegato)
+        pulsanti = ttk.Frame(cornice)
+        pulsanti.pack(side="left", fill="y", padx=(6, 0))
+        ttk.Button(pulsanti, text="Aggiungi...", command=self._aggiungi_allegato).pack(fill="x")
+        ttk.Button(pulsanti, text="Rimuovi", command=self._rimuovi_allegato).pack(fill="x", pady=(2, 0))
+        riga += 1
+        ttk.Label(self, text="Il documento creato è sempre allegato. Gli altri file vanno indicati con il "
+                  "percorso sul computer dove gira il servizio.", foreground="gray").grid(row=riga, column=1,
+                                                                                         sticky="w")
+        return self._casella_testo(riga + 1)
+
+    def _aggiungi_allegato(self):
+        percorsi = filedialog.askopenfilenames(parent=self.winfo_toplevel(), title="Allegati in più")
+        for percorso in percorsi:
+            percorso = os.path.normpath(percorso)
+            self.allegati.append(percorso)
+            self.elenco_allegati.insert("end", percorso)
+        if percorsi:
+            self.editor._segna_modificato()
+
+    def _rimuovi_allegato(self):
+        for indice in reversed(self.elenco_allegati.curselection()):
+            self.elenco_allegati.delete(indice)
+            del self.allegati[indice]
+            self.editor._segna_modificato()
+
+    def _riga_documento(self, riga, etichetta="Documento"):
+        self._etichetta(riga, etichetta)
+        cornice = ttk.Frame(self)
+        cornice.grid(row=riga, column=1, sticky="we", pady=(4, 0))
+        ttk.Checkbutton(cornice, text="Manda il documento", variable=self.manda_documento,
+                        command=self._aggiorna_anteprima).pack(side="left")
+        campo = ttk.Entry(cornice, textvariable=self.documento, width=30)
+        campo.pack(side="left", padx=(8, 0))
+        campo.bind("<KeyRelease>", lambda e: self._aggiorna_anteprima())
+        campo.bind("<FocusIn>", lambda e: self._attiva_campo(0))
+        campo.bind("<FocusOut>", lambda e: self._attiva_campo(None))
+        ttk.Label(cornice, text="vuoto = il documento creato (%s)" % (self.editor.uscita.get() or "?"),
+                  foreground="gray").pack(side="left", padx=(8, 0))
+        return riga + 1
+
+    def _casella_testo(self, riga):
+        self._etichetta(riga, "Testo")
+        self.casella_testo = tk.Text(self, height=5, width=60, wrap="word", undo=True, font=("Segoe UI", 9))
+        self.casella_testo.grid(row=riga, column=1, sticky="we", pady=(4, 0))
+        self.casella_testo.insert("1.0", self.testo)
+        self.casella_testo.edit_modified(False)
+        self.casella_testo.bind("<<Modified>>", self._casella_modificata)
+        return riga + 1
+
+    def _casella_modificata(self, evento):
+        if evento.widget.edit_modified():
+            evento.widget.edit_modified(False)
+            self.editor._segna_modificato()
+
+    # --- Template WhatsApp ----------------------------------------------------------
+
+    def _campi_template(self, riga):
+        dati = self.dati_template
+        if dati is None:
+            # Template non nell'elenco (non ancora scaricato): documento e valori uno per riga
+            riga = self._riga_documento(riga, "Documento\n(intestazione)")
+            self._etichetta(riga, "Valori")
+            self.casella_valori = tk.Text(self, height=4, width=60, undo=True, font=("Segoe UI", 9))
+            self.casella_valori.grid(row=riga, column=1, sticky="we", pady=(4, 0))
+            self.casella_valori.insert("1.0", "\n".join(self.valori))
+            self.casella_valori.edit_modified(False)
+            self.casella_valori.bind("<<Modified>>", self._casella_modificata)
+            return riga + 1
+        if dati["intestazione"] == "DOCUMENT":
+            riga = self._riga_documento(riga, "Documento\n(intestazione)")
+        self._etichetta(riga, "Valori")
+        cornice = ttk.Frame(self)
+        cornice.grid(row=riga, column=1, sticky="we", pady=(4, 0))
+        cornice.columnconfigure(1, weight=1)
+        campi = ttk.Frame(cornice)
+        campi.grid(row=0, column=0, sticky="nw")
+        self.valori += [""] * (dati["parametri"] - len(self.valori))
+        self.variabili_valori = []
+        for n in range(1, dati["parametri"] + 1):
+            ttk.Label(campi, text="{{%d}}" % n).grid(row=n, column=0, sticky="w", pady=1)
+            valore = tk.StringVar(value=self.valori[n - 1])
+            campo = ttk.Entry(campi, textvariable=valore, width=28)
+            campo.grid(row=n, column=1, sticky="w", padx=(6, 0), pady=1)
+            campo.bind("<FocusIn>", lambda e, _n=n: self._attiva_campo(_n))
+            campo.bind("<FocusOut>", lambda e: self._attiva_campo(None))
+            valore.trace_add("write", lambda *a: self._valore_cambiato())
+            self.variabili_valori.append(valore)
+        if not dati["parametri"]:
+            ttk.Label(campi, text="Questo template non ha valori da riempire", foreground="gray").grid(
+                row=0, column=0)
+        # L'anteprima del messaggio come arriva su WhatsApp, con i valori evidenziati
+        self.anteprima = tk.Text(cornice, height=7, width=40, wrap="word", relief="flat", background="#dcf8c6",
+                                 padx=8, pady=6, font=("Segoe UI", 9), cursor="arrow")
+        self.anteprima.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+        self.anteprima.tag_configure("titolo", font=("Segoe UI", 9, "bold"))
+        self.anteprima.tag_configure("piede", foreground="#667781", font=("Segoe UI", 8))
+        self.anteprima.tag_configure("campo", background="#fff3a0", font=("Segoe UI", 9, "bold"))
+        self.anteprima.tag_configure("attivo", background="#ffb84d")
+        self._aggiorna_anteprima()
+        return riga + 1
+
+    def _valore_cambiato(self):
+        self.valori = [v.get() for v in self.variabili_valori]
+        self.editor._segna_modificato()
+        self._aggiorna_anteprima()
+
+    def _attiva_campo(self, numero):
+        self.campo_attivo = numero
+        self._aggiorna_anteprima()
+
+    def _aggiorna_anteprima(self):
+        """Il messaggio come arriva su WhatsApp, con i valori (o i {{n}} vuoti) evidenziati."""
+        from whatsapp_meta import SEGNAPOSTO_TEMPLATE
+        dati, vista = self.dati_template, getattr(self, "anteprima", None)
+        if dati is None or vista is None or not vista.winfo_exists():
+            return
+        vista.configure(state="normal")
+        vista.delete("1.0", "end")
+        if dati["intestazione"] == "DOCUMENT":
+            documento = self.documento.get().strip() or self.editor.uscita.get().strip()
+            vista.insert("end", "📄 " + (documento if self.manda_documento.get() else "(nessun documento)") + "\n",
+                         ("titolo", "campo") + (("attivo",) if self.campo_attivo == 0 else ()))
+        elif dati["testo_intestazione"]:
+            vista.insert("end", dati["testo_intestazione"] + "\n", "titolo")
+        inizio = 0
+        for segnaposto in SEGNAPOSTO_TEMPLATE.finditer(dati["testo"]):
+            vista.insert("end", dati["testo"][inizio:segnaposto.start()])
+            numero = int(segnaposto.group(1))
+            valore = self.valori[numero - 1] if numero - 1 < len(self.valori) else ""
+            vista.insert("end", valore or "{{%d}}" % numero,
+                         ("campo",) + (("attivo",) if self.campo_attivo == numero else ()))
+            inizio = segnaposto.end()
+        vista.insert("end", dati["testo"][inizio:])
+        if dati["piede"]:
+            vista.insert("end", "\n" + dati["piede"], "piede")
+        vista.configure(state="disabled")
+
+    def _aiuto(self, invio):
+        if invio == "email":
+            return "Puoi usare {nome} (il nome del file di testo, senza .txt) in tutti i campi."
+        if invio == "telegram":
+            return "Puoi usare {nome} in tutti i campi."
+        if not self._template():
+            return ("Un messaggio libero arriva solo a chi ha scritto al numero aziendale nelle ultime 24 ore "
+                    "(regola di Meta): per scrivere ai clienti serve un template.")
+        if self.dati_template is None:
+            return ("Valori: uno per riga, per {{1}}, {{2}}... Con \"Scarica elenco\" vedi il messaggio del "
+                    "template e un campo per ogni valore.")
+        testo = "I valori sono evidenziati in giallo nel messaggio. Puoi usare {nome}."
+        if self.dati_template["stato"] != "APPROVED":
+            testo += "  Attenzione: il template non è ancora approvato (stato: %s)." % self.dati_template["stato"]
+        return testo
+
+    def _cerca_template(self):
+        """I dati del template scelto, se è nell'elenco scaricato da Meta."""
+        nome, lingua = self.nome_template.get().strip(), self.lingua.get().strip()
+        for dati in self.elenco_template:
+            if dati["nome"] == nome and (not lingua or dati["lingua"] == lingua):
+                return dati
+        return None
+
+    def _template_scelto(self):
+        # Nell'elenco i template sono "nome (lingua)"
+        testo = self.nome_template.get()
+        if testo.endswith(")") and " (" in testo:
+            nome, lingua = testo[:-1].rsplit(" (", 1)
+            self.lingua.set(lingua)
+            self.nome_template.set(nome)
+        self.ricostruisci()
+
+    def _modo_cambiato(self):
+        # La prima volta che si sceglie "Template" l'elenco si scarica da solo (se WhatsApp è configurato)
+        if self.modo.get() == "template" and not self.elenco_template and \
+                self.editor.config_servizio.get("whatsapp_token"):
+            self.scarica_template(avvisa=False)
+        self.ricostruisci()
+
+    def whatsapp(self):
+        """Il collegamento alle API di Meta e l'id dell'account WhatsApp Business."""
+        from whatsapp_meta import WhatsApp
+        config = self.editor.config_servizio
+        messenger = WhatsApp(config.get("whatsapp_token", ""), config.get("whatsapp_phone_number_id", ""),
+                             config.get("whatsapp_versione_api") or "v23.0")
+        return messenger, config.get("whatsapp_account_business", "").strip() or messenger.account_business()
+
+    def scarica_template(self, avvisa=True):
+        finestra = self.winfo_toplevel()
+        finestra.configure(cursor="watch")
+        finestra.update_idletasks()
+        try:
+            messenger, account = self.whatsapp()
+            self.elenco_template = messenger.elenco_template(account)
+        except Exception as e:
+            if avvisa:
+                messagebox.showerror("Template WhatsApp", "Non riesco a scaricare i template da Meta:\n\n" + str(e),
+                                     parent=finestra)
+            return False
+        finally:
+            finestra.configure(cursor="")
+        approvati = sum(t["stato"] == "APPROVED" for t in self.elenco_template)
+        self.editor._messaggio("Template WhatsApp: %d, di cui %d approvati" % (len(self.elenco_template), approvati))
+        self.ricostruisci()
+        return True
+
+
 CATEGORIE_TEMPLATE = {"Utility (fatture, avvisi, conferme)": "UTILITY", "Marketing (promozioni)": "MARKETING"}
 
 
 class FinestraNuovoTemplate(tk.Toplevel):
     """Crea un template WhatsApp sull'account di Meta; Meta poi lo approva (di solito in pochi minuti)."""
 
-    def __init__(self, editor):
-        super().__init__(editor)
-        self.editor = editor
+    def __init__(self, pannello):
+        super().__init__(pannello.winfo_toplevel())
+        self.pannello = pannello
         self.title("Nuovo template WhatsApp")
-        self.transient(editor)
+        self.transient(pannello.winfo_toplevel())
         self.nome = tk.StringVar()
-        self.lingua = tk.StringVar(value=editor.whatsapp_lingua.get() or "it")
+        self.lingua = tk.StringVar(value=pannello.lingua.get() or "it")
         self.categoria = tk.StringVar(value=list(CATEGORIE_TEMPLATE)[0])
         self.con_documento = tk.BooleanVar(value=True)
         self.esempio = tk.StringVar()
@@ -1731,7 +1962,7 @@ class FinestraNuovoTemplate(tk.Toplevel):
             esempio = None
             if dati["documento"]:
                 esempio = dati["esempio"] or self._pdf_di_esempio(cartella)
-            messenger, account = self.editor._whatsapp()
+            messenger, account = self.pannello.whatsapp()
             _, stato = messenger.crea_template(account, dati["nome"], dati["lingua"], dati["categoria"],
                                                dati["testo"], dati["esempi"], esempio, dati["piede"])
         except Exception as e:
@@ -1740,13 +1971,13 @@ class FinestraNuovoTemplate(tk.Toplevel):
         finally:
             self.configure(cursor="")
             shutil.rmtree(cartella, ignore_errors=True)
-        self.editor.whatsapp_modo.set("template")
-        self.editor.whatsapp_template.set(dati["nome"])
-        self.editor.whatsapp_lingua.set(dati["lingua"])
-        self.editor.scarica_template_whatsapp(avvisa=False)
+        self.pannello.modo.set("template")
+        self.pannello.nome_template.set(dati["nome"])
+        self.pannello.lingua.set(dati["lingua"])
+        self.pannello.scarica_template(avvisa=False)
         messagebox.showinfo("Nuovo template", "Template \"%s\" inviato a Meta (stato: %s).\n\nPuò essere usato "
                             "quando è approvato, di solito dopo pochi minuti: lo stato si vede con \"Scarica "
-                            "elenco\"." % (dati["nome"], stato or "in revisione"), parent=self.editor)
+                            "elenco\"." % (dati["nome"], stato or "in revisione"), parent=self.master)
         self.destroy()
 
     def _pdf_di_esempio(self, cartella):

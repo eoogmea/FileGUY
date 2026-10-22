@@ -28,9 +28,9 @@ from decimal import ROUND_HALF_UP, Decimal
 from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
-from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, MAX_ANNULLA, MAX_RECENTI, NOMI_COLORI, NOMI_FONT,
-                           SceltaDescritta, apri_con_avviso, apri_guida, dimensiona, famiglia_tk,
-                           leggi_preferenze, proposta_salvataggio, scrivi_preferenze)
+from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, ETICHETTE_DESTINATARIO, MAX_ANNULLA, MAX_RECENTI,
+                           NOMI_COLORI, NOMI_FONT, PannelloInvio, SceltaDescritta, apri_con_avviso, apri_guida,
+                           dimensiona, famiglia_tk, leggi_preferenze, proposta_salvataggio, scrivi_preferenze)
 from config_sicuro import carica_config
 from modello_gui import (COLORI, FONT, FORMATI_EXCEL, PREDEFINITO_EXCEL, SFONDI, campi_excel,
                          colonna_excel_vuota, righe_excel, stile_riga_vuoto, valore_excel)
@@ -308,14 +308,22 @@ class EditorExcel(tk.Tk):
         ttk.Label(riquadro, text="Invio").grid(row=0, column=2, sticky="w", padx=(16, 4))
         SceltaDescritta(riquadro, self.invio, modello_gui.DESCRIZIONI_INVII, width=12).grid(
             row=0, column=3, sticky="w")
-        ttk.Label(riquadro, text="Destinatario").grid(row=0, column=4, sticky="w", padx=(16, 4))
-        ttk.Entry(riquadro, textvariable=self.destinatario, width=28).grid(row=0, column=5, sticky="we")
-        ttk.Label(riquadro, text="Dati dell'invio\n(righe dopo \"fine\")").grid(row=1, column=0, sticky="nw",
-                                                                             pady=(4, 0))
-        self.coda = tk.Text(riquadro, height=3, width=60, font=(famiglia_tk("o"), 9), undo=True)
-        self.coda.grid(row=1, column=1, columnspan=5, sticky="we", pady=(4, 0))
-        self.coda.bind("<<Modified>>", self._coda_modificata)
+        self.etichetta_destinatario = ttk.Label(riquadro, text="Destinatario")
+        self.etichetta_destinatario.grid(row=0, column=4, sticky="w", padx=(16, 4))
+        self.campo_destinatario = ttk.Entry(riquadro, textvariable=self.destinatario, width=28)
+        self.campo_destinatario.grid(row=0, column=5, sticky="we")
+        # Sotto: i dati dell'invio, diversi per email, Telegram e WhatsApp (come in EditorModelli)
+        self.pannello_invio = PannelloInvio(riquadro, self)
+        self.pannello_invio.grid(row=1, column=0, columnspan=6, sticky="we")
+        self.invio.trace_add("write", lambda *a: self._invio_cambiato())
+        self._invio_cambiato()
         riquadro.columnconfigure(5, weight=1)
+
+    def _invio_cambiato(self):
+        invio = self.invio.get()
+        self.etichetta_destinatario.configure(text=ETICHETTE_DESTINATARIO.get(invio, "Destinatario"))
+        self.campo_destinatario.configure(state="disabled" if invio == "0" else "normal")
+        self.pannello_invio.ricostruisci()
 
     def _crea_centro(self):
         centro = ttk.Frame(self)
@@ -994,18 +1002,19 @@ class EditorExcel(tk.Tk):
             self._messaggio("Il testo non ha campi separati da \";\": non è un testo per Excel")
 
     def _intestazione(self):
-        coda = self.coda.get("1.0", "end-1c")
+        destinatario, coda = modello_gui.invio_da_salvare(self.invio.get(), self.destinatario.get(),
+                                                          self.pannello_invio.righe(),
+                                                          self.pannello_invio.scelta_whatsapp())
         return {"testo": modello_gui.SEGNAPOSTO + ".txt", "azione": "excel", "uscita": self.uscita.get().strip(),
                 "template": "", "rotazione": "0", "invio": self.invio.get(),
-                "destinatario": self.destinatario.get().strip(), "coda": coda.split("\n") if coda else []}
+                "destinatario": destinatario, "coda": coda}
 
     def _imposta_intestazione(self, intestazione):
         self.uscita.set(intestazione["uscita"])
         self.invio.set(intestazione["invio"] if intestazione["invio"] in modello_gui.INVII else "0")
-        self.destinatario.set(intestazione["destinatario"])
-        self.coda.delete("1.0", "end")
-        self.coda.insert("1.0", "\n".join(intestazione["coda"]))
-        self.coda.edit_modified(False)
+        destinatario, coda, whatsapp = modello_gui.invio_da_mostrare(intestazione)
+        self.destinatario.set(destinatario)
+        self.pannello_invio.imposta(coda, whatsapp)
 
     def nuovo(self):
         if not self._conferma_perdita():
@@ -1046,14 +1055,18 @@ class EditorExcel(tk.Tk):
                                                             filetypes=[("File di testo", "*.txt")])
                 if not percorso_testo:
                     return
+        email_aggiornata = modello_gui.aggiorna_email(intestazione)
         self._imposta_intestazione(intestazione)
         stili, colonne = modello_gui.leggi_excel(linee)
         self._mostra_testo(leggi_testo(percorso_testo), colonne, stili)
         self.percorso_modello = percorso
         self.percorso_testo = percorso_testo
-        self.modificato = False
+        # Un modello email di prima, portato al formato nuovo, va salvato
+        self.modificato = email_aggiornata
         self._aggiorna_titolo()
         self._aggiungi_recente(percorso)
+        if email_aggiornata:
+            self._messaggio("L'indirizzo email è passato nel campo Destinatario: salva per aggiornare il modello")
 
     def salva(self, con_nome=False):
         if not self.righe:
@@ -1175,11 +1188,6 @@ class EditorExcel(tk.Tk):
         if self.righe:
             self.modificato = True
             self._aggiorna_titolo()
-
-    def _coda_modificata(self, evento):
-        if self.coda.edit_modified():
-            self._segna_modificato()
-            self.coda.edit_modified(False)
 
     def _aggiorna_titolo(self):
         nome = os.path.basename(self.percorso_modello) if self.percorso_modello else "nuovo modello"

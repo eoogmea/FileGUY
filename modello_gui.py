@@ -529,6 +529,52 @@ def invio_da_salvare(invio, destinatario, coda, whatsapp):
     return destinatario, coda
 
 
+def campi_invio(invio, modo, coda):
+    """Dalle righe dopo "fine" ai campi che mostrano gli editor.
+
+    Restituisce un dict: oggetto e allegati (email), documento (Telegram e WhatsApp: il file da
+    mandare, "" = nessuno), testo del messaggio e valori del template WhatsApp. La riga "template:"
+    è già stata tolta da invio_da_mostrare().
+    """
+    campi = {"oggetto": "", "allegati": [], "documento": "", "testo": "", "valori": []}
+    coda = list(coda)
+    if invio == "email":
+        campi["oggetto"] = coda.pop(0) if coda else ""
+        while coda and coda[0].strip().lower().startswith("allegato:"):
+            campi["allegati"].append(coda.pop(0).strip()[len("allegato:"):].strip())
+        if coda and coda[0].strip() == "":
+            coda.pop(0)
+        campi["testo"] = "\n".join(coda)
+    elif invio in ("telegram", "whatsapp"):
+        campi["documento"] = coda.pop(0).strip() if coda else ""
+        if invio == "whatsapp" and modo == "template":
+            # Il servizio salta le righe vuote: ogni riga piena è un valore
+            campi["valori"] = [r for r in coda if r.strip()]
+        else:
+            campi["testo"] = "\n".join(coda)
+    return campi
+
+
+def coda_invio(invio, modo, campi):
+    """Il contrario di campi_invio(): le righe da scrivere dopo "fine"."""
+    testo = campi["testo"].rstrip("\n")
+    if invio == "email":
+        righe = [campi["oggetto"]] + ["allegato: " + a for a in campi["allegati"] if a.strip()]
+        if testo.strip():
+            righe += [""] + testo.split("\n")
+    elif invio in ("telegram", "whatsapp"):
+        righe = [campi["documento"]]
+        if invio == "whatsapp" and modo == "template":
+            righe += list(campi["valori"])
+            while len(righe) > 1 and not righe[-1].strip():
+                righe.pop()
+        elif testo.strip():
+            righe += testo.split("\n")
+    else:
+        righe = []
+    return [] if righe == [""] else righe
+
+
 def aggiorna_email(intestazione):
     """Porta un modello email di prima al formato nuovo; restituisce True se l'ha cambiato.
 

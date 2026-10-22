@@ -397,7 +397,7 @@ documento lo sfondo è quello del template: su un foglio bianco il testo bianco 
   <tr><td><strong>Documento creato</strong></td><td>Il nome del file da creare. <code>{nome}</code> viene
       sostituito dal nome del file di testo: con <code>{nome}.pdf</code>, la fattura <code>FT123.txt</code> diventa
       <code>FT123.pdf</code>.</td></tr>
-  <tr><td><strong>Invio</strong>, <strong>Destinatario</strong>, <strong>Dati dell'invio</strong></td><td>Vedi il
+  <tr><td><strong>Invio</strong>, <strong>Destinatario</strong> e i campi dell'invio</td><td>Vedi il
       capitolo seguente.</td></tr>
 </table></div>
 <div class="nota">L'apertura a schermo e la stampa avvengono sul <strong>computer dove gira il servizio</strong>
@@ -407,52 +407,51 @@ su un server a cui non lavora nessuno, l'azione <code>pdf</code> non serve: usa 
 
 <h2 id="invio">8. Inviare il documento per email, Telegram o WhatsApp</h2>
 <p>Dopo aver creato il documento, il servizio può anche spedirlo. Scegli il canale nel campo
-<strong>Invio</strong> (<em>Nessun invio</em> se non va spedito) e compila gli altri campi come spiegato qui sotto.
-In tutti i campi puoi usare <code>{nome}</code>.</p>
+<strong>Invio</strong> (<em>Nessun invio</em> se non va spedito): sotto compaiono i campi di quel canale e il campo
+accanto a Invio diventa <em>Indirizzo email</em>, <em>Chat Telegram</em> o <em>Numero WhatsApp</em>. In tutti i
+campi puoi usare <code>{nome}</code>. EditorExcel ha gli stessi campi.</p>
 
 <h3>Email</h3>
-<p>Nel campo <strong>Destinatario</strong> scrivi l'indirizzo email, per esempio
-<code>cliente@esempio.it</code>. Nei <strong>Dati dell'invio</strong>:</p>
-<pre>Fattura {nome}                       ← oggetto
-allegato: C:\documenti\condizioni.pdf ← altri allegati, uno per riga (facoltativi)
-allegato: C:\documenti\listino.pdf
-                                     ← riga vuota
-Buongiorno,                          ← il testo del messaggio, su quante righe vuoi
-in allegato la fattura.
-
-Cordiali saluti</pre>
-<p>Il documento creato è sempre allegato. Gli altri allegati vanno scritti con il percorso completo, sul computer
-dove gira il servizio. Indirizzo del mittente e server di posta si impostano in ConfigManager.</p>
+<ul>
+  <li><strong>Indirizzo email</strong>: il destinatario, per esempio <code>cliente@esempio.it</code>.</li>
+  <li><strong>Oggetto</strong>: per esempio <code>Fattura {nome}</code>.</li>
+  <li><strong>Allegati in più</strong>: il documento creato è sempre allegato; con <em>Aggiungi…</em> scegli altri
+      file (condizioni, listini…), con <em>Rimuovi</em> togli quelli selezionati. Il percorso deve valere sul
+      computer dove gira il servizio.</li>
+  <li><strong>Testo</strong>: il messaggio, su quante righe vuoi.</li>
+</ul>
+<p>Indirizzo del mittente e server di posta si impostano in ConfigManager.</p>
 <div class="nota">Con Gmail la password da mettere in ConfigManager non è quella dell'account ma una
 <strong>password per le app</strong> (16 lettere): si crea nell'account Google, in Sicurezza, dopo aver attivato
 la verifica in due passaggi.</div>
-<div class="nota">Nei modelli fatti prima l'indirizzo era la prima riga dei Dati dell'invio: il servizio li legge
-ancora così. Aprendoli, l'editor sposta l'indirizzo nel campo Destinatario (e il secondo allegato in una riga
-<code>allegato:</code>); salvali per aggiornarli.</div>
+<div class="nota">Nei modelli fatti prima l'indirizzo era la prima riga dei dati dell'invio: il servizio li legge
+ancora così. Aprendoli, l'editor sposta l'indirizzo nel campo Indirizzo email e il secondo allegato negli Allegati
+in più; salvali per aggiornarli.</div>
 
 <h3>Telegram</h3>
-<p>Nel campo <strong>Destinatario</strong> scrivi l'identificativo della chat, per esempio
-<code>123456789</code> (la parola <code>telegram</code> davanti la aggiunge l'editor nel <code>.gui</code>). Nei
-<strong>Dati dell'invio</strong>:</p>
-<pre>{nome}.pdf                    ← documento da mandare (riga vuota = solo il messaggio)
-Ecco il documento richiesto   ← dalla seconda riga in poi: il testo del messaggio</pre>
+<ul>
+  <li><strong>Chat Telegram</strong>: l'identificativo della chat, per esempio <code>123456789</code>.</li>
+  <li><strong>Documento</strong>: con <em>Manda il documento</em> spuntato il bot manda anche un file; lascia il
+      nome vuoto per mandare il documento creato, oppure scrivi il nome di un altro file della cartella di
+      output.</li>
+  <li><strong>Testo</strong>: il messaggio.</li>
+</ul>
 
 <h3>WhatsApp</h3>
-<p>Nel campo <strong>Destinatario</strong> scrivi il numero con il prefisso internazionale, per esempio
-<code>393331234567</code> o <code>+39 333 1234567</code> (la parola <code>whatsapp</code> davanti la aggiunge
-l'editor nel <code>.gui</code>). Sotto compare la riga <strong>WhatsApp</strong>, dove scegli cosa mandare.</p>
-<p><strong>Messaggio</strong>: un testo libero. Nei <strong>Dati dell'invio</strong>:</p>
-<pre>{nome}.pdf                    ← documento da mandare (riga vuota = nessun documento)
-Buongiorno,                   ← dalla seconda riga in poi: il testo del messaggio
-in allegato il documento.</pre>
-<p><strong>Template</strong>: un messaggio preparato e approvato su Meta. Premi <em>Scarica elenco</em> per avere
-nella tendina i template dell'account (nome e lingua); scelto un template, sotto i Dati dell'invio compaiono il
-suo testo, quanti valori vuole e se non è ancora approvato. Nei <strong>Dati dell'invio</strong>:</p>
-<pre>{nome}.pdf                    ← il documento, che va nell'intestazione del template
-Mario Rossi                   ← il valore di {{1}}
-{nome}                        ← il valore di {{2}}, e così via (una riga per valore)</pre>
-<p>Nel <code>.gui</code> l'editor scrive dopo la riga del documento la riga
-<code>template: &lt;nome&gt; &lt;lingua&gt;</code>; si può anche scrivere a mano.</p>
+<p>Nel campo <strong>Numero WhatsApp</strong> scrivi il numero con il prefisso internazionale, per esempio
+<code>393331234567</code> o <code>+39 333 1234567</code>. In <strong>Cosa mandare</strong> scegli:</p>
+<p><strong>Messaggio libero</strong>: il <em>Documento</em> (come per Telegram) e il <em>Testo</em>.</p>
+<p><strong>Template approvato da Meta</strong>: un messaggio preparato su Meta, con dei valori da riempire. Scegli il
+template nella tendina (l'elenco si scarica da Meta la prima volta che scegli Template; <em>Scarica elenco</em> lo
+aggiorna) e la lingua. Sotto compaiono:</p>
+<ul>
+  <li>il <strong>Documento</strong>, solo se il template ha l'intestazione Documento (per mandare il PDF);</li>
+  <li>un campo per ogni <strong>valore</strong> <code>{{1}}</code>, <code>{{2}}</code>…, per esempio il nome del
+      cliente e <code>{nome}</code> per il numero della fattura;</li>
+  <li>a destra l'<strong>anteprima del messaggio</strong> come arriva su WhatsApp, con i valori evidenziati in
+      giallo; quello su cui stai scrivendo è in arancione.</li>
+</ul>
+<p>Se il template non è nell'elenco (per esempio senza collegamento a Meta) i valori si scrivono uno per riga.</p>
 <p><strong>Nuovo template…</strong> crea un template sull'account di Meta: nome (lettere minuscole, cifre e
 <code>_</code>), lingua, categoria (<em>Utility</em> per fatture e avvisi), testo con i valori
 <code>{{1}}</code>, <code>{{2}}</code>…, un esempio per ogni valore e, se serve mandare il PDF, l'intestazione
@@ -461,8 +460,17 @@ con il documento. Meta lo controlla prima di renderlo usabile, di solito in poch
 <div class="nota">WhatsApp ha una regola precisa: senza template, un messaggio arriva solo se il destinatario ha
 scritto al numero aziendale nelle ultime 24 ore. Per scrivere ai clienti in generale serve un template
 approvato. Per scaricare e creare i template il token di ConfigManager deve avere il permesso
-<code>whatsapp_business_management</code>; se l'editor non trova l'account, scrivi l'<em>ID account WhatsApp
-Business</em> in ConfigManager.</div>
+<code>whatsapp_business_management</code> e in ConfigManager va scritto l'<em>ID account WhatsApp Business</em>
+(su developers.facebook.com, nella pagina Configurazione API dell'app, accanto al Phone number ID).</div>
+
+<h3>Come finisce nel .gui</h3>
+<p>I campi dell'invio sono le righe dopo <code>fine</code>; servono solo per scrivere un <code>.gui</code> a mano.</p>
+<pre>Email:      oggetto, una riga "allegato: &lt;percorso&gt;" per allegato, una riga vuota, il testo
+Telegram:   il documento (riga vuota = nessuno), il testo
+WhatsApp:   il documento (riga vuota = nessuno), poi il testo
+            oppure "template: &lt;nome&gt; &lt;lingua&gt;" e un valore per riga</pre>
+<p>Nella linea 7 c'è il destinatario: l'indirizzo email, <code>telegram &lt;chat&gt;</code> o
+<code>whatsapp &lt;numero&gt;</code> (l'editor aggiunge da solo la parola davanti).</p>
 
 <h2 id="anteprima">9. L'anteprima e la filigrana</h2>
 <p>Il comando <strong>Anteprima</strong> (dal menu, dal pulsante a destra della barra o con <kbd>F5</kbd>) crea il

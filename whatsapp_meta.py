@@ -118,6 +118,8 @@ class WhatsApp:
                     "nome": t.get("name", ""), "lingua": t.get("language", ""), "stato": t.get("status", ""),
                     "categoria": t.get("category", ""), "testo": corpo,
                     "intestazione": componenti.get("HEADER", {}).get("format", ""),
+                    "testo_intestazione": componenti.get("HEADER", {}).get("text", ""),
+                    "piede": componenti.get("FOOTER", {}).get("text", ""),
                     "parametri": numero_parametri(corpo),
                 })
             # Le pagine successive hanno già i parametri nell'indirizzo
