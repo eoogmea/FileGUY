@@ -1,7 +1,6 @@
 import datetime
 import os
 import sys
-import traceback
 import tempfile
 from os import listdir
 from os.path import isfile, join
@@ -17,10 +16,13 @@ import registro
 
 # EMAIL
 import email
+import html
+import mimetypes
 import smtplib
 import ssl
 from email import encoders
 from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -51,12 +53,10 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, PatternFill
 # Righe speciali, colonne e formati Excel del .gui, gli stessi dell'editor dei modelli Excel
-from modello_gui import (ALLINEAMENTI, FORMATI_EXCEL, SFONDI, campi_excel, colonna_excel_vuota, leggi_excel,
-                         righe_excel, stile_riga_vuoto, valore_excel)
+from modello_gui import (ALLINEAMENTI, FORMATI_EXCEL, PREFISSI_EMAIL, SFONDI, campi_excel, colonna_excel_vuota,
+                         immagine_barcode, leggi_excel, righe_excel, stile_riga_vuoto, valore_excel)
 
-#BARCODE
-import barcode
-from barcode.writer import ImageWriter
+#BARCODE (l'immagine la crea modello_gui.immagine_barcode, la stessa dell'editor)
 import pymupdf
 
 def main(name, config):
@@ -69,6 +69,8 @@ def main(name, config):
         return
     # Apre il file .gui (creato su Windows o su Linux)
     guida = leggi_righe(path_gui)
+    if len(guida) < 2:
+        raise ValueError("il .gui ha %d righe: mancano almeno il file di testo e l'azione" % len(guida))
     azione = guida[1].replace("\n", "")
     if azione in ("exe", "barcode", "immagini"):
         funzione = {"exe": exe, "barcode": barcode_add, "immagini": image_add}[azione]
@@ -80,10 +82,19 @@ def main(name, config):
 
     if name[-3:] == "gui":
         return
+    if len(guida) < 7:
+        raise ValueError("il .gui ha %d righe: ne servono almeno 7 (testo, azione, documento, template, "
+                         "rotazione, invio, destinatario) e poi i formati fino a \"fine\"" % len(guida))
 
     # Legge la seconda linea del .gui per decidere cosa fare
     uscita = guida[2].replace("\n", "")
-    if azione == "pdf" or azione == "file" or azione == "stampa":
+    invio = guida[5].replace("\n", "")
+    if uscita.strip() == "":
+        # Nessun documento da creare: solo l'invio (email, Telegram, WhatsApp)
+        # Senza invio il .gui è sbagliato: va nel log (start()) e i file restano nella cartella di lavoro
+        if invio not in ("email", "telegram", "whatsapp"):
+            raise ValueError("il .gui non crea nessun documento (linea 3 vuota) e non ha nessun invio (linea 6)")
+    elif azione == "pdf" or azione == "file" or azione == "stampa":
         template = guida[3].replace("\n", "")
         risultato = passo(name, "pdf " + uscita + (" su template " + template if template != "" else ""),
                           pdf, guida, config)
@@ -103,7 +114,6 @@ def main(name, config):
         azione = ""
 
     # Invio del documento creato: un errore va nel log ma non blocca
-    invio = guida[5].replace("\n", "")
     if azione != "" and invio in ("email", "telegram", "whatsapp"):
         if invio == "email":
             descrizione = "email a " + (dati_email(guida)[0] or "?")
@@ -144,9 +154,14 @@ def passo_secondario(nome_file, descrizione, funzione, *argomenti):
     """Come passo(), ma un errore non ferma l'elaborazione: resta nel log e sulla console."""
     try:
         passo(nome_file, descrizione, funzione, *argomenti)
-    except Exception:
-        print("Errore con il file " + nome_file + " (" + descrizione + "):", file=sys.stderr)
-        traceback.print_exc()
+    except Exception as e:
+        segnala_errore(nome_file, descrizione, e)
+
+
+def segnala_errore(nome_file, descrizione, errore):
+    """Una riga sulla console per un errore già scritto nel log (lì c'è anche il traceback)."""
+    print("Errore con il file %s: %s: %s: %s (dettagli nel log)" % (nome_file, descrizione,
+                                                                   type(errore).__name__, errore), file=sys.stderr)
 
 
 def coda_gui(guida):
@@ -167,10 +182,7 @@ def barcode_add(guida, config):
     for i in range(0, numero_barcodes):
         i *= 6
         codice = guida[3 + i].replace("\n", "")
-        cab = barcode.get_barcode_class(guida[4 + i].replace("\n", ""))
-        codicino = cab(codice, writer=ImageWriter())
-        percorso = config["cartella_lavoro"] + os.sep + "barcode" + str(codice)
-        codicino.save(percorso)
+        immagine = immagine_barcode(codice, guida[4 + i].replace("\n", ""))
 
         # la posizione è data da due vertici opposti partendo da quello alto a sx
         x0, y0 = guida[5 + i].replace("\n", "").split(",")
@@ -182,11 +194,9 @@ def barcode_add(guida, config):
         page = doc[int(guida[8 + i].replace("\n", ""))]
 
         # add the image
-        page.insert_image(image_rectangle, filename=percorso + ".png")
+        page.insert_image(image_rectangle, stream=immagine)
         doc.save(config["cartella_lavoro"] + os.sep + nome_file(guida[7 + i].replace("\n", "")), incremental=True, encryption=0)
         doc.close()
-        #L'immagine del barcode non serve più
-        os.remove(percorso + ".png")
 
 def image_add(guida,config):
     numero_image = int(guida[2].replace("\n", ""))
@@ -304,7 +314,15 @@ def whatsapp(guida, config):
             messenger.invia_documento(numero, doc_path)
 
 
+def con_fine(guida):
+    """Le linee del .gui con "fine" dopo i formati anche se manca (altrimenti si leggerebbe oltre)."""
+    if any(linea[0:4] == "fine" for linea in guida[linea_inizio_format_pdf:]):
+        return guida
+    return list(guida) + ["fine\n"]
+
+
 def pdf(guida, config):
+    guida = con_fine(guida)
 
     #Apre il documento di testo
     content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
@@ -422,7 +440,9 @@ def pdf(guida, config):
         else:
             testo = x.replace("\n", "")
             pdf.cell(0, 6, testo, border=0, ln=1)
-        i += 1
+        #Senza linee di formato (subito "fine") si resta lì: le righe dopo "fine" sono i dati dell'invio
+        if guida[i][0:4] != "fine":
+            i += 1
 
     #Salva il pdf temporaneo
     pdf.output(config["cartella_lavoro"] + os.sep + "systemgen.pdf")
@@ -488,6 +508,7 @@ def pdf(guida, config):
 
 
 def docx(guida, config):
+    guida = con_fine(guida)
     #Apre il file di testo
     content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
 
@@ -712,15 +733,12 @@ def excel(guida, config):
     wb.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
 
 
-PREFISSO_ALLEGATO = "allegato:"
-
-
 def dati_email(guida):
-    """Destinatario, oggetto, altri allegati (lista) e testo di un invio email.
+    """Destinatario, oggetto, altri allegati (lista), immagini nel testo (lista) e testo di un invio email.
 
     Con l'indirizzo nella linea 7 del .gui, dopo "fine" ci sono l'oggetto, le eventuali righe
-    "allegato: <percorso>" (una per allegato), una riga vuota e il testo del messaggio
-    (anche su più righe).
+    "allegato: <percorso>" (una per allegato) e "immagine: <percorso>" (una per immagine da
+    mostrare dopo il testo), una riga vuota e il testo del messaggio (anche su più righe).
     Con la linea 7 vuota (i .gui di prima) dopo "fine" ci sono l'indirizzo, l'oggetto,
     un eventuale secondo allegato e il testo del messaggio.
     """
@@ -729,15 +747,19 @@ def dati_email(guida):
     if destinatario != "":
         oggetto = coda[0] if len(coda) > 0 else ""
         testo = coda[1:]
-        allegati = []
-        while testo and testo[0].strip().lower().startswith(PREFISSO_ALLEGATO):
-            allegati.append(testo.pop(0).strip()[len(PREFISSO_ALLEGATO):].strip())
+        file = {"allegati": [], "immagini": []}
+        while testo:
+            prefisso = testo[0].strip().lower().split(":", 1)[0] + ":"
+            if prefisso not in PREFISSI_EMAIL:
+                break
+            file[PREFISSI_EMAIL[prefisso]].append(testo.pop(0).strip()[len(prefisso):].strip())
         # La riga vuota tra oggetto (o allegati) e testo
         if testo and testo[0].strip() == "":
             testo = testo[1:]
-        return destinatario, oggetto, [a for a in allegati if a], "\n".join(testo)
+        return (destinatario, oggetto, [a for a in file["allegati"] if a], [i for i in file["immagini"] if i],
+                "\n".join(testo))
     coda += [""] * (3 - len(coda))
-    return coda[0].strip(), coda[1], [coda[2].strip()] if coda[2].strip() else [], "\n".join(coda[3:])
+    return coda[0].strip(), coda[1], [coda[2].strip()] if coda[2].strip() else [], [], "\n".join(coda[3:])
 
 
 def allegato_email(percorso):
@@ -757,8 +779,73 @@ def allegato_email(percorso):
     return part
 
 
+# Larghezza massima (in pixel) con cui l'email mostra le immagini del testo e quella della firma
+LARGHEZZA_IMMAGINE_EMAIL = 600
+LARGHEZZA_FIRMA_EMAIL = 300
+
+
+def immagine_email(percorso, cid, larghezza_massima):
+    """La parte MIME di un'immagine da mostrare nel testo dell'email e il tag <img> che la mostra."""
+    tipo = mimetypes.guess_type(percorso)[0] or ""
+    if not tipo.startswith("image/"):
+        raise ValueError("non è un'immagine (png, jpg, gif): " + percorso)
+    with open(percorso, "rb") as f:
+        dati = f.read()
+    parte = MIMEImage(dati, _subtype=tipo.split("/")[1])
+    parte.add_header("Content-ID", "<" + cid + ">")
+    parte.add_header("Content-Disposition", "inline", filename=os.path.basename(percorso))
+    # Le immagini grandi (es. una firma scansionata) si mostrano più piccole
+    larghezza = ""
+    try:
+        from PIL import Image
+        with Image.open(percorso) as immagine:
+            if immagine.width > larghezza_massima:
+                larghezza = ' width="%d"' % larghezza_massima
+    except Exception:
+        pass
+    return parte, '<img src="cid:%s"%s alt="" style="max-width:100%%">' % (cid, larghezza)
+
+
+def corpo_email(testo, immagini, firma, immagine_firma):
+    """Il testo dell'email: solo testo se non ci sono immagini né firma, altrimenti HTML con le
+    immagini dentro il messaggio (non come allegati) più la versione solo testo per i programmi
+    che non mostrano l'HTML."""
+    firma = firma.strip()
+    immagine_firma = immagine_firma.strip()
+    if not immagini and not firma and not immagine_firma:
+        return MIMEText(testo, "plain")
+
+    def paragrafo(t):
+        return html.escape(t).replace("\n", "<br>\n")
+    parti = []
+    pezzi = ['<div style="font-family:Arial,sans-serif;font-size:10pt">', paragrafo(testo)]
+    for n, percorso in enumerate(immagini):
+        parte, tag = immagine_email(percorso, "immagine%d" % (n + 1), LARGHEZZA_IMMAGINE_EMAIL)
+        parti.append(parte)
+        pezzi.append("<p>" + tag + "</p>")
+    if firma or immagine_firma:
+        pezzi.append('<p style="margin-top:16px">' + paragrafo(firma))
+        if immagine_firma:
+            parte, tag = immagine_email(immagine_firma, "firma", LARGHEZZA_FIRMA_EMAIL)
+            parti.append(parte)
+            pezzi.append(("<br>" if firma else "") + tag)
+        pezzi.append("</p>")
+    pezzi.append("</div>")
+    alternative = MIMEMultipart("alternative")
+    alternative.attach(MIMEText(testo + ("\n\n" + firma if firma else ""), "plain"))
+    alternative.attach(MIMEText("\n".join(pezzi), "html"))
+    if not parti:
+        return alternative
+    # Le immagini stanno accanto all'HTML che le mostra (multipart/related)
+    correlate = MIMEMultipart("related")
+    correlate.attach(alternative)
+    for parte in parti:
+        correlate.attach(parte)
+    return correlate
+
+
 def email_send(guida, config):
-    receiver_email, subject, altri_allegati, body = dati_email(guida)
+    receiver_email, subject, altri_allegati, immagini, body = dati_email(guida)
 
     port = int(config["email_smtp_porta"])  # For SSL
 
@@ -771,8 +858,9 @@ def email_send(guida, config):
     #L'email che spedisce
     sender_email = config["email_mittente"]
 
-    #L'allegato generato dalla funzione pdf
-    filename = config["cartella_output"] + os.sep + guida[2].replace("\n", "")
+    #L'allegato generato dalla funzione pdf (nessuno se il .gui non crea documenti)
+    documento = guida[2].replace("\n", "").strip()
+    allegati = ([config["cartella_output"] + os.sep + documento] if documento else []) + altri_allegati
 
     if receiver_email == "":
         raise ValueError("indirizzo del destinatario mancante (campo Destinatario, linea 7 del .gui)")
@@ -784,11 +872,17 @@ def email_send(guida, config):
     message["Subject"] = subject
     message["Bcc"] = receiver_email  # Recommended for mass emails
 
-    # Add body to email
-    message.attach(MIMEText(body, "plain"))
+    # Il testo, con le immagini e la firma impostata in ConfigManager. Se l'immagine della firma non
+    # c'è più l'email parte lo stesso (senza): altrimenti si fermerebbero tutte le email
+    immagine_firma = config.get("email_firma_immagine", "").strip()
+    if immagine_firma and not os.path.isfile(immagine_firma):
+        registro.registra(guida[0].strip(), "immagine della firma non trovata, email mandata senza: " +
+                          immagine_firma, "AVVISO")
+        immagine_firma = ""
+    message.attach(corpo_email(body, immagini, config.get("email_firma", ""), immagine_firma))
 
     # Il documento creato e poi gli altri allegati
-    for percorso in [filename] + altri_allegati:
+    for percorso in allegati:
         message.attach(allegato_email(percorso))
 
     #il messaggio che sarà inviato
@@ -806,25 +900,29 @@ def email_send(guida, config):
 
 
 def start():
+    """Elabora i file della cartella di lavoro. Non solleva eccezioni: ogni errore va nel log (con
+    il traceback) e sulla console in una riga. Restituisce 0, oppure 1 se non si è potuto iniziare
+    (configurazione o cartella di lavoro mancanti)."""
     # Legge la configurazione cifrata (config.dat, si modifica con ConfigManager.py)
     try:
         config = carica_config()
+        registro.configura(config.get("file_log", ""))
+        # Cartella con i file di testo e i .gui
+        folder = config["cartella_lavoro"]
     except Exception as e:
         # Senza configurazione il log va nel file predefinito
         registro.configura()
         registro.registra_errore("config.dat", "lettura della configurazione", e)
-        raise
-    registro.configura(config.get("file_log", ""))
-
-    # Cartella con i file di testo e i .gui
-    folder = config["cartella_lavoro"]
+        segnala_errore("config.dat", "lettura della configurazione", e)
+        return 1
 
     # Legge i file in questa cartella
     try:
         onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
     except OSError as e:
         registro.registra_errore(folder, "lettura della cartella di lavoro", e)
-        raise
+        segnala_errore(folder, "lettura della cartella di lavoro", e)
+        return 1
 
     # Per ogni file passa il suo nome alla main
     for name in onlyfiles:
@@ -834,8 +932,8 @@ def start():
         except Exception as e:
             if not getattr(e, "registrato", False):
                 registro.registra_errore(name, "elaborazione", e)
-            print("Errore con il file " + name + ":", file=sys.stderr)
-            traceback.print_exc()
+            segnala_errore(name, "elaborazione", e)
+    return 0
 
 
 def trova_font(nome_font):
@@ -949,4 +1047,4 @@ fpdf.fpdf.FPDF_CACHE_MODE = 2
 fpdf.fpdf.FPDF_CACHE_DIR = tempfile.gettempdir()
 # Solo quando è avviato come programma (EditorModelli lo importa per l'anteprima)
 if __name__ == "__main__":
-    start()
+    sys.exit(start())

@@ -39,6 +39,36 @@ def console_sicura():
             setattr(sys, nome, open(os.devnull, "w", encoding="utf-8"))
 
 
+def errori_in_finestra(finestra):
+    """Un errore imprevisto in un pulsante o in un menu non chiude il programma e non resta solo
+    sulla console (che negli exe non c'è): si mostra in una finestra e si può continuare."""
+    import traceback
+
+    def mostra(tipo, errore, dettaglio):
+        testo = "".join(traceback.format_exception(tipo, errore, dettaglio))
+        print(testo, file=sys.stderr)
+        try:
+            from tkinter import messagebox
+            messagebox.showerror("Errore imprevisto", "%s: %s\n\nIl programma continua. Dettagli:\n\n%s"
+                                 % (tipo.__name__, errore, "".join(traceback.format_exception(
+                                     tipo, errore, dettaglio, limit=-3))), parent=finestra)
+        except Exception:
+            pass
+    finestra.report_callback_exception = mostra
+
+
+def avvia_finestra(crea, *argomenti):
+    """Crea la finestra principale e la fa girare; se non si può aprire (es. Linux senza schermo
+    grafico) lo dice in una riga, senza traceback, ed esce con codice 1."""
+    try:
+        finestra = crea(*argomenti)
+    except Exception as e:
+        print("Impossibile aprire la finestra: %s: %s" % (type(e).__name__, e), file=sys.stderr)
+        sys.exit(1)
+    errori_in_finestra(finestra)
+    return finestra
+
+
 def registra_font(cartella):
     """Rende i font della cartella (es. Fonts del programma) disponibili alle finestre del programma,
     senza installarli nel sistema: così l'editor mostra il testo con gli stessi caratteri del PDF.

@@ -16,7 +16,7 @@ a = Analysis(['EditorModelli.py'],
              binaries=[],
              # Font usato da python-barcode (il codice del servizio viene caricato per l'anteprima)
              # e la guida aperta dal menu Aiuto
-             datas=collect_data_files('barcode') + [('Guida_EditorModelli.html', '.')],
+             datas=collect_data_files('barcode') + [('Guida_EditorModelli.html', '.'), ('Guida_file_gui.html', '.')],
              # Il codice del servizio è importato per nome solo al momento dell'anteprima
              hiddenimports=['SingleGUY'],
              hookspath=[],

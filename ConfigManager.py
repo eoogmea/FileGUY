@@ -9,13 +9,14 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import config_sicuro
 from config_sicuro import CAMPI, ConfigError
-from piattaforma import console_sicura
+from piattaforma import avvia_finestra, console_sicura
 
 # Senza console (exe di ConfigManager) i messaggi su stdout/stderr farebbero fallire l'operazione
 console_sicura()
 
 
-# (campo, etichetta, tipo) - tipo: "cartella", "file", "stampante", "segreto" o "testo"
+# (campo, etichetta, tipo) - tipo: "cartella", "file", "immagine", "stampante", "segreto", "testo"
+# o "testo_lungo" (più righe)
 SEZIONI = [
     ("Cartelle", [
         ("cartella_lavoro", "Cartella di lavoro (.txt e .gui)", "cartella"),
@@ -31,6 +32,8 @@ SEZIONI = [
         ("email_password", "Password (per Gmail: password per le app)", "segreto"),
         ("email_smtp_server", "Server SMTP (SSL)", "testo"),
         ("email_smtp_porta", "Porta SMTP", "testo"),
+        ("email_firma", "Firma in fondo a ogni email (testo)", "testo_lungo"),
+        ("email_firma_immagine", "Immagine della firma (logo, firma scansionata)", "immagine"),
     ]),
     ("Telegram", [
         ("telegram_token", "Token del bot", "segreto"),
@@ -103,6 +106,8 @@ class ConfigManager(tk.Tk):
             # Si può anche scrivere il nome; l'elenco si legge solo quando si apre la tendina
             voce = ttk.Combobox(genitore, textvariable=self.variabili[campo], width=48)
             voce.configure(postcommand=lambda: voce.configure(values=[""] + self._stampanti()))
+        elif tipo == "testo_lungo":
+            voce = self._casella_lunga(genitore, self.variabili[campo])
         else:
             voce = ttk.Entry(genitore, textvariable=self.variabili[campo], width=50,
                              show="•" if tipo == "segreto" else "")
@@ -112,6 +117,9 @@ class ConfigManager(tk.Tk):
                 .grid(row=riga, column=2, padx=(6, 0))
         elif tipo == "file":
             ttk.Button(genitore, text="Sfoglia...", command=lambda: self._scegli_file_log(campo)) \
+                .grid(row=riga, column=2, padx=(6, 0))
+        elif tipo == "immagine":
+            ttk.Button(genitore, text="Sfoglia...", command=lambda: self._scegli_immagine(campo)) \
                 .grid(row=riga, column=2, padx=(6, 0))
         elif tipo == "segreto":
             mostra = tk.BooleanVar(value=False)
@@ -125,6 +133,32 @@ class ConfigManager(tk.Tk):
         if cartella:
             # Il formato del sistema (con "\" su Windows, "/" su Linux), come li compone il servizio
             self.variabili[campo].set(os.path.normpath(cartella))
+
+    def _casella_lunga(self, genitore, variabile):
+        """Casella di più righe legata alla variabile del campo (in tutti e due i sensi)."""
+        casella = tk.Text(genitore, height=3, width=50, wrap="word", undo=True, font=("Segoe UI", 9))
+
+        def da_casella(evento):
+            if casella.edit_modified():
+                casella.edit_modified(False)
+                variabile.set(casella.get("1.0", "end-1c"))
+
+        def da_variabile(*argomenti):
+            if casella.get("1.0", "end-1c") != variabile.get():
+                casella.delete("1.0", "end")
+                casella.insert("1.0", variabile.get())
+                casella.edit_modified(False)
+        casella.bind("<<Modified>>", da_casella)
+        variabile.trace_add("write", da_variabile)
+        return casella
+
+    def _scegli_immagine(self, campo):
+        attuale = self.variabili[campo].get()
+        percorso = filedialog.askopenfilename(
+            parent=self, title="Immagine della firma", initialdir=os.path.dirname(attuale) if attuale else None,
+            filetypes=[("Immagini", "*.png *.jpg *.jpeg *.gif"), ("Tutti i file", "*.*")])
+        if percorso:
+            self.variabili[campo].set(os.path.normpath(percorso))
 
     def _scegli_file_log(self, campo):
         attuale = self.variabili[campo].get()
@@ -202,6 +236,8 @@ class ConfigManager(tk.Tk):
                 errori.append("La cartella non esiste: " + config[campo])
         if config["file_log"] != "" and not os.path.isdir(os.path.dirname(os.path.abspath(config["file_log"]))):
             errori.append("La cartella del file di log non esiste: " + os.path.dirname(config["file_log"]))
+        if config["email_firma_immagine"] != "" and not os.path.isfile(config["email_firma_immagine"]):
+            errori.append("L'immagine della firma non esiste: " + config["email_firma_immagine"])
         if not config["email_smtp_porta"].isdigit():
             errori.append("La porta SMTP deve essere un numero")
         return errori
@@ -282,4 +318,4 @@ class ConfigManager(tk.Tk):
 
 
 if __name__ == "__main__":
-    ConfigManager().mainloop()
+    avvia_finestra(ConfigManager).mainloop()

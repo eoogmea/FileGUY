@@ -34,7 +34,7 @@ from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, ETICHETTE_DESTINATARIO,
 from config_sicuro import carica_config
 from modello_gui import (COLORI, FONT, FORMATI_EXCEL, PREDEFINITO_EXCEL, SFONDI, campi_excel,
                          colonna_excel_vuota, righe_excel, stile_riga_vuoto, valore_excel)
-from piattaforma import console_sicura, leggi_testo
+from piattaforma import avvia_finestra, console_sicura, leggi_testo
 
 # Senza console (exe dell'editor) i messaggi su stdout/stderr farebbero fallire l'operazione
 console_sicura()
@@ -1210,7 +1210,8 @@ class EditorExcel(tk.Tk):
 
 
 if __name__ == "__main__":
-    app = EditorExcel()
+    app = avvia_finestra(EditorExcel)
     if len(sys.argv) > 1:
-        app.apri_modello(sys.argv[1])
+        # Un modello che non si apre non chiude l'editor: l'errore si vede in una finestra
+        app.after_idle(app.apri_modello, sys.argv[1])
     app.mainloop()

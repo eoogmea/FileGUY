@@ -52,15 +52,19 @@ registro.registra("", "avvio del servizio (back)")
 ultimo_errore = None
 
 #loop che avviene ogni secondo
-while True:
-    time.sleep(1)
-    #Un errore (configurazione o cartella mancante...) non ferma il servizio: va nel log una volta
-    #sola finché non cambia, e si riprova al giro dopo
-    try:
-        filesprec = process(filesprec)
-        ultimo_errore = None
-    except Exception as e:
-        if str(e) != ultimo_errore:
-            registro.registra_errore("", "controllo della cartella di lavoro", e)
-            print("Errore: " + str(e), file=sys.stderr)
-        ultimo_errore = str(e)
+try:
+    while True:
+        time.sleep(1)
+        #Un errore (configurazione o cartella mancante...) non ferma il servizio: va nel log una volta
+        #sola finché non cambia, e si riprova al giro dopo
+        try:
+            filesprec = process(filesprec)
+            ultimo_errore = None
+        except Exception as e:
+            if str(e) != ultimo_errore:
+                registro.registra_errore("", "controllo della cartella di lavoro", e)
+                print("Errore: " + str(e), file=sys.stderr)
+            ultimo_errore = str(e)
+except KeyboardInterrupt:
+    #Ctrl+C: il servizio si chiude senza traceback
+    registro.registra("", "arresto del servizio (back)")

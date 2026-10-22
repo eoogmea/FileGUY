@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File .gui di FileGUY</title>
+<style>
+  :root {
+    --testo: #1d2127;
+    --tenue: #5b6470;
+    --sfondo: #ffffff;
+    --pannello: #f4f6f8;
+    --bordo: #d9dee4;
+    --accento: #1f5fa8;
+    --avviso: #fff6e0;
+    --avviso-bordo: #e7b84a;
+    --consiglio: #eaf4ec;
+    --consiglio-bordo: #5aa66a;
+    --codice: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --testo: #e4e7eb;
+      --tenue: #a3abb5;
+      --sfondo: #16191d;
+      --pannello: #1f242a;
+      --bordo: #343b44;
+      --accento: #7fb2ef;
+      --avviso: #33290f;
+      --avviso-bordo: #b8902f;
+      --consiglio: #16291b;
+      --consiglio-bordo: #4c9159;
+      --codice: #252b32;
+    }
+  }
+  :root[data-theme="dark"] {
+    --testo: #e4e7eb;
+    --tenue: #a3abb5;
+    --sfondo: #16191d;
+    --pannello: #1f242a;
+    --bordo: #343b44;
+    --accento: #7fb2ef;
+    --avviso: #33290f;
+    --avviso-bordo: #b8902f;
+    --consiglio: #16291b;
+    --consiglio-bordo: #4c9159;
+    --codice: #252b32;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--sfondo);
+    color: var(--testo);
+    font: 16px/1.65 "Segoe UI", Calibri, Arial, sans-serif;
+  }
+  .pagina { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 30px; line-height: 1.25; margin: 0 0 6px; }
+  .sottotitolo { color: var(--tenue); margin: 0 0 28px; }
+  h2 { font-size: 22px; margin: 48px 0 10px; padding-top: 14px; border-top: 1px solid var(--bordo); }
+  h3 { font-size: 17px; margin: 28px 0 6px; }
+  p, li { max-width: 72ch; }
+  a { color: var(--accento); }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.92em;
+    background: var(--codice);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  pre {
+    background: var(--codice);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font: 14px/1.5 Consolas, "Courier New", monospace;
+  }
+  pre .c { color: var(--tenue); }
+  .tabella { overflow-x: auto; margin: 10px 0 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { border: 1px solid var(--bordo); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--pannello); }
+  td code { white-space: normal; }
+  .indice { background: var(--pannello); border: 1px solid var(--bordo); border-radius: 8px; padding: 14px 20px; }
+  .indice strong { display: block; margin-bottom: 6px; }
+  .indice ol { margin: 0; padding-left: 22px; columns: 2; column-gap: 32px; }
+  .indice li { break-inside: avoid; }
+  .nota, .consiglio { padding: 10px 14px; border-radius: 4px; margin: 16px 0; }
+  .nota { background: var(--avviso); border-left: 4px solid var(--avviso-bordo); }
+  .consiglio { background: var(--consiglio); border-left: 4px solid var(--consiglio-bordo); }
+  @media (max-width: 640px) {
+    .indice ol { columns: 1; }
+    h1 { font-size: 25px; }
+  }
+  @media print {
+    .pagina { max-width: none; padding: 0; }
+    a { color: var(--testo); text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<div class="pagina">
+
+<h1>I file .gui: collegare il gestionale a FileGUY</h1>
+<p class="sottotitolo">Riferimento completo per chi scrive, nel gestionale dell'azienda, la parte che produce i
+<code>.gui</code>: come funziona lo scambio dei file, la struttura riga per riga di ogni tipo di <code>.gui</code>,
+gli errori e degli esempi pronti da adattare.</p>
+
+<nav class="indice">
+  <strong>Indice</strong>
+  <ol>
+    <li><a href="#come">Come funziona lo scambio</a></li>
+    <li><a href="#regole">Regole comuni a tutti i file</a></li>
+    <li><a href="#documento">.gui di un documento (PDF, Word, Excel)</a></li>
+    <li><a href="#formati">Linee di formato PDF e Word</a></li>
+    <li><a href="#excel">Linee di un .gui Excel</a></li>
+    <li><a href="#invio">Dati dell'invio (email, Telegram, WhatsApp)</a></li>
+    <li><a href="#solo-invio">Solo invio, senza documento</a></li>
+    <li><a href="#barcode">.gui barcode</a></li>
+    <li><a href="#immagini">.gui immagini</a></li>
+    <li><a href="#exe">.gui exe</a></li>
+    <li><a href="#generare">Generare i .gui dal gestionale</a></li>
+    <li><a href="#esempi">Esempi di codice</a></li>
+    <li><a href="#errori">Errori e registro</a></li>
+    <li><a href="#controllo">Lista di controllo</a></li>
+  </ol>
+</nav>
+
+<h2 id="come">1. Come funziona lo scambio</h2>
+<p>Il gestionale e FileGUY comunicano solo attraverso dei file in una cartella condivisa, la <strong>cartella di
+lavoro</strong> (impostata in ConfigManager). Non servono librerie, database o chiamate di rete.</p>
+<ol>
+  <li>Il gestionale scrive nella cartella di lavoro il <strong>file di testo</strong> del documento (per esempio
+      <code>FT_2026_123.txt</code>), così come lo stamperebbe su una stampante a modulo continuo.</li>
+  <li>Subito dopo scrive il <strong>.gui</strong> con lo stesso nome (<code>FT_2026_123.gui</code>): dice cosa farne
+      (PDF su carta intestata, Word, Excel), con quali caratteri e se spedirlo per email, Telegram o WhatsApp.</li>
+  <li>Il servizio (<code>back</code>) controlla la cartella ogni secondo; quando cambia avvia
+      <code>SingleGUY</code>, che elabora tutti i file presenti.</li>
+  <li>Il documento creato va nella <strong>cartella di output</strong>; se richiesto viene aperto a schermo,
+      stampato e/o spedito.</li>
+  <li>Se tutto è andato bene <code>.txt</code> e <code>.gui</code> vengono <strong>cancellati</strong>. Ogni
+      operazione, riuscita o no, va nel <a href="#errori">registro</a>.</li>
+</ol>
+<p>Alcuni <code>.gui</code> non hanno il file di testo: <a href="#barcode">barcode</a>,
+<a href="#immagini">immagini</a> ed <a href="#exe">exe</a> si elaborano appena il servizio li trova.</p>
+<div class="consiglio">Il modo più semplice di produrre i <code>.gui</code> è non scriverli da zero: si prepara
+un <strong>modello</strong> con EditorModelli o EditorExcel (formattazione vista a schermo, anteprima, invio) e il
+gestionale lo copia sostituendo <code>{nome}</code>. Vedi <a href="#generare">Generare i .gui dal
+gestionale</a>.</div>
+
+<h2 id="regole">2. Regole comuni a tutti i file</h2>
+<div class="tabella"><table>
+  <tr><th>Argomento</th><th>Regola</th></tr>
+  <tr><td>Nomi</td><td>Il <code>.gui</code> ha lo stesso nome del <code>.txt</code>, cambia solo l'estensione
+      (minuscola: <code>.txt</code>, <code>.gui</code>). Evitare i caratteri non ammessi nei nomi di file e usare
+      nomi unici (per esempio con il numero del documento): un file con lo stesso nome di uno non ancora
+      elaborato lo sostituisce.</td></tr>
+  <tr><td>Codifica</td><td>UTF-8 (con o senza BOM) oppure la codifica di Windows (cp1252, quella “ANSI”
+      italiana). Il servizio prova prima UTF-8 e poi cp1252. Vale per <code>.txt</code> e <code>.gui</code>.</td></tr>
+  <tr><td>A capo</td><td><code>CR LF</code> (Windows) o <code>LF</code> (Linux): vanno bene tutti e due, anche
+      mescolati.</td></tr>
+  <tr><td>Righe</td><td>Una voce per riga, nell'ordine indicato. Le righe vuote contano: una voce vuota si scrive
+      come riga vuota, non si salta. Gli spazi a fine riga vanno evitati nelle voci (nomi di file, codici).</td></tr>
+  <tr><td>Numerazione</td><td>In questa guida le righe sono numerate da <strong>1</strong> (la prima riga del file è
+      la riga 1).</td></tr>
+  <tr><td>Percorsi</td><td>I percorsi completi (allegati, immagini, PDF dei barcode) devono valere sul
+      <strong>computer dove gira il servizio</strong>, non su quello del gestionale.</td></tr>
+  <tr><td>Ordine di scrittura</td><td>Prima il <code>.txt</code> completo, poi il <code>.gui</code>. Meglio ancora:
+      scrivere il <code>.gui</code> con un altro nome (per esempio <code>.gui.tmp</code>) e rinominarlo alla fine,
+      così il servizio non trova mai un file a metà.</td></tr>
+</table></div>
+
+<h2 id="documento">3. .gui di un documento (PDF, Word, Excel)</h2>
+<div class="tabella"><table>
+  <tr><th>Riga</th><th>Contenuto</th><th>Valori</th></tr>
+  <tr><td>1</td><td>nome del file di testo nella cartella di lavoro</td><td>per esempio <code>FT_2026_123.txt</code>
+      (solo il nome, senza cartella)</td></tr>
+  <tr><td>2</td><td>azione</td><td>
+      <code>file</code> crea il PDF<br>
+      <code>pdf</code> crea il PDF e lo apre a schermo<br>
+      <code>stampa</code> crea il PDF e lo stampa (stampante di ConfigManager o predefinita)<br>
+      <code>docx</code> crea il documento Word<br>
+      <code>excel</code> crea il foglio Excel</td></tr>
+  <tr><td>3</td><td>nome del documento da creare nella cartella di output</td><td>per esempio
+      <code>FT_2026_123.pdf</code>, <code>.docx</code> o <code>.xlsx</code>.<br><strong>Vuota</strong> = nessun
+      documento, solo l'invio (vedi <a href="#solo-invio">Solo invio</a>)</td></tr>
+  <tr><td>4</td><td>template PDF (solo PDF)</td><td>nome di un PDF della cartella dei template, per esempio
+      <code>carta_intestata.pdf</code>; vuota = pagina bianca A4. La prima pagina del template fa da sfondo a
+      ogni pagina del documento; un template orizzontale dà pagine orizzontali.</td></tr>
+  <tr><td>5</td><td>rotazione delle pagine in gradi (solo PDF)</td><td><code>0</code>, <code>90</code>,
+      <code>180</code> o <code>270</code>; per Word ed Excel <code>0</code></td></tr>
+  <tr><td>6</td><td>invio</td><td><code>0</code> nessuno, <code>email</code>, <code>telegram</code>,
+      <code>whatsapp</code></td></tr>
+  <tr><td>7</td><td>destinatario</td><td>email: l'indirizzo, per esempio <code>cliente@esempio.it</code><br>
+      Telegram: <code>telegram 123456789</code> (l'identificativo della chat)<br>
+      WhatsApp: <code>whatsapp 393331234567</code> o <code>whatsapp +39 333 1234567</code> (prefisso
+      internazionale; la parola <code>telegram</code>/<code>whatsapp</code> si può omettere)<br>
+      nessun invio: vuota</td></tr>
+  <tr><td>dalla 8</td><td>formati</td><td>PDF e Word: una <a href="#formati">linea di formato</a> per ogni riga
+      del testo. Excel: le <a href="#excel">righe speciali e le colonne</a>.</td></tr>
+  <tr><td></td><td><code>fine</code></td><td>chiude i formati (obbligatoria)</td></tr>
+  <tr><td>dopo <code>fine</code></td><td>dati dell'invio</td><td>vedi <a href="#invio">Dati dell'invio</a>;
+      niente se non c'è invio</td></tr>
+</table></div>
+
+<h3>Il file di testo</h3>
+<p><strong>PDF e Word</strong>: il testo così com'è, una riga del documento per ogni riga del file. Le colonne si
+mantengono se si usano caratteri a larghezza fissa (Courier, Consolas…). Su una pagina A4 verticale stanno 44
+righe (29 in orizzontale): poi il servizio passa da solo alla pagina successiva.</p>
+<p><strong>Excel</strong>: una riga del foglio per ogni riga del file, con i campi separati da <code>;</code>.
+Ogni campo <strong>finisce</strong> con <code>;</code>, anche l'ultimo (il testo dopo l'ultimo <code>;</code> non
+è un campo):</p>
+<pre>Codice;Descrizione;Prezzo;
+A001;Vite 4x20;0,12;
+A002;Bullone M8;1.234,50;</pre>
+
+<h3>Esempio completo: fattura in PDF su carta intestata, mandata per email</h3>
+<pre>FT_2026_123.txt
+file
+FT_2026_123.pdf
+carta_intestata.pdf
+0
+email
+cliente@esempio.it
+001	csn14
+002	cnn10
+003
+004	cnn10 00 09	csn10r 09 20
+fine
+Fattura FT_2026_123
+allegato: C:\Documenti\condizioni_di_vendita.pdf
+
+Gentile cliente,
+in allegato la fattura.</pre>
+<p class="sottotitolo">(Negli esempi lo spazio largo dopo il numero della riga è un <strong>tabulatore</strong>.)</p>
+
+<h2 id="formati">4. Linee di formato PDF e Word</h2>
+<p>La linea 8 vale per la prima riga del testo, la 9 per la seconda e così via, nell'ordine. Ogni linea comincia
+con il numero della riga su tre cifre (serve a chi legge: il servizio usa l'ordine), poi un
+<strong>tabulatore</strong> e il codice. Se il testo ha più righe delle linee di formato si riparte dalla prima
+linea (utile per documenti di più pagine tutte uguali).</p>
+<pre>001                 <span class="c">nessun codice: la riga tiene il formato della riga precedente</span>
+002&lt;TAB&gt;tsn14       <span class="c">tutta la riga con un formato</span>
+003&lt;TAB&gt;cnn10 00 09&lt;TAB&gt;csn10r 09 20&lt;TAB&gt;cnn10 20 41
+                    <span class="c">più formati: codice, colonna iniziale, colonna finale (esclusa), due cifre ciascuna</span></pre>
+<p>Le colonne si contano da 0 e arrivano al massimo a 99; il testo dopo l'ultimo pezzo prende il formato
+dell'ultimo pezzo. Con un solo <code>fine</code> subito dopo la riga 7 (nessuna linea di formato) tutto il testo è
+in Times 10 nero.</p>
+
+<h3>Il codice di formato</h3>
+<div class="tabella"><table>
+  <tr><th>Carattere</th><th>Significato</th><th>Valori</th></tr>
+  <tr><td>1</td><td>carattere</td><td>a larghezza fissa: <code>c</code> Courier, <code>o</code> Consolas,
+      <code>d</code> DejaVu Sans Mono, <code>p</code> IBM Plex Mono, <code>l</code> Liberation Mono<br>
+      proporzionali: <code>t</code> Times, <code>h</code> Helvetica/Arial, <code>k</code> Calibri,
+      <code>v</code> Verdana, <code>g</code> Georgia, <code>u</code> Segoe UI</td></tr>
+  <tr><td>2</td><td>grassetto</td><td><code>s</code> sì, <code>n</code> no</td></tr>
+  <tr><td>3</td><td>corsivo</td><td><code>s</code> sì, <code>n</code> no</td></tr>
+  <tr><td>4-5</td><td>dimensione in punti</td><td>due cifre, da <code>06</code> a <code>99</code></td></tr>
+  <tr><td>6</td><td>colore</td><td><code>n</code> nero, <code>r</code> rosso, <code>v</code> verde,
+      <code>b</code> blu, <code>w</code> bianco</td></tr>
+</table></div>
+<p>Esempi: <code>tsn14</code> Times grassetto 14; <code>hns10r</code> Helvetica corsivo 10 rosso.</p>
+<div class="nota">In <strong>Word</strong> il colore va sempre scritto (codici di 6 caratteri). Nel
+<strong>PDF</strong> si può omettere (5 caratteri = nero), ma sulla stessa linea i codici devono essere tutti con il
+colore o tutti senza.</div>
+
+<h2 id="excel">5. Linee di un .gui Excel</h2>
+<p>Con l'azione <code>excel</code> la riga 4 è vuota e la riga 5 è <code>0</code>. Dalla riga 8, in quest'ordine:</p>
+<ol>
+  <li>zero o più linee di <strong>righe speciali</strong> (titoli, totali…);</li>
+  <li>una linea con la sola parola <code>colonna</code>;</li>
+  <li>una linea per ogni <strong>colonna</strong>, nell'ordine A, B, C…;</li>
+  <li><code>fine</code> e poi gli eventuali dati dell'invio.</li>
+</ol>
+<p>Le voci di una linea sono separate da <strong>tabulatori</strong>; dopo la prima voce vengono, in qualsiasi
+ordine, le voci facoltative <code>chiave=valore</code>.</p>
+<pre>1&lt;TAB&gt;nome=Intestazione&lt;TAB&gt;carattere=ksn11n&lt;TAB&gt;sfondo=grigio&lt;TAB&gt;testo=si
+u1&lt;TAB&gt;nome=Totale&lt;TAB&gt;carattere=ksn12n&lt;TAB&gt;sfondo=giallo
+colonna
+0&lt;TAB&gt;larghezza=10
+0&lt;TAB&gt;larghezza=40
+8&lt;TAB&gt;allineamento=destra
+fine</pre>
+<div class="tabella"><table>
+  <tr><th>Voce</th><th>Dove</th><th>Valore</th></tr>
+  <tr><td>prima voce</td><td>riga speciale</td><td>le righe del foglio: numeri e intervalli separati da virgole,
+      <code>u1</code> = ultima riga, <code>u2</code> = penultima (es. <code>1-2, u1</code>)</td></tr>
+  <tr><td>prima voce</td><td>colonna</td><td>numero del formato dei valori (tabella sotto); <code>0</code> =
+      generale</td></tr>
+  <tr><td><code>nome=</code></td><td>riga speciale</td><td>nome dello stile (solo per l'editor)</td></tr>
+  <tr><td><code>carattere=</code></td><td>tutte e due</td><td>codice di formato con il colore, 6 caratteri
+      (es. <code>ksn11n</code>)</td></tr>
+  <tr><td><code>sfondo=</code></td><td>riga speciale</td><td><code>grigio</code>, <code>giallo</code>,
+      <code>azzurro</code>, <code>verde</code>, <code>arancio</code></td></tr>
+  <tr><td><code>allineamento=</code></td><td>tutte e due</td><td><code>sinistra</code>, <code>centro</code>,
+      <code>destra</code></td></tr>
+  <tr><td><code>larghezza=</code></td><td>colonna</td><td>da 1 a 255 caratteri (senza: automatica)</td></tr>
+  <tr><td><code>testo=si</code></td><td>riga speciale</td><td>i valori restano testo (es. l'intestazione)</td></tr>
+</table></div>
+<p>Formati dei valori: <code>0</code> generale, <code>1</code> intero, <code>2</code> due decimali, <code>3</code>
+intero con migliaia, <code>4</code> decimali con migliaia, <code>5</code> valuta intera, <code>6</code>/<code>7</code>
+valuta intera con negativi rossi, <code>8</code> valuta con decimali e negativi rossi, <code>9</code> percentuale,
+<code>10</code> percentuale con decimali, <code>11</code> scientifico, <code>12</code> data 20/10/2026,
+<code>13</code> 20-ott-2026, <code>14</code> 20-ott, <code>15</code> ott 2026, <code>16</code> 1:30 PM,
+<code>17</code> 1:30:55 PM, <code>18</code> 13:30, <code>19</code> 13:30:55, <code>20</code> data e ora,
+<code>21</code> ingegneristico, <code>22</code> minuti e secondi, <code>23</code> testo, <code>24</code> valuta con
+decimali. I numeri nel testo si scrivono all'italiana (<code>1.234,56</code>), le date come
+<code>20/10/2026</code>.</p>
+
+<h2 id="invio">6. Dati dell'invio (email, Telegram, WhatsApp)</h2>
+<p>Sono le righe dopo <code>fine</code>. Il destinatario è nella riga 7. Mittente, password, token e numero
+aziendale si impostano in ConfigManager.</p>
+
+<h3>Email</h3>
+<pre>Oggetto del messaggio                         <span class="c">riga 1 dopo fine</span>
+allegato: C:\Documenti\condizioni.pdf         <span class="c">zero o più righe, un allegato per riga</span>
+immagine: C:\Immagini\promozione.png          <span class="c">zero o più: immagini mostrate dentro il testo</span>
+                                              <span class="c">riga vuota</span>
+Testo del messaggio,                          <span class="c">tutto il resto, anche su più righe</span>
+su più righe.</pre>
+<ul>
+  <li>Il <strong>documento creato</strong> (riga 3) è sempre il primo allegato; gli altri vengono dopo.</li>
+  <li>Le righe <code>allegato:</code> e <code>immagine:</code> possono essere in qualsiasi ordine, ma subito dopo
+      l'oggetto e prima della riga vuota. Le immagini (png, jpg, gif) compaiono dopo il testo, non come
+      allegati.</li>
+  <li>La <strong>firma</strong> (testo e immagine, per esempio il logo o una firma scansionata) si imposta una
+      volta sola in ConfigManager e va in fondo a ogni email. Con immagini o firma l'email è in HTML, con la
+      versione solo testo per i programmi che non mostrano l'HTML.</li>
+  <li>Un allegato o un'immagine che non esiste blocca quell'email (errore nel log); un'immagine della firma che
+      non esiste no: l'email parte senza e nel log c'è un avviso.</li>
+</ul>
+
+<h3>Telegram</h3>
+<pre>FT_2026_123.pdf             <span class="c">documento da mandare: nome nella cartella di output; riga vuota = nessuno</span>
+Ecco la fattura             <span class="c">testo del messaggio, anche su più righe</span></pre>
+
+<h3>WhatsApp, messaggio libero</h3>
+<pre>FT_2026_123.pdf             <span class="c">documento: nome nella cartella di output; riga vuota = nessuno</span>
+Buongiorno,                 <span class="c">testo del messaggio</span>
+in allegato la fattura.</pre>
+<div class="nota">Regola di Meta: un messaggio libero arriva solo se il destinatario ha scritto al numero
+aziendale nelle ultime 24 ore. Per scrivere ai clienti serve un template approvato.</div>
+
+<h3>WhatsApp, template approvato da Meta</h3>
+<pre>FT_2026_123.pdf             <span class="c">documento dell'intestazione (il template deve avere l'intestazione Documento); vuota = nessuno</span>
+template: fattura it        <span class="c">nome del template e lingua (senza lingua: quella di ConfigManager)</span>
+Mario Rossi                 <span class="c">valore di {{1}}</span>
+FT 2026/123                 <span class="c">valore di {{2}}, e così via (le righe vuote si saltano)</span></pre>
+<p>Nei <code>.gui</code> più vecchi nome e lingua del template erano nella riga 7, dopo il numero
+(<code>whatsapp 393331234567 fattura it</code>): il servizio li legge ancora.</p>
+
+<h2 id="solo-invio">7. Solo invio, senza documento</h2>
+<p>Con la riga 3 <strong>vuota</strong> il servizio non crea nessun documento e fa solo l'invio: per esempio un
+promemoria di pagamento per email o un avviso su WhatsApp. Il file di testo serve comunque (è quello che fa partire
+l'elaborazione) ma il suo contenuto non viene usato; le linee di formato possono essere solo <code>fine</code>.</p>
+<pre>promemoria_4711.txt
+file
+
+0
+email
+cliente@esempio.it
+fine
+Promemoria scadenza fattura FT 2026/123
+allegato: C:\Documenti\estratto_conto_4711.pdf
+
+Gentile cliente, le ricordiamo la scadenza del 31/10/2026.</pre>
+<p>Con la riga 3 vuota e nessun invio (riga 6 <code>0</code>) il <code>.gui</code> non fa niente: è un errore, e
+i file restano nella cartella di lavoro.</p>
+
+<h2 id="barcode">8. .gui barcode</h2>
+<p>Mette uno o più barcode su un PDF che c'è già (per esempio un DDT creato prima). Non ha file di testo: si
+elabora appena il servizio lo trova. Si può preparare e provare con EditorModelli, menu <em>File &gt; Barcode su un
+PDF</em>, disegnando la posizione sulla pagina.</p>
+<div class="tabella"><table>
+  <tr><th>Riga</th><th>Contenuto</th></tr>
+  <tr><td>1</td><td>un nome qualsiasi (di solito quello del file senza <code>.gui</code>)</td></tr>
+  <tr><td>2</td><td><code>barcode</code></td></tr>
+  <tr><td>3</td><td>quanti barcode seguono</td></tr>
+  <tr><td colspan="2">poi 6 righe per ogni barcode:</td></tr>
+  <tr><td>a</td><td>il codice, per esempio <code>8001234567895</code> o <code>DDT-2026-123</code></td></tr>
+  <tr><td>b</td><td>il tipo: <code>code128</code> (lettere e numeri), <code>code39</code>, <code>ean13</code>
+      (12 cifre, la 13a di controllo si calcola), <code>ean8</code>, <code>ean14</code>, <code>upca</code>,
+      <code>itf</code>, <code>gs1_128</code>, <code>codabar</code>, <code>isbn13</code>, <code>issn</code>,
+      <code>pzn</code></td></tr>
+  <tr><td>c</td><td>angolo in alto a sinistra <code>x,y</code></td></tr>
+  <tr><td>d</td><td>angolo in basso a destra <code>x,y</code></td></tr>
+  <tr><td>e</td><td>percorso completo del PDF</td></tr>
+  <tr><td>f</td><td>pagina, da <code>0</code> (la prima)</td></tr>
+</table></div>
+<p>Le misure sono in <strong>punti</strong> (72 per pollice, 1 mm = 2,83 punti) dall'angolo in alto a sinistra
+della pagina; una pagina A4 è 595 × 842 punti. Il barcode (con il numero sotto) entra nel rettangolo mantenendo
+le sue proporzioni, centrato.</p>
+<pre>DDT_2026_55
+barcode
+2
+8001234567895
+ean13
+430,95
+560,140
+C:\FileGUY\lavoro\DDT_2026_55.pdf
+0
+DDT-2026-55
+code128
+30,770
+230,800
+C:\FileGUY\lavoro\DDT_2026_55.pdf
+0</pre>
+<div class="nota">Il servizio salva il PDF modificato nella cartella di lavoro: il PDF deve trovarsi lì. Il
+<code>.gui</code> barcode va scritto dopo che il PDF è completo.</div>
+
+<h2 id="immagini">9. .gui immagini</h2>
+<p>Come il barcode, ma con un'immagine (timbro, logo, firma): 5 righe per ogni immagine.</p>
+<pre>FT_2026_123                 <span class="c">nome</span>
+immagini
+1                           <span class="c">quante immagini</span>
+C:\Immagini\timbro.png      <span class="c">percorso dell'immagine</span>
+100,100                     <span class="c">angolo in alto a sinistra (punti)</span>
+400,280                     <span class="c">angolo in basso a destra (punti)</span>
+C:\FileGUY\lavoro\FT_2026_123.pdf
+0                           <span class="c">pagina, da 0</span></pre>
+
+<h2 id="exe">10. .gui exe</h2>
+<p>Avvia un programma e aspetta che finisca: due righe, il programma (nome nella cartella di lavoro oppure
+percorso completo) e <code>exe</code>.</p>
+<pre>C:\Script\dopo_le_fatture.bat
+exe</pre>
+<p>Su Linux il file deve essere eseguibile (<code>chmod +x</code>).</p>
+
+<h2 id="generare">11. Generare i .gui dal gestionale</h2>
+<h3>Il metodo consigliato: i modelli</h3>
+<ol>
+  <li>Con <strong>EditorModelli</strong> (PDF e Word) o <strong>EditorExcel</strong> si apre un file di testo di
+      esempio prodotto dal gestionale, si sceglie la formattazione, il template, l'invio, e si salva il modello
+      (per esempio <code>ModelliGUI\fattura.gui</code>). Nel modello il nome del documento è scritto
+      <code>{nome}</code>: <code>{nome}.txt</code>, <code>{nome}.pdf</code>, <code>Fattura {nome}</code>…</li>
+  <li>Il gestionale, per ogni documento, scrive il <code>.txt</code> e poi copia il modello nella cartella di
+      lavoro sostituendo:
+      <ul>
+        <li><code>{nome}</code> con il nome del file di testo senza <code>.txt</code>, in tutte le righe;</li>
+        <li>la riga 1 con il nome del file di testo;</li>
+        <li>se cambia da documento a documento, la riga 7 (destinatario) con l'indirizzo email o il numero del
+            cliente, e i valori dopo <code>fine</code> (testo, valori del template WhatsApp).</li>
+      </ul></li>
+</ol>
+<p>È esattamente quello che fa EditorModelli con <em>File &gt; Applica a file di testo</em>, utile per provare.</p>
+
+<h3>Scriverli da zero</h3>
+<p>Va bene per i casi semplici (un solo formato per tutto il documento, solo invio, barcode). Bisogna rispettare
+le <a href="#regole">regole comuni</a> e la struttura dei capitoli 3–10.</p>
+
+<h2 id="esempi">12. Esempi di codice</h2>
+<h3>Python: modello + dati del cliente</h3>
+<pre>import os
+
+LAVORO = r"C:\FileGUY\lavoro"
+
+def manda_al_servizio(nome, testo, modello, email=None):
+    """nome: es. "FT_2026_123"; testo: il documento; modello: percorso del .gui con {nome}."""
+    # 1. Il file di testo, completo
+    with open(os.path.join(LAVORO, nome + ".txt"), "w", encoding="utf-8") as f:
+        f.write(testo)
+    # 2. Il .gui dal modello
+    with open(modello, encoding="utf-8-sig", errors="replace") as f:
+        righe = f.read().splitlines()
+    righe = [r.replace("{nome}", nome) for r in righe]
+    righe[0] = nome + ".txt"
+    if email:
+        righe[6] = email                      # riga 7: il destinatario
+    # 3. Scritto con un altro nome e rinominato: il servizio non lo trova mai a metà
+    temporaneo = os.path.join(LAVORO, nome + ".gui.tmp")
+    with open(temporaneo, "w", encoding="utf-8") as f:
+        f.write("\n".join(righe) + "\n")
+    os.replace(temporaneo, os.path.join(LAVORO, nome + ".gui"))</pre>
+
+<h3>PowerShell: solo un'email, senza documento</h3>
+<pre>$lavoro = "C:\FileGUY\lavoro"
+$nome = "promemoria_4711"
+Set-Content "$lavoro\$nome.txt" "promemoria" -Encoding UTF8
+$gui = @(
+  "$nome.txt", "file", "", "", "0", "email", "cliente@esempio.it",
+  "fine",
+  "Promemoria scadenza", "", "Gentile cliente, le ricordiamo la scadenza del 31/10/2026."
+)
+Set-Content "$lavoro\$nome.gui.tmp" $gui -Encoding UTF8
+Move-Item "$lavoro\$nome.gui.tmp" "$lavoro\$nome.gui" -Force</pre>
+
+<h3>Qualsiasi linguaggio</h3>
+<p>Basta saper scrivere un file di testo: COBOL, RPG, Visual Basic, SQL con export su file, uno script batch.
+Quello che conta è l'ordine delle righe, il tabulatore nelle linee di formato e scrivere il <code>.gui</code> dopo
+il <code>.txt</code>.</p>
+
+<h2 id="errori">13. Errori e registro</h2>
+<p>Il servizio non si ferma mai per un file sbagliato: lo segna nel registro e passa al successivo.</p>
+<div class="tabella"><table>
+  <tr><th>Cosa succede</th><th>Esito</th><th>I file</th></tr>
+  <tr><td>Documento creato (ed eventualmente aperto, stampato, spedito)</td><td><code>OK</code></td>
+      <td>cancellati</td></tr>
+  <tr><td>Errore nel creare il documento (template mancante, .gui incompleto, codice sbagliato…)</td>
+      <td><code>ERRORE</code></td><td>restano nella cartella di lavoro: correggerli o toglierli (si
+      riprovano ogni volta che la cartella cambia)</td></tr>
+  <tr><td>Documento creato ma errore nell'apertura, nella stampa o nell'invio (rete, indirizzo, numero)</td>
+      <td><code>OK</code> per il documento, <code>ERRORE</code> per l'invio</td><td>cancellati (il documento è
+      nella cartella di output)</td></tr>
+  <tr><td>Azione sconosciuta nella riga 2</td><td><code>ERRORE</code></td><td>cancellati</td></tr>
+</table></div>
+<p>Il registro è <code>FileGUY.log</code> accanto al programma (o il file scelto in ConfigManager), in UTF-8, una
+riga per operazione; sotto le righe di errore c'è il dettaglio tecnico, rientrato di 4 spazi. Arrivato a 5 MB
+viene rinominato in <code>.log.1</code> (se ne tengono 3).</p>
+<pre>22/10/2026 10:15:02 | FT_2026_123.txt | pdf FT_2026_123.pdf su template carta_intestata.pdf | OK
+22/10/2026 10:15:03 | FT_2026_123.txt | invio email a cliente@esempio.it | OK
+22/10/2026 10:16:40 | DDT_9.txt | pdf DDT_9.pdf su template ddt.pdf | ERRORE | FileNotFoundError: no such file: ...</pre>
+<p>Campi separati da <code>&nbsp;|&nbsp;</code>: data e ora, file, operazione, esito (<code>OK</code>,
+<code>ERRORE</code>, <code>AVVISO</code>), dettagli. Il gestionale può leggerlo per sapere se un documento è stato
+spedito.</p>
+
+<h2 id="controllo">14. Lista di controllo</h2>
+<ul>
+  <li>Il <code>.txt</code> e il <code>.gui</code> hanno lo stesso nome, e la riga 1 è il nome del
+      <code>.txt</code>.</li>
+  <li>Ci sono almeno 7 righe prima dei formati, anche vuote, e la riga <code>fine</code>.</li>
+  <li>Nelle linee di formato c'è un tabulatore (non spazi) dopo il numero della riga.</li>
+  <li>Il template indicato esiste nella cartella dei template.</li>
+  <li>I percorsi di allegati, immagini e PDF valgono sul computer del servizio.</li>
+  <li>Il <code>.gui</code> si scrive per ultimo (meglio con un nome temporaneo e una rinomina).</li>
+  <li>Prima di andare in produzione: provare il modello con l'anteprima di EditorModelli e poi con
+      <em>Applica a file di testo</em>, controllando il registro.</li>
+</ul>
+
+</div>
+</body>
+</html>

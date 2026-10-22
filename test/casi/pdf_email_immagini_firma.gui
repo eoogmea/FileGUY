@@ -1,0 +1,21 @@
+pdf_email_immagini_firma.txt
+file
+pdf_email_immagini_firma.pdf
+
+0
+email
+cliente@example.com
+001	tsn14
+002	hnn10
+003
+004	css12
+005	tnn11 00 08	tsn11 10 23
+006	hns10
+007
+fine
+Con firma
+allegato: @ALLEGATO2@
+immagine: @LAVORO@\logo.png
+
+Buongiorno,
+ecco <la fattura> & co.

@@ -17,6 +17,9 @@ Avvio: python EditorModelli.py
 Aiuti alla formattazione (producono gli stessi codici del .gui): annulla/ripeti, copia e incolla
 formato, selezione a blocco (Alt+trascina), copia del formato di una riga su altre righe,
 righello delle colonne, modelli recenti e zoom.
+File > Barcode su un PDF: crea i .gui "barcode" (barcode da mettere su un PDF che c'è già),
+disegnandone la posizione sulla pagina.
+Il campo Documento creato vuoto = il modello non crea documenti e fa solo l'invio.
 La guida completa è Guida_EditorModelli.html (menu Aiuto, F1).
 """
 import base64
@@ -32,7 +35,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
 from config_sicuro import carica_config
-from piattaforma import apri_file, cartella_utente, console_sicura, leggi_testo, registra_font
+from piattaforma import apri_file, avvia_finestra, cartella_utente, console_sicura, leggi_testo, registra_font
 
 # L'exe dell'editor non ha la console: i messaggi scritti su stdout/stderr (es. gli avvisi di
 # PyPDF2 nell'anteprima con un template) farebbero fallire l'operazione
@@ -361,6 +364,8 @@ class EditorModelli(tk.Tk):
         file.add_command(label="Salva modello con nome...", command=lambda: self.salva(con_nome=True))
         file.add_separator()
         file.add_command(label="Applica a file di testo...", command=self.applica)
+        file.add_separator()
+        file.add_command(label="Barcode su un PDF...", command=lambda: FinestraBarcode(self))
         file.add_separator()
         file.add_command(label="Esci", command=self._esci)
         menu.add_cascade(label="File", menu=file)
@@ -1219,6 +1224,8 @@ class EditorModelli(tk.Tk):
         if intestazione["azione"] == "excel":
             messagebox.showinfo("Apri modello", "È un modello Excel: aprilo con EditorExcel.", parent=self)
             return
+        if intestazione["azione"] == "barcode":
+            return FinestraBarcode(self, percorso)
         if percorso_testo is None:
             # Il testo di esempio è salvato accanto al modello con lo stesso nome
             percorso_testo = os.path.splitext(percorso)[0] + ".txt"
@@ -1266,6 +1273,10 @@ class EditorModelli(tk.Tk):
             if not percorso:
                 return False
         intestazione = self._intestazione()
+        if not intestazione["uscita"] and intestazione["invio"] == "0" and not messagebox.askokcancel(
+                "Salva", "Il campo Documento creato è vuoto e non c'è nessun invio: il modello non farà niente.\n"
+                         "Salvare comunque?", parent=self):
+            return False
         # Nella prima riga il testo con lo stesso nome del modello (applicandolo diventa quello del file)
         intestazione["testo"] = os.path.splitext(os.path.basename(percorso))[0] + ".txt"
         modello_gui.scrivi_gui(percorso, intestazione, linee)
@@ -1519,8 +1530,8 @@ ETICHETTE_DESTINATARIO = {"0": "Destinatario", "email": "Indirizzo email", "tele
 class PannelloInvio(ttk.Frame):
     """I dati dell'invio (le righe dopo "fine" del .gui) con campi diversi per ogni canale.
 
-    Email: oggetto, allegati in più e testo. Telegram e WhatsApp: il documento da mandare e il
-    testo; con un template WhatsApp un campo per ogni valore e l'anteprima del messaggio.
+    Email: oggetto, allegati in più, testo e immagini nel testo. Telegram e WhatsApp: il documento
+    da mandare e il testo; con un template WhatsApp un campo per ogni valore e l'anteprima del messaggio.
     editor: la finestra con le variabili invio, uscita, config_servizio e i metodi
     _segna_modificato e _messaggio (EditorModelli o EditorExcel).
     """
@@ -1536,6 +1547,7 @@ class PannelloInvio(ttk.Frame):
         self.elenco_template = []
         self.oggetto = tk.StringVar()
         self.allegati = []
+        self.immagini = []
         self.manda_documento = tk.BooleanVar(value=True)
         self.documento = tk.StringVar()
         self.testo = ""
@@ -1547,7 +1559,16 @@ class PannelloInvio(ttk.Frame):
         for variabile in (self.modo, self.nome_template, self.lingua, self.oggetto, self.manda_documento,
                           self.documento):
             variabile.trace_add("write", lambda *a: self.editor._segna_modificato())
+        # Senza documento creato (campo vuoto) alcune spiegazioni cambiano: i campi si rifanno
+        self.senza_documento = not editor.uscita.get().strip()
+        editor.uscita.trace_add("write", lambda *a: self._uscita_cambiata())
         self.columnconfigure(1, weight=1)
+
+    def _uscita_cambiata(self):
+        senza_documento = not self.editor.uscita.get().strip()
+        if senza_documento != self.senza_documento:
+            self.senza_documento = senza_documento
+            self.ricostruisci()
 
     # --- Dati -----------------------------------------------------------------------
 
@@ -1562,6 +1583,7 @@ class PannelloInvio(ttk.Frame):
         campi = modello_gui.campi_invio(invio, whatsapp["modo"], coda)
         self.oggetto.set(campi["oggetto"])
         self.allegati = campi["allegati"]
+        self.immagini = campi["immagini"]
         # Il documento creato si mostra come campo vuoto: segue il nome del documento anche se cambia
         documento = campi["documento"]
         self.manda_documento.set(documento != "" if coda else invio != "whatsapp" or whatsapp["modo"] != "template")
@@ -1585,7 +1607,8 @@ class PannelloInvio(ttk.Frame):
             documento = self.documento.get().strip() or self.editor.uscita.get().strip()
         if self._template() and self.dati_template and self.dati_template["intestazione"] != "DOCUMENT":
             documento = ""
-        campi = {"oggetto": self.oggetto.get(), "allegati": self.allegati, "documento": documento,
+        campi = {"oggetto": self.oggetto.get(), "allegati": self.allegati, "immagini": self.immagini,
+                 "documento": documento,
                  "testo": self.testo, "valori": self.valori}
         return modello_gui.coda_invio(self.editor.invio.get(), self.modo.get(), campi)
 
@@ -1651,36 +1674,51 @@ class PannelloInvio(ttk.Frame):
         self._etichetta(riga, "Oggetto")
         ttk.Entry(self, textvariable=self.oggetto).grid(row=riga, column=1, sticky="we", pady=(4, 0))
         riga += 1
-        self._etichetta(riga, "Allegati in più")
+        riga = self._elenco_file(riga, "Allegati in più", self.allegati, [("Tutti i file", "*.*")])
+        documento = "Il documento creato è sempre allegato" if self.editor.uscita.get().strip() else \
+            "Nessun documento creato (campo Documento creato vuoto): si mandano solo testo e file indicati"
+        ttk.Label(self, text=documento + ". Gli altri file vanno indicati con il percorso sul computer dove gira "
+                  "il servizio.", foreground="gray").grid(row=riga, column=1, sticky="w")
+        riga = self._casella_testo(riga + 1)
+        riga = self._elenco_file(riga, "Immagini\nnel testo", self.immagini,
+                                 [("Immagini", "*.png *.jpg *.jpeg *.gif"), ("Tutti i file", "*.*")])
+        config = self.editor.config_servizio
+        firma = "impostata" if (config.get("email_firma") or config.get("email_firma_immagine")) else "nessuna"
+        ttk.Label(self, text="Le immagini si vedono dopo il testo, non come allegati. In fondo va la firma di "
+                  "ConfigManager (testo e immagine; ora: %s)." % firma, foreground="gray").grid(row=riga, column=1,
+                                                                                               sticky="w")
+        return riga + 1
+
+    def _elenco_file(self, riga, etichetta, lista, tipi):
+        """Un elenco di percorsi (allegati, immagini) con i pulsanti per aggiungerne e toglierne."""
+        self._etichetta(riga, etichetta)
         cornice = ttk.Frame(self)
         cornice.grid(row=riga, column=1, sticky="we", pady=(4, 0))
-        self.elenco_allegati = tk.Listbox(cornice, height=3, activestyle="none")
-        self.elenco_allegati.pack(side="left", fill="x", expand=True)
-        for allegato in self.allegati:
-            self.elenco_allegati.insert("end", allegato)
+        elenco = tk.Listbox(cornice, height=3, activestyle="none")
+        elenco.pack(side="left", fill="x", expand=True)
+        for percorso in lista:
+            elenco.insert("end", percorso)
         pulsanti = ttk.Frame(cornice)
         pulsanti.pack(side="left", fill="y", padx=(6, 0))
-        ttk.Button(pulsanti, text="Aggiungi...", command=self._aggiungi_allegato).pack(fill="x")
-        ttk.Button(pulsanti, text="Rimuovi", command=self._rimuovi_allegato).pack(fill="x", pady=(2, 0))
-        riga += 1
-        ttk.Label(self, text="Il documento creato è sempre allegato. Gli altri file vanno indicati con il "
-                  "percorso sul computer dove gira il servizio.", foreground="gray").grid(row=riga, column=1,
-                                                                                         sticky="w")
-        return self._casella_testo(riga + 1)
+        ttk.Button(pulsanti, text="Aggiungi...",
+                   command=lambda: self._aggiungi_file(elenco, lista, etichetta.replace("\n", " "), tipi)).pack(fill="x")
+        ttk.Button(pulsanti, text="Rimuovi", command=lambda: self._rimuovi_file(elenco, lista)).pack(fill="x",
+                                                                                                   pady=(2, 0))
+        return riga + 1
 
-    def _aggiungi_allegato(self):
-        percorsi = filedialog.askopenfilenames(parent=self.winfo_toplevel(), title="Allegati in più")
+    def _aggiungi_file(self, elenco, lista, titolo, tipi):
+        percorsi = filedialog.askopenfilenames(parent=self.winfo_toplevel(), title=titolo, filetypes=tipi)
         for percorso in percorsi:
             percorso = os.path.normpath(percorso)
-            self.allegati.append(percorso)
-            self.elenco_allegati.insert("end", percorso)
+            lista.append(percorso)
+            elenco.insert("end", percorso)
         if percorsi:
             self.editor._segna_modificato()
 
-    def _rimuovi_allegato(self):
-        for indice in reversed(self.elenco_allegati.curselection()):
-            self.elenco_allegati.delete(indice)
-            del self.allegati[indice]
+    def _rimuovi_file(self, elenco, lista):
+        for indice in reversed(elenco.curselection()):
+            elenco.delete(indice)
+            del lista[indice]
             self.editor._segna_modificato()
 
     def _riga_documento(self, riga, etichetta="Documento"):
@@ -1694,8 +1732,10 @@ class PannelloInvio(ttk.Frame):
         campo.bind("<KeyRelease>", lambda e: self._aggiorna_anteprima())
         campo.bind("<FocusIn>", lambda e: self._attiva_campo(0))
         campo.bind("<FocusOut>", lambda e: self._attiva_campo(None))
-        ttk.Label(cornice, text="vuoto = il documento creato (%s)" % (self.editor.uscita.get() or "?"),
-                  foreground="gray").pack(side="left", padx=(8, 0))
+        uscita = self.editor.uscita.get().strip()
+        ttk.Label(cornice, text="vuoto = il documento creato (%s)" % uscita if uscita else
+                  "vuoto = nessun documento (il modello non ne crea)", foreground="gray").pack(side="left",
+                                                                                                padx=(8, 0))
         return riga + 1
 
     def _casella_testo(self, riga):
@@ -2236,8 +2276,456 @@ class FinestraFiligrana(tk.Toplevel):
         self.editor.finestra_filigrana = None
 
 
+# Misure della pagina A4 in punti, per l'anteprima quando il PDF non c'è
+PAGINA_A4 = (595, 842)
+
+
+class FinestraBarcode(tk.Toplevel):
+    """I .gui "barcode": barcode da mettere su un PDF che c'è già (il servizio li aggiunge appena
+    trova il .gui nella cartella di lavoro, senza file di testo).
+
+    A sinistra l'elenco dei barcode e i dati di quello scelto, a destra la pagina del PDF con i
+    barcode come li mette il servizio: trascinando sulla pagina si disegna il rettangolo del
+    barcode scelto, un clic su un barcode lo sceglie.
+    """
+
+    def __init__(self, editor, percorso=None):
+        super().__init__(editor)
+        self.editor = editor
+        dimensiona(self, 1120, 760, minima=(820, 520))
+        self.percorso = None
+        self.barcodes = [modello_gui.barcode_vuoto()]
+        self.scelto = 0
+        self.modificato = False
+        self.caricando = False
+        self.attesa = None
+        self.immagine = None
+        self.inizio = None
+        self.pagine = 0
+        self.zoom = tk.StringVar(value="100%")
+        self.campi = {nome: tk.StringVar() for nome in ("codice", "tipo", "pdf", "pagina", "x0", "y0", "x1", "y1")}
+        self._crea_interfaccia()
+        for variabile in self.campi.values():
+            variabile.trace_add("write", lambda *a: self._campi_cambiati())
+        self.protocol("WM_DELETE_WINDOW", self._chiudi)
+        self.bind("<Control-s>", lambda e: self.salva())
+        if percorso is None or not self.apri_file(percorso):
+            self._mostra_scelto()
+        self._aggiorna_titolo()
+
+    # --- Interfaccia -------------------------------------------------------
+
+    def _crea_interfaccia(self):
+        barra = ttk.Frame(self, padding=6)
+        barra.pack(side="top", fill="x")
+        ttk.Button(barra, text="Nuovo", command=self.nuovo).pack(side="left")
+        ttk.Button(barra, text="Apri...", command=self.apri).pack(side="left", padx=(4, 0))
+        ttk.Button(barra, text="Salva", command=self.salva).pack(side="left", padx=(4, 0))
+        ttk.Button(barra, text="Salva con nome...", command=lambda: self.salva(con_nome=True)).pack(side="left",
+                                                                                                    padx=(4, 0))
+        ttk.Button(barra, text="Manda al servizio", command=self.manda).pack(side="left", padx=(12, 0))
+        zoom = ttk.Combobox(barra, textvariable=self.zoom, values=["50%", "75%", "100%", "125%", "150%"], width=6,
+                            state="readonly")
+        zoom.pack(side="right")
+        zoom.bind("<<ComboboxSelected>>", lambda e: self._disegna())
+        ttk.Label(barra, text="Zoom").pack(side="right", padx=(0, 4))
+
+        sinistra = ttk.Frame(self, padding=(6, 0, 6, 6))
+        sinistra.pack(side="left", fill="y")
+        ttk.Label(sinistra, text="Barcode").pack(anchor="w")
+        self.elenco = tk.Listbox(sinistra, height=8, width=44, activestyle="none", exportselection=False)
+        self.elenco.pack(fill="x")
+        self.elenco.bind("<<ListboxSelect>>", lambda e: self._scelto_da_elenco())
+        pulsanti = ttk.Frame(sinistra)
+        pulsanti.pack(fill="x", pady=(4, 8))
+        ttk.Button(pulsanti, text="Aggiungi", command=self.aggiungi).pack(side="left")
+        ttk.Button(pulsanti, text="Duplica", command=lambda: self.aggiungi(copia=True)).pack(side="left", padx=4)
+        ttk.Button(pulsanti, text="Rimuovi", command=self.rimuovi).pack(side="left")
+
+        dati = ttk.LabelFrame(sinistra, text="Barcode scelto", padding=8)
+        dati.pack(fill="x")
+        dati.columnconfigure(1, weight=1)
+        ttk.Label(dati, text="Codice").grid(row=0, column=0, sticky="w")
+        ttk.Entry(dati, textvariable=self.campi["codice"]).grid(row=0, column=1, columnspan=4, sticky="we", pady=2)
+        ttk.Label(dati, text="Tipo").grid(row=1, column=0, sticky="w")
+        # Si può anche scrivere un tipo che non è nell'elenco (python-barcode ne conosce altri)
+        ttk.Combobox(dati, textvariable=self.campi["tipo"], values=list(modello_gui.TIPI_BARCODE), width=12).grid(
+            row=1, column=1, sticky="w", pady=2)
+        self.descrizione_tipo = ttk.Label(dati, foreground="gray")
+        self.descrizione_tipo.grid(row=1, column=2, columnspan=3, sticky="w", padx=(6, 0))
+        ttk.Label(dati, text="PDF").grid(row=2, column=0, sticky="w")
+        ttk.Entry(dati, textvariable=self.campi["pdf"]).grid(row=2, column=1, columnspan=3, sticky="we", pady=2)
+        ttk.Button(dati, text="Sfoglia...", command=self._scegli_pdf).grid(row=2, column=4, padx=(4, 0))
+        ttk.Label(dati, text="Pagina").grid(row=3, column=0, sticky="w")
+        ttk.Spinbox(dati, from_=1, to=9999, textvariable=self.campi["pagina"], width=6).grid(row=3, column=1,
+                                                                                         sticky="w", pady=2)
+        self.etichetta_pagine = ttk.Label(dati, foreground="gray")
+        self.etichetta_pagine.grid(row=3, column=2, columnspan=3, sticky="w", padx=(6, 0))
+        for riga, (testo, x, y) in enumerate((("In alto a sinistra", "x0", "y0"),
+                                              ("In basso a destra", "x1", "y1"))):
+            ttk.Label(dati, text=testo).grid(row=4 + riga, column=0, sticky="w")
+            cornice = ttk.Frame(dati)
+            cornice.grid(row=4 + riga, column=1, columnspan=4, sticky="w", pady=2)
+            for nome in (x, y):
+                ttk.Label(cornice, text=nome[0]).pack(side="left", padx=(0, 2))
+                ttk.Spinbox(cornice, from_=0, to=5000, textvariable=self.campi[nome], width=6).pack(side="left",
+                                                                                                padx=(0, 8))
+        self.errore = ttk.Label(dati, foreground="#b00000", wraplength=330, justify="left")
+        self.errore.grid(row=6, column=0, columnspan=5, sticky="w", pady=(6, 0))
+        ttk.Label(sinistra, wraplength=340, justify="left", foreground="gray", text=(
+            "Trascina sulla pagina per disegnare il rettangolo del barcode scelto; un clic su un barcode "
+            "lo sceglie. Le misure sono in punti (72 per pollice, 1 mm = 2,83 punti) dall'angolo in alto "
+            "a sinistra della pagina.\n\nIl servizio mette i barcode appena trova il .gui nella cartella di "
+            "lavoro e salva il PDF lì: il PDF deve stare nella cartella di lavoro.")).pack(anchor="w", pady=(8, 0))
+        self.stato = ttk.Label(sinistra, foreground="gray", wraplength=340, justify="left")
+        self.stato.pack(anchor="w", pady=(8, 0))
+
+        cornice = ttk.Frame(self)
+        cornice.pack(side="left", fill="both", expand=True)
+        self.tela = tk.Canvas(cornice, background="#808080", highlightthickness=0, cursor="crosshair")
+        verticale = ttk.Scrollbar(cornice, orient="vertical", command=self.tela.yview)
+        orizzontale = ttk.Scrollbar(cornice, orient="horizontal", command=self.tela.xview)
+        verticale.pack(side="right", fill="y")
+        orizzontale.pack(side="bottom", fill="x")
+        self.tela.pack(side="left", fill="both", expand=True)
+        self.tela.configure(yscrollcommand=verticale.set, xscrollcommand=orizzontale.set)
+        self.tela.bind("<MouseWheel>", lambda e: self.tela.yview_scroll(-e.delta // 120, "units"))
+        self.tela.bind("<ButtonPress-1>", self._premi)
+        self.tela.bind("<B1-Motion>", self._trascina)
+        self.tela.bind("<ButtonRelease-1>", self._rilascia)
+
+    def _aggiorna_titolo(self):
+        nome = os.path.basename(self.percorso) if self.percorso else "nuovo"
+        self.title("Barcode su un PDF - " + nome + (" *" if self.modificato else ""))
+
+    def _messaggio(self, testo):
+        self.stato.configure(text=testo)
+
+    # --- Dati --------------------------------------------------------------
+
+    def errore_barcode(self, b):
+        """Cosa non va in un barcode ("" se è tutto a posto)."""
+        if not b["codice"].strip():
+            return "Manca il codice"
+        try:
+            modello_gui.immagine_barcode(b["codice"], b["tipo"])
+        except Exception as e:
+            return "Il codice non va bene per il tipo %s: %s" % (b["tipo"] or "?", e)
+        if b["a"][0] <= b["da"][0] or b["a"][1] <= b["da"][1]:
+            return "Il rettangolo è vuoto: l'angolo in basso a destra deve stare a destra e sotto l'altro"
+        if not b["pdf"].strip():
+            return "Manca il PDF"
+        return ""
+
+    def _riga_elenco(self, n, b):
+        return "%s%d. %s %s (pag. %d)" % ("⚠ " if self.errore_barcode(b) else "", n + 1, b["tipo"],
+                                         b["codice"] or "?", b["pagina"] + 1)
+
+    def _aggiorna_elenco(self):
+        self.elenco.delete(0, "end")
+        for n, b in enumerate(self.barcodes):
+            self.elenco.insert("end", self._riga_elenco(n, b))
+        self.elenco.selection_set(self.scelto)
+        self.elenco.see(self.scelto)
+
+    def _mostra_scelto(self):
+        """Mette nei campi i dati del barcode scelto e ridisegna."""
+        b = self.barcodes[self.scelto]
+        self.caricando = True
+        try:
+            valori = {"codice": b["codice"], "tipo": b["tipo"], "pdf": b["pdf"], "pagina": str(b["pagina"] + 1),
+                      "x0": str(b["da"][0]), "y0": str(b["da"][1]), "x1": str(b["a"][0]), "y1": str(b["a"][1])}
+            for nome, valore in valori.items():
+                self.campi[nome].set(valore)
+        finally:
+            self.caricando = False
+        self._aggiorna_elenco()
+        self._aggiorna_errore()
+        self._disegna()
+
+    def _campi_cambiati(self):
+        if self.caricando:
+            return
+        b = self.barcodes[self.scelto]
+        b["codice"] = self.campi["codice"].get()
+        b["tipo"] = self.campi["tipo"].get().strip()
+        b["pdf"] = self.campi["pdf"].get()
+        # I numeri scritti a metà (es. un campo vuoto) restano quelli di prima finché non sono validi
+        try:
+            b["pagina"] = max(0, int(self.campi["pagina"].get()) - 1)
+        except ValueError:
+            pass
+        try:
+            b["da"] = (int(self.campi["x0"].get()), int(self.campi["y0"].get()))
+            b["a"] = (int(self.campi["x1"].get()), int(self.campi["y1"].get()))
+        except ValueError:
+            pass
+        self.modificato = True
+        self._aggiorna_titolo()
+        self.elenco.delete(self.scelto)
+        self.elenco.insert(self.scelto, self._riga_elenco(self.scelto, b))
+        self.elenco.selection_set(self.scelto)
+        self._aggiorna_errore()
+        # Si ridisegna quando si smette per un attimo di scrivere
+        if self.attesa is not None:
+            self.after_cancel(self.attesa)
+        self.attesa = self.after(300, self._disegna)
+
+    def _aggiorna_errore(self):
+        b = self.barcodes[self.scelto]
+        self.descrizione_tipo.configure(text=modello_gui.TIPI_BARCODE.get(b["tipo"], ""))
+        self.errore.configure(text=self.errore_barcode(b))
+
+    def _scelto_da_elenco(self):
+        selezione = self.elenco.curselection()
+        if selezione and selezione[0] != self.scelto:
+            self.scelto = selezione[0]
+            self._mostra_scelto()
+
+    def aggiungi(self, copia=False):
+        attuale = self.barcodes[self.scelto]
+        if copia:
+            nuovo = dict(attuale)
+        else:
+            # Sullo stesso PDF e pagina, un po' più in basso
+            nuovo = dict(modello_gui.barcode_vuoto(), pdf=attuale["pdf"], pagina=attuale["pagina"])
+        altezza = attuale["a"][1] - attuale["da"][1] + 10
+        nuovo["da"] = (attuale["da"][0], attuale["da"][1] + altezza)
+        nuovo["a"] = (attuale["a"][0], attuale["a"][1] + altezza)
+        self.barcodes.insert(self.scelto + 1, nuovo)
+        self.scelto += 1
+        self.modificato = True
+        self._aggiorna_titolo()
+        self._mostra_scelto()
+
+    def rimuovi(self):
+        if len(self.barcodes) == 1:
+            self.barcodes = [dict(modello_gui.barcode_vuoto(), pdf=self.barcodes[0]["pdf"])]
+        else:
+            del self.barcodes[self.scelto]
+            self.scelto = min(self.scelto, len(self.barcodes) - 1)
+        self.modificato = True
+        self._aggiorna_titolo()
+        self._mostra_scelto()
+
+    def _scegli_pdf(self):
+        attuale = self.campi["pdf"].get().strip()
+        cartella = os.path.dirname(attuale) if attuale else self.editor.config_servizio.get("cartella_lavoro", "")
+        percorso = filedialog.askopenfilename(parent=self, title="PDF su cui mettere il barcode",
+                                              initialdir=cartella if os.path.isdir(cartella) else None,
+                                              filetypes=[("PDF", "*.pdf"), ("Tutti i file", "*.*")])
+        if percorso:
+            self.campi["pdf"].set(os.path.normpath(percorso))
+
+    # --- File --------------------------------------------------------------
+
+    def _conferma_perdita(self):
+        if not self.modificato:
+            return True
+        risposta = messagebox.askyesnocancel("Barcode", "Ci sono modifiche non salvate. Salvarle?", parent=self)
+        if risposta is None:
+            return False
+        return self.salva() if risposta else True
+
+    def nuovo(self):
+        if not self._conferma_perdita():
+            return
+        self.percorso = None
+        self.barcodes = [modello_gui.barcode_vuoto()]
+        self.scelto = 0
+        self.modificato = False
+        self._mostra_scelto()
+        self._aggiorna_titolo()
+
+    def apri(self):
+        if not self._conferma_perdita():
+            return
+        os.makedirs(CARTELLA_MODELLI, exist_ok=True)
+        percorso = filedialog.askopenfilename(parent=self, title="Apri .gui barcode", initialdir=CARTELLA_MODELLI,
+                                              filetypes=[("Barcode", "*.gui"), ("Tutti i file", "*.*")])
+        if percorso:
+            self.apri_file(percorso)
+
+    def apri_file(self, percorso):
+        try:
+            _, barcodes = modello_gui.leggi_barcode(percorso)
+        except (OSError, modello_gui.ErroreModello) as e:
+            messagebox.showerror("Apri", "Impossibile aprire %s:\n%s" % (percorso, e), parent=self)
+            return False
+        self.barcodes = barcodes or [modello_gui.barcode_vuoto()]
+        self.percorso = percorso
+        self.scelto = 0
+        self.modificato = False
+        self._mostra_scelto()
+        self._aggiorna_titolo()
+        self._messaggio("Aperto " + percorso)
+        return True
+
+    def _controlla(self, titolo):
+        """Prima di salvare: True se è tutto a posto o se si vuole salvare lo stesso."""
+        problemi = ["%d. %s" % (n + 1, e) for n, e in enumerate(map(self.errore_barcode, self.barcodes)) if e]
+        lavoro = self.editor.config_servizio.get("cartella_lavoro", "")
+        if lavoro:
+            fuori = sorted({b["pdf"] for b in self.barcodes if b["pdf"].strip() and os.path.normcase(
+                os.path.dirname(os.path.abspath(b["pdf"].strip()))) != os.path.normcase(os.path.abspath(lavoro))})
+            problemi += ["Il PDF non è nella cartella di lavoro (%s): il servizio non potrà salvarlo: %s"
+                         % (lavoro, pdf) for pdf in fuori]
+        if not problemi:
+            return True
+        return messagebox.askokcancel(titolo, "Attenzione:\n\n- " + "\n- ".join(problemi) + "\n\nSalvare comunque?",
+                                      parent=self)
+
+    def salva(self, con_nome=False):
+        percorso = self.percorso
+        if con_nome or percorso is None:
+            os.makedirs(CARTELLA_MODELLI, exist_ok=True)
+            percorso = filedialog.asksaveasfilename(parent=self, title="Salva .gui barcode",
+                                                    initialdir=os.path.dirname(percorso) if percorso else
+                                                    CARTELLA_MODELLI,
+                                                    initialfile=os.path.basename(percorso) if percorso else
+                                                    "barcode.gui", defaultextension=".gui",
+                                                    filetypes=[("Barcode", "*.gui")])
+            if not percorso:
+                return False
+        if not self._controlla("Salva"):
+            return False
+        modello_gui.scrivi_barcode(percorso, os.path.splitext(os.path.basename(percorso))[0], self.barcodes)
+        self.percorso = percorso
+        self.modificato = False
+        self._aggiorna_titolo()
+        self._messaggio("Salvato " + percorso)
+        return True
+
+    def manda(self):
+        """Scrive il .gui nella cartella di lavoro: il servizio mette subito i barcode nel PDF."""
+        lavoro = self.editor.config_servizio.get("cartella_lavoro", "")
+        if not os.path.isdir(lavoro):
+            messagebox.showerror("Manda al servizio", "Cartella di lavoro non trovata: imposta la configurazione "
+                                 "con ConfigManager.py", parent=self)
+            return
+        nome = os.path.splitext(os.path.basename(self.percorso))[0] if self.percorso else "barcode"
+        destinazione = os.path.join(lavoro, nome + ".gui")
+        if not self._controlla("Manda al servizio") or not messagebox.askokcancel(
+                "Manda al servizio", "Verrà creato %s\ne il servizio metterà i barcode nel PDF (il PDF viene "
+                                     "modificato). Continuare?" % destinazione, parent=self):
+            return
+        modello_gui.scrivi_barcode(destinazione, nome, self.barcodes)
+        self._messaggio("Creato " + destinazione)
+
+    def _chiudi(self):
+        if self._conferma_perdita():
+            self.destroy()
+
+    # --- Pagina ------------------------------------------------------------
+
+    def _scala(self):
+        return int(self.zoom.get().rstrip("%")) / 100
+
+    def _stessa_pagina(self, b, scelto):
+        return os.path.normcase(b["pdf"].strip()) == os.path.normcase(scelto["pdf"].strip()) and \
+            b["pagina"] == scelto["pagina"]
+
+    def _disegna(self):
+        """La pagina del barcode scelto con i barcode che ci vanno, come li mette il servizio."""
+        import pymupdf
+        self.attesa = None
+        if not self.winfo_exists():
+            return
+        scelto = self.barcodes[self.scelto]
+        percorso = scelto["pdf"].strip()
+        documento = None
+        if percorso and os.path.isfile(percorso):
+            try:
+                documento = pymupdf.open(percorso)
+            except Exception as e:
+                self._messaggio("Impossibile aprire il PDF: %s" % e)
+        if documento is not None and documento.page_count:
+            self.pagine = documento.page_count
+            indice = min(scelto["pagina"], self.pagine - 1)
+            fuori = scelto["pagina"] >= self.pagine
+            self.etichetta_pagine.configure(text=("di %d" % self.pagine) + ("  (la pagina non c'è!)" if fuori else ""),
+                                            foreground="#b00000" if fuori else "gray")
+        else:
+            if documento is not None:
+                documento.close()
+            documento = pymupdf.open()
+            documento.new_page(width=PAGINA_A4[0], height=PAGINA_A4[1])
+            indice = 0
+            self.etichetta_pagine.configure(text="PDF non trovato: pagina A4 bianca" if percorso else "",
+                                            foreground="gray")
+        try:
+            pagina = documento[indice]
+            for b in self.barcodes:
+                if self._stessa_pagina(b, scelto) and not self.errore_barcode(b):
+                    pagina.insert_image(pymupdf.Rect(*b["da"], *b["a"]),
+                                        stream=modello_gui.immagine_barcode(b["codice"], b["tipo"]))
+            scala = self._scala()
+            pix = pagina.get_pixmap(matrix=pymupdf.Matrix(scala, scala), alpha=False)
+        finally:
+            documento.close()
+        self.immagine = tk.PhotoImage(data=base64.b64encode(pix.tobytes("png")).decode("ascii"), format="png")
+        self.tela.delete("all")
+        self.tela.create_image(MARGINE_IMMAGINE, MARGINE_IMMAGINE, anchor="nw", image=self.immagine)
+        self.tela.configure(scrollregion=(0, 0, pix.width + 2 * MARGINE_IMMAGINE, pix.height + 2 * MARGINE_IMMAGINE))
+        for n, b in enumerate(self.barcodes):
+            if not self._stessa_pagina(b, scelto):
+                continue
+            x0, y0 = self._da_punti(*b["da"])
+            x1, y1 = self._da_punti(*b["a"])
+            colore = "#ff8c00" if n == self.scelto else "#3a7bd5"
+            self.tela.create_rectangle(x0, y0, x1, y1, outline=colore, width=2, dash=() if n == self.scelto else (4, 2))
+            self.tela.create_text(x0 + 2, y0 - 1, anchor="sw", text=str(n + 1), fill=colore,
+                                  font=("Segoe UI", 9, "bold"))
+
+    def _da_punti(self, x, y):
+        scala = self._scala()
+        return MARGINE_IMMAGINE + x * scala, MARGINE_IMMAGINE + y * scala
+
+    def _in_punti(self, evento):
+        scala = self._scala()
+        return (max(0, round((self.tela.canvasx(evento.x) - MARGINE_IMMAGINE) / scala)),
+                max(0, round((self.tela.canvasy(evento.y) - MARGINE_IMMAGINE) / scala)))
+
+    def _premi(self, evento):
+        self.inizio = self._in_punti(evento)
+
+    def _trascina(self, evento):
+        if self.inizio is None:
+            return
+        fine = self._in_punti(evento)
+        self.tela.delete("nuovo")
+        self.tela.create_rectangle(*self._da_punti(*self.inizio), *self._da_punti(*fine), outline="#ff8c00", width=2,
+                                   tags="nuovo")
+
+    def _rilascia(self, evento):
+        if self.inizio is None:
+            return
+        (xa, ya), (xb, yb) = self.inizio, self._in_punti(evento)
+        self.inizio = None
+        self.tela.delete("nuovo")
+        if abs(xb - xa) < 5 or abs(yb - ya) < 5:
+            # Un clic: sceglie il barcode che c'è in quel punto (l'ultimo, se sono sovrapposti)
+            scelto = self.barcodes[self.scelto]
+            for n in reversed(range(len(self.barcodes))):
+                b = self.barcodes[n]
+                if self._stessa_pagina(b, scelto) and b["da"][0] <= xb <= b["a"][0] and b["da"][1] <= yb <= b["a"][1]:
+                    if n != self.scelto:
+                        self.scelto = n
+                        self._mostra_scelto()
+                    return
+            return
+        self.caricando = True
+        try:
+            for nome, valore in (("x0", min(xa, xb)), ("y0", min(ya, yb)), ("x1", max(xa, xb)), ("y1", max(ya, yb))):
+                self.campi[nome].set(str(valore))
+        finally:
+            self.caricando = False
+        self._campi_cambiati()
+
+
 if __name__ == "__main__":
-    app = EditorModelli()
+    app = avvia_finestra(EditorModelli)
     if len(sys.argv) > 1:
-        app.apri_modello(sys.argv[1])
+        # Un modello che non si apre non chiude l'editor: l'errore si vede in una finestra
+        app.after_idle(app.apri_modello, sys.argv[1])
     app.mainloop()

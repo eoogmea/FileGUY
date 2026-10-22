@@ -396,7 +396,8 @@ documento lo sfondo è quello del template: su un foglio bianco il testo bianco 
       insieme.</td></tr>
   <tr><td><strong>Documento creato</strong></td><td>Il nome del file da creare. <code>{nome}</code> viene
       sostituito dal nome del file di testo: con <code>{nome}.pdf</code>, la fattura <code>FT123.txt</code> diventa
-      <code>FT123.pdf</code>.</td></tr>
+      <code>FT123.pdf</code>. Lascialo <strong>vuoto</strong> per un modello che non crea documenti e fa solo
+      l'invio (per esempio un promemoria per email o un avviso su WhatsApp).</td></tr>
   <tr><td><strong>Invio</strong>, <strong>Destinatario</strong> e i campi dell'invio</td><td>Vedi il
       capitolo seguente.</td></tr>
 </table></div>
@@ -415,12 +416,16 @@ campi puoi usare <code>{nome}</code>. EditorExcel ha gli stessi campi.</p>
 <ul>
   <li><strong>Indirizzo email</strong>: il destinatario, per esempio <code>cliente@esempio.it</code>.</li>
   <li><strong>Oggetto</strong>: per esempio <code>Fattura {nome}</code>.</li>
-  <li><strong>Allegati in più</strong>: il documento creato è sempre allegato; con <em>Aggiungi…</em> scegli altri
-      file (condizioni, listini…), con <em>Rimuovi</em> togli quelli selezionati. Il percorso deve valere sul
-      computer dove gira il servizio.</li>
+  <li><strong>Allegati in più</strong>: il documento creato (se c'è) è sempre allegato; con <em>Aggiungi…</em>
+      scegli altri file (condizioni, listini…), con <em>Rimuovi</em> togli quelli selezionati. Il percorso deve
+      valere sul computer dove gira il servizio.</li>
   <li><strong>Testo</strong>: il messaggio, su quante righe vuoi.</li>
+  <li><strong>Immagini nel testo</strong>: immagini (png, jpg, gif) che si vedono dentro l'email, dopo il testo,
+      e non come allegati: per esempio una promozione o un banner.</li>
 </ul>
-<p>Indirizzo del mittente e server di posta si impostano in ConfigManager.</p>
+<p>Indirizzo del mittente e server di posta si impostano in ConfigManager, e lì anche la <strong>firma</strong>:
+un testo (anche su più righe) e un'immagine, per esempio il logo o una firma scansionata, che vanno in fondo a
+ogni email. Con immagini o firma l'email viene mandata in HTML, insieme alla versione solo testo.</p>
 <div class="nota">Con Gmail la password da mettere in ConfigManager non è quella dell'account ma una
 <strong>password per le app</strong> (16 lettere): si crea nell'account Google, in Sicurezza, dopo aver attivato
 la verifica in due passaggi.</div>
@@ -465,7 +470,8 @@ approvato. Per scaricare e creare i template il token di ConfigManager deve aver
 
 <h3>Come finisce nel .gui</h3>
 <p>I campi dell'invio sono le righe dopo <code>fine</code>; servono solo per scrivere un <code>.gui</code> a mano.</p>
-<pre>Email:      oggetto, una riga "allegato: &lt;percorso&gt;" per allegato, una riga vuota, il testo
+<pre>Email:      oggetto, una riga "allegato: &lt;percorso&gt;" per allegato e "immagine: &lt;percorso&gt;" per
+            immagine nel testo, una riga vuota, il testo
 Telegram:   il documento (riga vuota = nessuno), il testo
 WhatsApp:   il documento (riga vuota = nessuno), poi il testo
             oppure "template: &lt;nome&gt; &lt;lingua&gt;" e un valore per riga</pre>
@@ -695,6 +701,10 @@ nell'apertura a schermo viene registrato ma non blocca nulla: il documento è co
 <p>È bianco su bianco: usalo solo sopra le parti scure del template.</p>
 
 <h2 id="tecnico">15. Appendice tecnica: il file .gui</h2>
+<p>Per collegare il gestionale c'è una guida completa, <a href="Guida_file_gui.html">Guida_file_gui.html</a>, con
+tutti i tipi di <code>.gui</code> (anche barcode, immagini ed exe) ed esempi di codice. I barcode su un PDF si
+preparano con <em>File &gt; Barcode su un PDF</em>: si disegna la posizione sulla pagina e si vede subito il
+risultato.</p>
 <p>Questa parte serve a chi prepara i <code>.gui</code> con altri programmi. Il <code>.gui</code> è un file di
 testo (con la codifica di Windows o in UTF-8) con una voce per riga:</p>
 <div class="tabella"><table>
@@ -704,7 +714,7 @@ testo (con la codifica di Windows o in UTF-8) con una voce per riga:</p>
       schermo”), <code>stampa</code> (“Crea e stampa”), <code>docx</code> (“Crea il documento Word”),
       <code>excel</code> (il servizio conosce anche <code>barcode</code>, <code>immagini</code> ed
       <code>exe</code>)</td><td></td></tr>
-  <tr><td>3</td><td>nome del documento da creare</td><td>per esempio <code>{nome}.pdf</code></td></tr>
+  <tr><td>3</td><td>nome del documento da creare (vuota = nessun documento, solo l'invio)</td><td>per esempio <code>{nome}.pdf</code></td></tr>
   <tr><td>4</td><td>template PDF (vuota = nessuno)</td><td></td></tr>
   <tr><td>5</td><td>rotazione in gradi</td><td></td></tr>
   <tr><td>6</td><td>invio: <code>0</code> (nell'editor “Nessun invio”), <code>email</code>, <code>telegram</code> o <code>whatsapp</code></td><td></td></tr>

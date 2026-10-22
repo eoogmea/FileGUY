@@ -35,6 +35,9 @@ CAMPI = {
     "email_password": "",
     "email_smtp_server": "smtp.gmail.com",
     "email_smtp_porta": "465",
+    # Firma in fondo a ogni email: testo (anche su più righe) e immagine (logo, firma scansionata)
+    "email_firma": "",
+    "email_firma_immagine": "",
     "telegram_token": "",
     "whatsapp_token": "",
     "whatsapp_phone_number_id": "",

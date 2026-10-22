@@ -4,11 +4,12 @@ Un modello è un .gui completo in cui il nome del testo e del documento contengo
 applicandolo a un file di testo (es. fattura_123.txt) {nome} diventa "fattura_123".
 
 Struttura del .gui (una voce per riga):
-    0 file di testo        1 azione (pdf, file, stampa, docx)   2 documento da creare
+    0 file di testo        1 azione (pdf, file, stampa, docx)   2 documento da creare (vuoto = nessuno, solo l'invio)
     3 template PDF         4 rotazione                          5 invio (0, email, telegram, whatsapp)
     6 destinatario (indirizzo email, "telegram <chat>", "whatsapp <numero>")
     7... formati, una linea per ogni riga del testo, fino a "fine"
-    dopo "fine": dati dell'invio (email: oggetto, righe "allegato: <percorso>", riga vuota e testo;
+    dopo "fine": dati dell'invio (email: oggetto, righe "allegato: <percorso>" e "immagine: <percorso>"
+                 (immagini dentro il testo), riga vuota e testo;
                  WhatsApp: documento, eventuale "template: <nome> [<lingua>]" e testo o parametri)
 
 Linea di formato: "<numero di riga 3 cifre>\\t<codice>" oppure, con più formati sulla riga,
@@ -39,6 +40,12 @@ per ogni colonna (A, B, C...) e infine "fine". Le voci sono separate da tabulato
     Nelle righe speciali il carattere, lo sfondo e l'allineamento della riga valgono più di quelli
     della colonna. Le chiavi sono facoltative e in qualsiasi ordine.
     Senza la linea "colonna" (i .gui di prima) sono tutte colonne e la prima riga resta testo.
+
+Barcode (azione "barcode"): mette dei barcode su un PDF che c'è già. Il servizio lo elabora appena
+trova il .gui, senza file di testo. Linea 0 un nome, linea 1 "barcode", linea 2 quanti sono, poi
+6 linee per ogni barcode: codice, tipo (es. code128, ean13), angolo in alto a sinistra "x,y",
+angolo in basso a destra "x,y" (in punti, 72 per pollice, dall'angolo in alto a sinistra della
+pagina), percorso del PDF e numero della pagina (0 = la prima).
 """
 import datetime
 import os
@@ -529,19 +536,26 @@ def invio_da_salvare(invio, destinatario, coda, whatsapp):
     return destinatario, coda
 
 
+# Righe dell'email tra oggetto e testo: prefisso -> campo
+PREFISSI_EMAIL = {"allegato:": "allegati", "immagine:": "immagini"}
+
+
 def campi_invio(invio, modo, coda):
     """Dalle righe dopo "fine" ai campi che mostrano gli editor.
 
-    Restituisce un dict: oggetto e allegati (email), documento (Telegram e WhatsApp: il file da
+    Restituisce un dict: oggetto, allegati e immagini nel testo (email), documento (Telegram e WhatsApp: il file da
     mandare, "" = nessuno), testo del messaggio e valori del template WhatsApp. La riga "template:"
     è già stata tolta da invio_da_mostrare().
     """
-    campi = {"oggetto": "", "allegati": [], "documento": "", "testo": "", "valori": []}
+    campi = {"oggetto": "", "allegati": [], "immagini": [], "documento": "", "testo": "", "valori": []}
     coda = list(coda)
     if invio == "email":
         campi["oggetto"] = coda.pop(0) if coda else ""
-        while coda and coda[0].strip().lower().startswith("allegato:"):
-            campi["allegati"].append(coda.pop(0).strip()[len("allegato:"):].strip())
+        while coda:
+            prefisso = coda[0].strip().lower().split(":", 1)[0] + ":"
+            if prefisso not in PREFISSI_EMAIL:
+                break
+            campi[PREFISSI_EMAIL[prefisso]].append(coda.pop(0).strip()[len(prefisso):].strip())
         if coda and coda[0].strip() == "":
             coda.pop(0)
         campi["testo"] = "\n".join(coda)
@@ -560,6 +574,7 @@ def coda_invio(invio, modo, campi):
     testo = campi["testo"].rstrip("\n")
     if invio == "email":
         righe = [campi["oggetto"]] + ["allegato: " + a for a in campi["allegati"] if a.strip()]
+        righe += ["immagine: " + i for i in campi.get("immagini", []) if i.strip()]
         if testo.strip():
             righe += [""] + testo.split("\n")
     elif invio in ("telegram", "whatsapp"):
@@ -652,3 +667,80 @@ def applica(percorso_modello, file_testo, cartella_lavoro):
     percorso_gui = os.path.join(cartella_lavoro, nome + ".gui")
     scrivi_gui(percorso_gui, intestazione, linee)
     return percorso_gui
+
+
+# --- Barcode -------------------------------------------------------------------
+# Tipi di barcode più usati (python-barcode ne conosce altri: si possono scrivere a mano)
+TIPI_BARCODE = {
+    "code128": "Code 128 (lettere e numeri)",
+    "code39": "Code 39 (maiuscole e numeri)",
+    "ean13": "EAN-13 (12 cifre, la 13a si calcola)",
+    "ean8": "EAN-8 (7 cifre, l'8a si calcola)",
+    "ean14": "EAN-14 (13 cifre)",
+    "upca": "UPC-A (11 cifre)",
+    "itf": "ITF (cifre, in numero pari)",
+    "gs1_128": "GS1-128",
+    "codabar": "Codabar",
+    "isbn13": "ISBN-13",
+    "issn": "ISSN",
+    "pzn": "PZN (farmaci)",
+}
+
+
+def barcode_vuoto():
+    return {"codice": "", "tipo": "code128", "da": (40, 40), "a": (240, 100), "pdf": "", "pagina": 0}
+
+
+def _punto(testo):
+    x, y = testo.split(",")
+    return int(x), int(y)
+
+
+def leggi_barcode(percorso):
+    """Legge un .gui barcode: restituisce (nome, lista dei barcode).
+
+    Ogni barcode è un dict con codice, tipo, da (x, y), a (x, y), pdf e pagina (da 0).
+    ErroreModello se il file non è un .gui barcode valido.
+    """
+    righe = [r.strip() for r in leggi_testo(percorso).split("\n")]
+    if len(righe) < 3 or righe[1].lower() != "barcode":
+        raise ErroreModello("Non è un .gui barcode (la seconda riga deve essere \"barcode\")")
+    try:
+        quanti = int(righe[2])
+        barcodes = []
+        for n in range(quanti):
+            codice, tipo, da, a, pdf, pagina = righe[3 + 6 * n:9 + 6 * n]
+            barcodes.append({"codice": codice, "tipo": tipo, "da": _punto(da), "a": _punto(a), "pdf": pdf,
+                             "pagina": int(pagina)})
+    except ValueError:
+        raise ErroreModello("Il .gui barcode non è completo o ha numeri sbagliati (6 righe per ogni barcode)")
+    return righe[0], barcodes
+
+
+def testo_barcode(nome, barcodes):
+    righe = [nome, "barcode", str(len(barcodes))]
+    for b in barcodes:
+        righe += [b["codice"].strip(), b["tipo"].strip(), "%d,%d" % b["da"], "%d,%d" % b["a"], b["pdf"].strip(),
+                  str(b["pagina"])]
+    return "\n".join(righe) + "\n"
+
+
+def scrivi_barcode(percorso, nome, barcodes):
+    with open(percorso, "w") as f:
+        f.write(testo_barcode(nome, barcodes))
+
+
+def immagine_barcode(codice, tipo):
+    """L'immagine PNG (bytes) del barcode, la stessa che il servizio mette nel PDF.
+
+    ValueError (o un errore di python-barcode) se il codice non va bene per il tipo.
+    """
+    import io
+    import barcode
+    from barcode.writer import ImageWriter
+    if not codice.strip():
+        raise ValueError("codice vuoto")
+    classe = barcode.get_barcode_class(tipo.strip())
+    dati = io.BytesIO()
+    classe(codice.strip(), writer=ImageWriter()).write(dati)
+    return dati.getvalue()

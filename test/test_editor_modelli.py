@@ -746,6 +746,115 @@ def finestra_segnaposto():
         app.destroy()
 
 
+@prova
+def email_con_immagini_e_senza_documento():
+    """Righe "immagine:" dell'email e modello che non crea documenti (campo Documento creato vuoto)."""
+    coda = ["Oggetto", "allegato: C:\\a.pdf", "immagine: C:\\logo.png", "", "Testo"]
+    campi = modello_gui.campi_invio("email", "messaggio", coda)
+    assert campi["allegati"] == ["C:\\a.pdf"] and campi["immagini"] == ["C:\\logo.png"], campi
+    assert campi["testo"] == "Testo"
+    assert modello_gui.coda_invio("email", "messaggio", campi) == coda
+    import EditorModelli
+    from tkinter import filedialog, messagebox
+    esempio = os.path.join(cartella, "esempio_email.txt")
+    with open(esempio, "w") as f:
+        f.write("\n".join(RIGHE) + "\n")
+    filedialog.askopenfilename = lambda *a, **k: esempio
+    app = EditorModelli.EditorModelli()
+    try:
+        app.nuovo()
+        app.invio.set("email")
+        pannello = app.pannello
+        pannello.immagini.append("C:\\logo.png")
+        app.invio.set("telegram")
+        app.uscita.set("")
+        # Senza documento creato la spiegazione cambia e il documento mandato è vuoto
+        testi = [w.cget("text") for w in pannello.winfo_children()[1].winfo_children() if isinstance(w, EditorModelli.ttk.Label)]
+        assert any("nessun documento" in t for t in testi), testi
+        assert app._intestazione()["coda"] in ([], [""]), app._intestazione()["coda"]
+        app.invio.set("email")
+        assert app._intestazione()["coda"] == ["", "immagine: C:\\logo.png"], app._intestazione()["coda"]
+        # Nessun documento e nessun invio: il salvataggio chiede conferma
+        app.invio.set("0")
+        domande = []
+        messagebox.askokcancel = lambda *a, **k: domande.append(a) or False
+        filedialog.asksaveasfilename = lambda *a, **k: os.path.join(cartella, "niente.gui")
+        assert not app.salva() and domande and not os.path.exists(os.path.join(cartella, "niente.gui"))
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
+@prova
+def finestra_barcode():
+    """I .gui barcode: andata e ritorno, finestra con il disegno del rettangolo e servizio."""
+    import EditorModelli
+    from tkinter import filedialog, messagebox
+    lavoro = os.path.join(cartella, "lavoro_barcode")
+    os.makedirs(lavoro)
+    pdf = os.path.join(lavoro, "bolla.pdf")
+    documento = pymupdf.open()
+    documento.new_page(width=595, height=842).insert_text((72, 72), "Bolla")
+    documento.new_page(width=595, height=842)
+    documento.save(pdf)
+    documento.close()
+    barcodes = [dict(modello_gui.barcode_vuoto(), codice="ABC-123", pdf=pdf),
+                dict(modello_gui.barcode_vuoto(), codice="123456789012", tipo="ean13", da=(300, 500), a=(400, 600),
+                     pdf=pdf, pagina=1)]
+    percorso = os.path.join(cartella, "prova_barcode.gui")
+    modello_gui.scrivi_barcode(percorso, "prova_barcode", barcodes)
+    assert modello_gui.leggi_barcode(percorso) == ("prova_barcode", barcodes)
+    app = EditorModelli.EditorModelli()
+    app.config_servizio = {"cartella_lavoro": lavoro, "cartella_template": CARTELLA_TEMPLATE,
+                           "cartella_output": cartella}
+    try:
+        # Aprendo il .gui come modello si apre la finestra dei barcode
+        finestra = app.apri_modello(percorso)
+        assert isinstance(finestra, EditorModelli.FinestraBarcode) and finestra.barcodes == barcodes
+        finestra.update()
+        assert finestra.pagine == 2 and finestra.immagine is not None
+        assert finestra.errore_barcode(finestra.barcodes[0]) == ""
+        # Un codice sbagliato per il tipo si vede subito
+        finestra.campi["tipo"].set("ean13")
+        assert finestra.errore.cget("text") and finestra.elenco.get(0).startswith("⚠")
+        finestra.campi["tipo"].set("code128")
+        assert finestra.errore.cget("text") == ""
+        # Trascinando sulla pagina si disegna il rettangolo (zoom 100%: 1 punto = 1 pixel)
+        evento = lambda x, y: type("Evento", (), {"x": EditorModelli.MARGINE_IMMAGINE + x,
+                                                  "y": EditorModelli.MARGINE_IMMAGINE + y})()
+        finestra.tela.xview_moveto(0)
+        finestra.tela.yview_moveto(0)
+        finestra._premi(evento(250, 160))
+        finestra._trascina(evento(100, 100))
+        finestra._rilascia(evento(100, 100))
+        assert finestra.barcodes[0]["da"] == (100, 100) and finestra.barcodes[0]["a"] == (250, 160)
+        # Aggiungi, scelta con un clic, rimuovi
+        finestra.aggiungi()
+        assert len(finestra.barcodes) == 3 and finestra.scelto == 1 and finestra.barcodes[1]["pdf"] == pdf
+        finestra.campi["codice"].set("XYZ")
+        finestra._premi(evento(150, 130))
+        finestra._rilascia(evento(150, 130))
+        assert finestra.scelto == 0
+        finestra.scelto = 1
+        finestra.rimuovi()
+        assert len(finestra.barcodes) == 2
+        assert finestra.salva()
+        assert modello_gui.leggi_barcode(percorso)[1][0]["a"] == (250, 160)
+        # Manda al servizio: il .gui nella cartella di lavoro, poi il servizio mette i barcode nel PDF
+        messagebox.askokcancel = lambda *a, **k: True
+        finestra.manda()
+        assert os.path.isfile(os.path.join(lavoro, "prova_barcode.gui"))
+        servizio = __import__("SingleGUY")
+        servizio.main("prova_barcode.gui", app.config_servizio)
+        with pymupdf.open(pdf) as risultato:
+            assert len(risultato[0].get_images()) == 1 and len(risultato[1].get_images()) == 1
+        assert not os.path.exists(os.path.join(lavoro, "prova_barcode.gui"))
+        finestra._chiudi()
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
 shutil.rmtree(cartella, ignore_errors=True)
 for nome, errore in risultati:
     print("[%s] %s" % ("OK " if errore is None else "ERR", nome))

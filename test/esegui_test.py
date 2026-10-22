@@ -80,10 +80,11 @@ def casi(modelli=None):
     testo = "\n".join(TESTO_PDF) + "\n"
 
     def caso(nome, gui_righe, txt=testo, nome_gui=None, controllo=None, uscite=(), chiamate=(),
-             rimossi=True, lavoro_extra=(), modello=None, errore_atteso=False):
+             rimossi=True, lavoro_extra=(), modello=None, errore_atteso=False, config=None):
         c.append(dict(nome=nome, gui=gui_righe, txt=txt, nome_gui=nome_gui or nome + ".gui",
                       controllo=controllo, uscite=list(uscite), chiamate=list(chiamate), rimossi=rimossi,
-                      lavoro_extra=list(lavoro_extra), modello=modello, errore_atteso=errore_atteso))
+                      lavoro_extra=list(lavoro_extra), modello=modello, errore_atteso=errore_atteso,
+                      config=config or {}))
 
     def testo_pdf(nome, *attesi, pagine=None):
         """Controlla che ogni testo atteso compaia una sola volta e il numero di pagine."""
@@ -160,6 +161,43 @@ def casi(modelli=None):
          uscite=["pdf_email_piu_allegati.pdf"], chiamate=["smtp_sendmail"],
          controllo=lambda config: controlla_email("Tre allegati", ["pdf_email_piu_allegati.pdf", "allegato2.txt",
                                                                    "allegato3.txt"], "Testo del messaggio"))
+    # --- Invii senza documento (campo del documento vuoto) ---
+    caso("solo_email", gui("solo_email.txt", "file", "", invio="email", destinatario="cliente@example.com",
+                           coda=["Promemoria {nome}", "allegato: @ALLEGATO2@", "", "Solo il messaggio"]),
+         chiamate=["smtp_sendmail"],
+         controllo=lambda config: controlla_email("Promemoria {nome}", ["allegato2.txt"], "Solo il messaggio") +
+         ([] if not os.listdir(config["cartella_output"]) else ["creato un documento: %s" %
+                                                                 os.listdir(config["cartella_output"])]))
+    caso("solo_telegram", gui("solo_telegram.txt", "file", "", invio="telegram", destinatario="123456789",
+                              coda=["", "Solo il messaggio"]),
+         chiamate=["tg_sendMessage"],
+         controllo=lambda config: [] if "tg_sendDocument" not in [n for n, _ in chiamate] else ["mandato un documento"])
+    caso("solo_whatsapp", gui("solo_whatsapp.txt", "pdf", "", invio="whatsapp", destinatario="393331234567",
+                              coda=["", "Solo il messaggio"]),
+         chiamate=["wa_testo"],
+         controllo=lambda config: [] if "wa_documento" not in [n for n, _ in chiamate] else ["mandato un documento"])
+    # Senza linee di formato (subito "fine") le righe dell'invio non vanno lette come formati
+    caso("pdf_solo_fine_email", gui("pdf_solo_fine_email.txt", "file", "pdf_solo_fine_email.pdf", invio="email",
+                                    destinatario="cliente@example.com", formati=["fine"],
+                                    coda=["Senza formati", "allegato: @ALLEGATO2@", "", "Testo"]),
+         uscite=["pdf_solo_fine_email.pdf"], chiamate=["smtp_sendmail"],
+         controllo=lambda config: controlla_email("Senza formati", ["pdf_solo_fine_email.pdf", "allegato2.txt"],
+                                                  "Testo"))
+    caso("pdf_senza_fine", gui("pdf_senza_fine.txt", "file", "pdf_senza_fine.pdf", formati=["001\ttsn12"]),
+         uscite=["pdf_senza_fine.pdf"])
+    caso("docx_senza_fine", gui("docx_senza_fine.txt", "docx", "docx_senza_fine.docx", formati=["001\ttsn12n"]),
+         uscite=["docx_senza_fine.docx"])
+    caso("niente_da_fare", gui("niente_da_fare.txt", "file", ""), rimossi=False, errore_atteso=True)
+    caso("pdf_email_immagini_firma", gui("pdf_email_immagini_firma.txt", "file", "pdf_email_immagini_firma.pdf",
+                                         invio="email", destinatario="cliente@example.com",
+                                         coda=["Con firma", "allegato: @ALLEGATO2@", "immagine: @LAVORO@" + os.sep +
+                                               "logo.png", "", "Buongiorno,", "ecco <la fattura> & co."]),
+         uscite=["pdf_email_immagini_firma.pdf"], chiamate=["smtp_sendmail"], lavoro_extra=["logo.png"],
+         config={"email_firma": "Mario Rossi\nINFAS", "email_firma_immagine": "@LAVORO@" + os.sep + "logo.png"},
+         controllo=lambda config: controlla_email("Con firma", ["logo.png", "logo.png", "pdf_email_immagini_firma.pdf",
+                                                                "allegato2.txt"],
+                                                  "Buongiorno,\necco <la fattura> & co.\n\nMario Rossi\nINFAS") +
+         controlla_html_email())
     caso("pdf_telegram", gui("pdf_telegram.txt", "file", "pdf_telegram.pdf", invio="telegram",
                              destinatario="telegram 123456789",
                              coda=["pdf_telegram.pdf", "Ecco il documento", "seconda riga"]),
@@ -343,6 +381,20 @@ def controlla_email(oggetto, allegati, testo=None, destinatario=None):
     nomi = [p.get_filename() for p in messaggio.walk() if p.get_filename()]
     if nomi != allegati:
         errori.append("allegati %r invece di %r" % (nomi, allegati))
+    return errori
+
+
+def controlla_html_email():
+    """L'HTML dell'email con immagini e firma: testo protetto e immagini mostrate con cid:."""
+    da, a, messaggio = [d for n, d in chiamate if n == "smtp_sendmail"][0]
+    parti = {p.get_content_type(): p for p in messaggio.walk()}
+    if "text/html" not in parti or "multipart/related" not in parti:
+        return ["manca la parte HTML o related: %s" % sorted(parti)]
+    corpo = parti["text/html"].get_payload(decode=True).decode("utf-8")
+    errori = [] if "ecco &lt;la fattura&gt; &amp; co." in corpo else ["testo HTML non protetto: " + corpo]
+    cid = sorted(p["Content-ID"] for p in messaggio.walk() if p["Content-ID"])
+    if cid != ["<firma>", "<immagine1>"] or "cid:immagine1" not in corpo or "cid:firma" not in corpo:
+        errori.append("immagini %r non mostrate nell'HTML" % cid)
     return errori
 
 
@@ -584,6 +636,7 @@ def prepara_caso(caso):
         "whatsapp_versione_api": "v23.0", "whatsapp_lingua": "it", "stampante": "",
         "file_log": os.path.join(base, "FileGUY.log"),
     }
+    config.update({k: v.replace("@LAVORO@", cartelle["lavoro"]) for k, v in caso["config"].items()})
     return config
 
 
@@ -619,9 +672,12 @@ def esegui(nome_programma, modelli=None):
             errori.append(traceback.format_exc(limit=-3).strip())
         finally:
             os.chdir(cwd)
-        if caso["errore_atteso"] and "Traceback" not in stderr.getvalue():
+        # Gli errori vanno sulla console in una riga, senza traceback (il traceback è nel log)
+        if "Traceback" in stderr.getvalue():
+            errori.append("traceback sulla console:\n" + stderr.getvalue().strip())
+        elif caso["errore_atteso"] and "Errore con il file" not in stderr.getvalue():
             errori.append("l'errore atteso non è stato segnalato")
-        elif not caso["errore_atteso"] and "Traceback" in stderr.getvalue():
+        elif not caso["errore_atteso"] and "Errore con il file" in stderr.getvalue():
             errori.append(stderr.getvalue().strip())
         dettagli = []
         for uscita in caso["uscite"]:
