@@ -98,9 +98,10 @@ class WhatsApp:
         for permesso in self._dati_token().get("granular_scopes", []):
             if permesso.get("scope") == "whatsapp_business_management" and permesso.get("target_ids"):
                 return permesso["target_ids"][0]
-        raise WhatsAppError("Il token non dà accesso a un account WhatsApp Business (serve il permesso "
-                            "whatsapp_business_management): scrivi l'ID dell'account WhatsApp Business in "
-                            "ConfigManager")
+        # Con un token che ha accesso a tutti gli account Meta non dice quale: va scritto in ConfigManager
+        raise WhatsAppError("Meta non indica l'account WhatsApp Business di questo token: scrivi il suo ID in "
+                            "ConfigManager (\"ID account WhatsApp Business\"). Lo trovi su developers.facebook.com, "
+                            "nella pagina Configurazione API dell'app WhatsApp, accanto al Phone number ID")
 
     def elenco_template(self, account):
         """I template dell'account: lista di dict con nome, lingua, stato, categoria, testo

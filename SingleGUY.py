@@ -108,7 +108,11 @@ def main(name, config):
         if invio == "email":
             descrizione = "email a " + (dati_email(guida)[0] or "?")
         else:
-            descrizione = guida[6].strip()
+            # "whatsapp <numero>" anche se nel .gui c'è solo il numero
+            destinatario = guida[6].strip()
+            if destinatario.split()[0:1] != [invio]:
+                destinatario = invio + " " + destinatario
+            descrizione = destinatario
         funzione = {"email": email_send, "telegram": telegram, "whatsapp": whatsapp}[invio]
         passo_secondario(name, "invio " + descrizione, funzione, guida, config)
 
