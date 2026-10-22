@@ -255,7 +255,8 @@ def finestra_formatta_salva_anteprima_applica():
         assert app.salva(), messaggi
         assert os.path.isfile(percorso_modello) and os.path.isfile(percorso_modello[:-4] + ".txt")
         intestazione, linee = modello_gui.leggi_gui(percorso_modello)
-        assert intestazione["testo"] == "{nome}.txt" and intestazione["uscita"] == "{nome}.pdf"
+        nome_testo = os.path.splitext(os.path.basename(percorso_modello))[0] + ".txt"
+        assert intestazione["testo"] == nome_testo and intestazione["uscita"] == "{nome}.pdf", intestazione
         assert linee[0] == "001\tcsn12", linee
         # Riga con un colore: codici di 6 caratteri; righe senza colori: 5 come prima
         assert linee[3] == "004\ttnn10n 00 09\thns10r 09 14\thns10n 14 20\ttnn10n 20 41", linee

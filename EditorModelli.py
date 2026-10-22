@@ -1251,7 +1251,10 @@ class EditorModelli(tk.Tk):
                                                     defaultextension=".gui", filetypes=[("Modelli", "*.gui")])
             if not percorso:
                 return False
-        modello_gui.scrivi_gui(percorso, self._intestazione(), linee)
+        intestazione = self._intestazione()
+        # Nella prima riga il testo con lo stesso nome del modello (applicandolo diventa quello del file)
+        intestazione["testo"] = os.path.splitext(os.path.basename(percorso))[0] + ".txt"
+        modello_gui.scrivi_gui(percorso, intestazione, linee)
         # Copia del testo di esempio accanto al modello, per poterlo riaprire
         copia_testo = os.path.splitext(percorso)[0] + ".txt"
         if self.testo_cambiato:
