@@ -209,6 +209,68 @@ def servizio_applica_formati_word():
 
 
 @prova
+def finestra_filigrana():
+    """La filigrana segue le modifiche, evidenzia la riga del cursore e un clic porta il cursore lì."""
+    import EditorModelli
+    from tkinter import filedialog
+    esempio = os.path.join(cartella, "esempio_filigrana.txt")
+    # Abbastanza righe per avere due pagine (44 righe per pagina A4)
+    righe = RIGHE * 8
+    with open(esempio, "w") as f:
+        f.write("\n".join(righe) + "\n")
+    filedialog.askopenfilename = lambda *a, **k: esempio
+    app = EditorModelli.EditorModelli()
+    app.config_servizio = {"cartella_lavoro": cartella, "cartella_template": CARTELLA_TEMPLATE,
+                           "cartella_output": cartella}
+    try:
+        app.nuovo()
+        app.template.set("modello.pdf")
+        app.testo.tag_add("sel", "4.0", "4.end")
+        app._imposta("f", "c")
+        app.testo.tag_remove("sel", "1.0", "end")
+        app.filigrana()
+        finestra = app.finestra_filigrana
+        assert finestra is not None and finestra.documento is not None, finestra.stato.cget("text")
+        assert finestra.documento.page_count == 2 and finestra.righe_per_pagina == 44
+        finestra.update()
+        scala = finestra._scala()
+        # Clic a metà del carattere della colonna 9 di "Cliente: Mario Rossi" (riga 4) -> riga 3, colonna 9
+        x0, x1 = finestra.caratteri[0][3][9]
+        y = finestra._y_riga(3) + 8
+        evento = type("Evento", (), {"x": EditorModelli.MARGINE_IMMAGINE + (x0 + x1) / 2 * scala + 1,
+                                     "y": EditorModelli.MARGINE_IMMAGINE + y * scala})()
+        finestra.tela.yview_moveto(0)
+        finestra.tela.xview_moveto(0)
+        finestra._clic(evento)
+        assert app.testo.index("insert") == "4.10", app.testo.index("insert")
+        assert len(finestra.caratteri[0][3]) == len(RIGHE[3])
+        # Il cursore su una riga della seconda pagina porta la filigrana lì
+        app.vai_a(50, 0)
+        assert finestra.pagina == 1 and finestra.tela.find_withtag("cursore")
+        # Una modifica ricrea la filigrana dopo un attimo
+        documento = finestra.documento
+        app.testo.tag_add("sel", "1.0", "1.end")
+        app._alterna("b")
+        app.after(900, app.quit)
+        app.mainloop()
+        assert finestra.documento is not documento
+        # Template orizzontale: 29 righe per pagina e le posizioni restano quelle delle righe giuste
+        orizzontale = pymupdf.open()
+        orizzontale.new_page(width=842, height=595).insert_text((300, 300), "Testo del template")
+        orizzontale.save(os.path.join(CARTELLA_TEMPLATE, "orizzontale.pdf"))
+        app.template.set("orizzontale.pdf")
+        finestra.aggiorna()
+        assert finestra.righe_per_pagina == 29 and finestra.documento.page_count == 2, finestra.stato.cget("text")
+        # La riga 31 (indice 30) è la seconda della seconda pagina
+        assert righe[30] and len(finestra.caratteri[1][30]) == len(righe[30])
+        finestra._chiudi()
+        assert app.finestra_filigrana is None
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
+@prova
 def finestra_formatta_salva_anteprima_applica():
     import EditorModelli
     from tkinter import filedialog, messagebox

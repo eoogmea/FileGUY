@@ -121,7 +121,7 @@ e degli altri documenti che il gestionale produce ogni giorno.</p>
     <li><a href="#font">Caratteri e colori</a></li>
     <li><a href="#documento">Le impostazioni del documento</a></li>
     <li><a href="#invio">Inviare il documento per email, Telegram o WhatsApp</a></li>
-    <li><a href="#anteprima">L'anteprima</a></li>
+    <li><a href="#anteprima">L'anteprima e la filigrana</a></li>
     <li><a href="#salvare">Salvare e riaprire un modello</a></li>
     <li><a href="#applicare">Applicare un modello ai file di testo</a></li>
     <li><a href="#excel">I modelli Excel (EditorExcel)</a></li>
@@ -178,6 +178,8 @@ Python può lanciare <code>python EditorModelli.py</code> o <code>python EditorE
   <tr><td><strong>Menu Visualizza</strong></td><td>Ingrandisce o riduce il testo nell'editor.</td></tr>
   <tr><td><strong>Anteprima (F5)</strong></td><td>Crea un documento di prova esattamente come lo creerà il
       servizio.</td></tr>
+  <tr><td><strong>Filigrana (F6)</strong></td><td>Il documento sul template in una finestra accanto
+      all'editor, aggiornato a ogni modifica, per allineare il testo ai riquadri del template.</td></tr>
   <tr><td><strong>Menu Aiuto</strong></td><td>Apre questa guida (<kbd>F1</kbd>).</td></tr>
   <tr><td><strong>Riquadro Documento</strong></td><td>Tipo di documento (PDF o Word), azione, template, rotazione,
       nome del documento da creare e impostazioni dell'invio.</td></tr>
@@ -445,7 +447,7 @@ in allegato il documento.</pre>
 scritto al numero aziendale nelle ultime 24 ore. Per scrivere ai clienti in generale serve un template
 approvato.</div>
 
-<h2 id="anteprima">9. L'anteprima</h2>
+<h2 id="anteprima">9. L'anteprima e la filigrana</h2>
 <p>Il comando <strong>Anteprima</strong> (dal menu, dal pulsante a destra della barra o con <kbd>F5</kbd>) crea il
 documento dal testo di esempio usando <strong>lo stesso codice del servizio</strong>: quello che vedi è
 esattamente quello che il servizio produrrà.</p>
@@ -459,6 +461,24 @@ esattamente quello che il servizio produrrà.</p>
 non stampa e non invia nulla, ma crea solo un file temporaneo da guardare nella finestra dell'editor. Per
 provare l'azione o l'invio bisogna far elaborare un file di testo dal servizio, per esempio con
 <a href="#applicare">Applica a file di testo</a>.</p>
+
+<h3 id="filigrana">La filigrana</h3>
+<p>Il comando <strong>Filigrana</strong> (dal menu, dal pulsante accanto ad Anteprima o con <kbd>F6</kbd>) apre
+a destra dello schermo una finestra con il documento sul template, da tenere accanto all'editor mentre lavori.
+Serve ad allineare il testo ai riquadri e alle scritte del template:</p>
+<ul>
+  <li>si <strong>aggiorna da sola</strong> poco dopo ogni modifica (formato, testo, template), con lo stesso
+      codice del servizio; il pulsante <em>Aggiorna</em> la ricrea subito;</li>
+  <li>la <strong>riga del cursore</strong> è contornata in arancione e la sua colonna è segnata da una linea
+      rossa; spostando il cursore su un'altra pagina, la filigrana va a quella pagina;</li>
+  <li>con un <strong>clic sul documento</strong> il cursore dell'editor va alla riga e alla colonna su cui hai
+      cliccato: per esempio, clicca dove deve iniziare un importo e vedi subito quanti spazi mancano;</li>
+  <li><em>Numeri di riga</em> mostra le righe del testo come linee tratteggiate numerate: ogni riga del PDF è alta
+      6 mm, qualunque sia la dimensione del carattere.</li>
+</ul>
+<p>La filigrana c'è solo per i modelli PDF. Con una rotazione diversa da 0 il documento si vede, ma il clic e la riga
+del cursore non funzionano. Se c'è un errore (per esempio il template non si trova) la filigrana resta com'era e
+l'errore compare in basso nella sua finestra.</p>
 
 <h2 id="salvare">10. Salvare e riaprire un modello</h2>
 <ul>

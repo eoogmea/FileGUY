@@ -8,6 +8,8 @@ Avvio: python EditorModelli.py
    le modifiche vanno nella copia salvata accanto al modello, il file scelto resta com'era.
 3. Si scelgono tipo di documento, template PDF, rotazione ed eventuale invio.
 4. Anteprima (F5): crea il documento con lo stesso codice del servizio.
+   Filigrana (F6): il documento sul template accanto all'editor, aggiornato a ogni modifica;
+   un clic sul documento porta il cursore alla riga e colonna corrispondenti.
 5. File > Salva modello: crea un .gui con {nome} al posto del nome del file, più una copia
    del testo di esempio accanto (serve solo per riaprire il modello).
 6. File > Applica a file di testo: per ogni .txt scelto crea il .gui nella cartella di lavoro,
@@ -308,6 +310,9 @@ class EditorModelli(tk.Tk):
         self.formato_copiato = None
         # Inizio della selezione a blocco con Alt+trascina
         self.ancora_blocco = None
+        # Finestra della filigrana (il template con il testo, aggiornato a ogni modifica)
+        self.finestra_filigrana = None
+        self.attesa_filigrana = None
         self.preferenze = self._leggi_preferenze()
         self.zoom = self.preferenze.get("zoom", 1.0) if self.preferenze.get("zoom") in LIVELLI_ZOOM else 1.0
 
@@ -368,6 +373,7 @@ class EditorModelli(tk.Tk):
         vista.add_command(label="Dimensione normale", command=lambda: self.cambia_zoom(0), accelerator="Ctrl+0")
         menu.add_cascade(label="Visualizza", menu=vista)
         menu.add_command(label="Anteprima (F5)", command=self.anteprima)
+        menu.add_command(label="Filigrana (F6)", command=self.filigrana)
         aiuto = tk.Menu(menu, tearoff=False)
         aiuto.add_command(label="Guida all'uso", command=self.apri_guida, accelerator="F1")
         aiuto.add_command(label="Informazioni", command=self._informazioni)
@@ -377,6 +383,7 @@ class EditorModelli(tk.Tk):
         self.bind("<Control-o>", lambda e: self.apri())
         self.bind("<Control-s>", lambda e: self.salva())
         self.bind("<F5>", lambda e: self.anteprima())
+        self.bind("<F6>", lambda e: self.filigrana())
         self.bind("<F1>", lambda e: self.apri_guida())
         for tasto in ("<Control-plus>", "<Control-equal>", "<Control-KP_Add>"):
             self.bind(tasto, lambda e: self.cambia_zoom(1))
@@ -477,6 +484,7 @@ class EditorModelli(tk.Tk):
 
         ttk.Button(barra, text="Formato predefinito", command=self._predefinito).pack(side="left", padx=(6, 0))
         ttk.Button(barra, text="Anteprima", command=self.anteprima).pack(side="right")
+        ttk.Button(barra, text="Filigrana", command=self.filigrana).pack(side="right", padx=(0, 4))
         ttk.Checkbutton(barra, text="Modifica testo", variable=self.modifica_testo,
                         command=self._cambia_modifica).pack(side="right", padx=(0, 10))
 
@@ -1056,6 +1064,8 @@ class EditorModelli(tk.Tk):
                 testo += "   -   selezione: righe %s-%s" % (r1, r2)
         self._messaggio(testo)
         self._disegna_righello()
+        if self.finestra_filigrana is not None and self.finestra_filigrana.winfo_exists():
+            self.finestra_filigrana.mostra_cursore(int(riga) - 1, int(colonna))
 
     # --- Lettura e scrittura del modello ------------------------------------
 
@@ -1088,6 +1098,7 @@ class EditorModelli(tk.Tk):
         self._aggiorna_vista()
         self.testo.mark_set("insert", "1.0")
         self.testo.focus_set()
+        self._programma_filigrana()
 
     def _leggi_testo(self, percorso):
         # Come lo legge il servizio: UTF-8 (Linux) o la codifica di Windows
@@ -1298,27 +1309,48 @@ class EditorModelli(tk.Tk):
 
     # --- Anteprima ---------------------------------------------------------
 
-    def crea_documento(self, cartella):
-        """Crea il documento con il codice del servizio; restituisce il percorso."""
-        linee = self._linee_formato()
-        if linee is None:
-            return None
+    def crea_documento(self, cartella, senza_template=False, avvisa=True):
+        """Crea il documento con il codice del servizio; restituisce il percorso.
+
+        senza_template=True: al posto del template una pagina bianca della stessa misura.
+        avvisa=False: niente finestre di errore, gli errori diventano ErroreModello.
+        """
+        if avvisa:
+            linee = self._linee_formato()
+            if linee is None:
+                return None
+        else:
+            linee = modello_gui.linee_formato(self._formati_testo(), self.word.get())
         intestazione = self._intestazione()
         estensione = ".docx" if self.word.get() else ".pdf"
         intestazione.update(testo="anteprima.txt", uscita="anteprima" + estensione,
                             azione="docx" if self.word.get() else "file", invio="0", destinatario="", coda=[])
-        if intestazione["template"] and not os.path.isfile(
-                os.path.join(self.config_servizio.get("cartella_template", ""), intestazione["template"])):
-            messagebox.showerror("Anteprima", "Template non trovato nella cartella dei template: "
-                                 + intestazione["template"], parent=self)
+        config = dict(self.config_servizio, cartella_lavoro=cartella, cartella_output=cartella)
+        percorso_template = os.path.join(config.get("cartella_template", ""), intestazione["template"])
+        if intestazione["template"] and not os.path.isfile(percorso_template):
+            errore = "Template non trovato nella cartella dei template: " + intestazione["template"]
+            if not avvisa:
+                raise modello_gui.ErroreModello(errore)
+            messagebox.showerror("Anteprima", errore, parent=self)
             return None
+        if senza_template and intestazione["template"]:
+            # Una pagina bianca grande come il template: il testo va negli stessi punti
+            # (orizzontale o verticale), ma senza il testo del template
+            import pymupdf
+            with pymupdf.open(percorso_template) as template:
+                pagina = template[0].rect
+            vuoto = pymupdf.open()
+            vuoto.new_page(width=pagina.width, height=pagina.height)
+            vuoto.save(os.path.join(cartella, "template_vuoto.pdf"))
+            vuoto.close()
+            intestazione["template"] = "template_vuoto.pdf"
+            config["cartella_template"] = cartella
         with open(os.path.join(cartella, "anteprima.txt"), "w", errors="replace") as f:
             f.write("\n".join(self.righe))
         percorso_gui = os.path.join(cartella, "anteprima.gui")
         modello_gui.scrivi_gui(percorso_gui, intestazione, linee)
         with open(percorso_gui, "r") as f:
             guida = f.readlines()
-        config = dict(self.config_servizio, cartella_lavoro=cartella, cartella_output=cartella)
         servizio = importlib.import_module("SingleGUY")
         if self.word.get():
             servizio.docx(guida, config)
@@ -1348,6 +1380,42 @@ class EditorModelli(tk.Tk):
         else:
             FinestraAnteprima(self, percorso)
 
+    def filigrana(self):
+        if not self.righe:
+            self._messaggio("Prima apri un testo di esempio")
+            return
+        if self.word.get():
+            messagebox.showinfo("Filigrana", "La filigrana c'è solo per i modelli PDF: per Word usa l'Anteprima.",
+                                parent=self)
+            return
+        if self.finestra_filigrana is not None and self.finestra_filigrana.winfo_exists():
+            self.finestra_filigrana.lift()
+            self.finestra_filigrana.aggiorna()
+        else:
+            self.finestra_filigrana = FinestraFiligrana(self)
+
+    def _programma_filigrana(self):
+        """Dopo una modifica la filigrana si ricrea, ma solo quando si smette per un attimo di modificare."""
+        if self.finestra_filigrana is None or not self.finestra_filigrana.winfo_exists():
+            return
+        if self.attesa_filigrana is not None:
+            self.after_cancel(self.attesa_filigrana)
+        self.attesa_filigrana = self.after(600, self._aggiorna_filigrana)
+
+    def _aggiorna_filigrana(self):
+        self.attesa_filigrana = None
+        if self.finestra_filigrana is not None and self.finestra_filigrana.winfo_exists():
+            self.finestra_filigrana.aggiorna()
+
+    def vai_a(self, riga, colonna):
+        """Porta il cursore alla riga (da 0) e colonna indicate, ad esempio da un clic sulla filigrana."""
+        indice = "%d.%d" % (riga + 1, colonna)
+        self.testo.tag_remove("sel", "1.0", "end")
+        self.testo.mark_set("insert", indice)
+        self.testo.see(indice)
+        self.testo.focus_set()
+        self._aggiorna_barra()
+
     # --- Aiuto ---------------------------------------------------------------
 
     def apri_guida(self):
@@ -1364,6 +1432,7 @@ class EditorModelli(tk.Tk):
         if self.righe:
             self.modificato = True
             self._aggiorna_titolo()
+            self._programma_filigrana()
 
     def _coda_modificata(self, evento):
         if self.coda.edit_modified():
@@ -1443,6 +1512,252 @@ class FinestraAnteprima(tk.Toplevel):
     def _chiudi(self):
         self.documento.close()
         self.destroy()
+
+
+# Come il servizio scrive il PDF: ogni riga è pdf.cell(..., 6, ...), cioè alta 6 mm
+ALTEZZA_RIGA_PDF = 6
+MARGINE_IMMAGINE = 10
+
+
+class FinestraFiligrana(tk.Toplevel):
+    """Il documento creato dal servizio, aggiornato a ogni modifica dell'editor.
+
+    Mostra dove finisce il testo sul template: la riga del cursore è evidenziata e un clic
+    sul documento porta il cursore dell'editor alla riga e colonna corrispondenti.
+    Le posizioni dei caratteri si leggono da un secondo PDF creato su una pagina bianca grande
+    come il template, così il testo del template non si confonde con quello del modello.
+    """
+
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.editor = editor
+        self.title("Filigrana - " + os.path.basename(editor.percorso_modello or "nuovo modello"))
+        larghezza = min(720, int(self.winfo_screenwidth() * 0.45))
+        altezza = int(self.winfo_screenheight() * 0.85)
+        # A destra dello schermo, per lasciare l'editor visibile
+        self.geometry("%dx%d+%d+%d" % (larghezza, altezza, self.winfo_screenwidth() - larghezza - 20, 10))
+        self.cartella = tempfile.mkdtemp(prefix="filigrana_modello_")
+        self.documento = None
+        self.pagina = 0
+        # Per ogni pagina: {riga del testo (da 0): [(x0, x1) di ogni carattere, in punti]}
+        self.caratteri = []
+        self.righe_per_pagina = 0
+        self.margine_alto = 0
+        self.spostamento = 0
+        self.cliccabile = False
+        self.cursore = (0, 0)
+        self.zoom = tk.StringVar(value="100%")
+        self.griglia = tk.BooleanVar(value=True)
+
+        barra = ttk.Frame(self, padding=6)
+        barra.pack(side="top", fill="x")
+        ttk.Button(barra, text="<", width=3, command=lambda: self._vai(-1)).pack(side="left")
+        self.etichetta = ttk.Label(barra, width=14, anchor="center")
+        self.etichetta.pack(side="left")
+        ttk.Button(barra, text=">", width=3, command=lambda: self._vai(1)).pack(side="left")
+        zoom = ttk.Combobox(barra, textvariable=self.zoom, values=["50%", "75%", "100%", "125%", "150%", "200%"],
+                            width=6, state="readonly")
+        zoom.pack(side="left", padx=10)
+        zoom.bind("<<ComboboxSelected>>", lambda e: self._mostra())
+        ttk.Checkbutton(barra, text="Numeri di riga", variable=self.griglia,
+                        command=self._mostra).pack(side="left")
+        ttk.Button(barra, text="Aggiorna", command=self.aggiorna).pack(side="right")
+        self.stato = ttk.Label(self, foreground="gray", padding=(8, 2))
+        self.stato.pack(side="bottom", fill="x")
+
+        cornice = ttk.Frame(self)
+        cornice.pack(fill="both", expand=True)
+        self.tela = tk.Canvas(cornice, background="#808080", highlightthickness=0, cursor="crosshair")
+        verticale = ttk.Scrollbar(cornice, orient="vertical", command=self.tela.yview)
+        orizzontale = ttk.Scrollbar(self, orient="horizontal", command=self.tela.xview)
+        verticale.pack(side="right", fill="y")
+        orizzontale.pack(side="bottom", fill="x")
+        self.tela.pack(side="left", fill="both", expand=True)
+        self.tela.configure(yscrollcommand=verticale.set, xscrollcommand=orizzontale.set)
+        self.tela.bind("<MouseWheel>", lambda e: self.tela.yview_scroll(-e.delta // 120, "units"))
+        self.tela.bind("<Button-4>", lambda e: self.tela.yview_scroll(-1, "units"))
+        self.tela.bind("<Button-5>", lambda e: self.tela.yview_scroll(1, "units"))
+        self.tela.bind("<Button-1>", self._clic)
+        self.bind("<F6>", lambda e: self.aggiorna())
+        self.protocol("WM_DELETE_WINDOW", self._chiudi)
+        # Chiudendo la finestra (o l'editor) si fa pulizia
+        self.bind("<Destroy>", lambda e: self._pulisci() if e.widget is self else None)
+        self.aggiorna()
+
+    # --- Creazione del documento ----------------------------------------------
+
+    def aggiorna(self):
+        if self.editor.word.get():
+            self.stato.configure(text="La filigrana c'è solo per i modelli PDF")
+            return
+        self.configure(cursor="watch")
+        self.update_idletasks()
+        try:
+            self._crea()
+        except Exception as e:
+            testo = str(e) if isinstance(e, modello_gui.ErroreModello) else traceback.format_exc(limit=-1).strip()
+            self.stato.configure(text="Non aggiornata: " + " ".join(testo.split()), foreground="red")
+            return
+        finally:
+            self.configure(cursor="")
+        self.pagina = max(0, min(self.pagina, self.documento.page_count - 1))
+        self._mostra()
+
+    def _crea(self):
+        import pymupdf
+        if self.documento is not None:
+            self.documento.close()
+            self.documento = None
+        con_template = os.path.join(self.cartella, "template")
+        senza_template = os.path.join(self.cartella, "posizioni")
+        for cartella in (con_template, senza_template):
+            shutil.rmtree(cartella, ignore_errors=True)
+            os.makedirs(cartella)
+        percorso = self.editor.crea_documento(con_template, avvisa=False)
+        if self.editor.template.get().strip():
+            posizioni = self.editor.crea_documento(senza_template, senza_template=True, avvisa=False)
+        else:
+            posizioni = percorso
+        self.documento = pymupdf.open(percorso)
+        with pymupdf.open(posizioni) as doc_posizioni:
+            self._leggi_posizioni(doc_posizioni)
+        rotazione = self.editor.rotazione.get()
+        self.cliccabile = rotazione == "0"
+        self.stato.configure(foreground="gray", text="Clic sul documento: il cursore dell'editor va lì" if
+                             self.cliccabile else "Con la rotazione il clic sul documento non porta alla riga")
+
+    def _leggi_posizioni(self, doc_posizioni):
+        from fpdf import FPDF
+        pagina_testo = doc_posizioni[0].rect
+        # Le stesse misure del servizio (FPDF, in mm): margine in alto e fine della pagina
+        foglio = FPDF(orientation="L" if pagina_testo.width > pagina_testo.height else "P")
+        self.righe_per_pagina = int((foglio.page_break_trigger - foglio.t_margin) / ALTEZZA_RIGA_PDF + 1e-6)
+        self.margine_alto = foglio.t_margin
+        # Il testo viene sovrapposto al template allineando il fondo delle pagine
+        self.spostamento = self.documento[0].rect.height - pagina_testo.height
+        self.caratteri = []
+        per_mm = 72 / 25.4
+        for numero, pagina in enumerate(doc_posizioni):
+            righe = {}
+            for blocco in pagina.get_text("rawdict")["blocks"]:
+                for linea in blocco.get("lines", []):
+                    for pezzo in linea["spans"]:
+                        for carattere in pezzo["chars"]:
+                            x0, y0, x1, y1 = carattere["bbox"]
+                            riga = int(((y0 + y1) / 2 / per_mm - self.margine_alto) // ALTEZZA_RIGA_PDF)
+                            righe.setdefault(numero * self.righe_per_pagina + riga, []).append((x0, x1))
+            self.caratteri.append({riga: sorted(x) for riga, x in righe.items()})
+
+    # --- Visualizzazione --------------------------------------------------------
+
+    def _scala(self):
+        # Pixel per punto del PDF
+        return int(self.zoom.get().rstrip("%")) / 100 * 96 / 72
+
+    def _y_riga(self, riga_pagina):
+        """Bordo alto della riga sulla pagina, in punti dall'alto del documento mostrato."""
+        return (self.margine_alto + riga_pagina * ALTEZZA_RIGA_PDF) * 72 / 25.4 + self.spostamento
+
+    def _vai(self, passo):
+        if self.documento is not None:
+            self.pagina = max(0, min(self.documento.page_count - 1, self.pagina + passo))
+            self._mostra()
+
+    def _mostra(self):
+        if self.documento is None:
+            return
+        scala = self._scala()
+        pix = self.documento[self.pagina].get_pixmap(dpi=int(72 * scala), alpha=False)
+        self.immagine = tk.PhotoImage(data=base64.b64encode(pix.tobytes("png")).decode("ascii"), format="png")
+        self.tela.delete("all")
+        self.tela.create_image(MARGINE_IMMAGINE, MARGINE_IMMAGINE, anchor="nw", image=self.immagine)
+        self.tela.configure(scrollregion=(0, 0, pix.width + 2 * MARGINE_IMMAGINE, pix.height + 2 * MARGINE_IMMAGINE))
+        self.etichetta.configure(text="Pagina %d di %d" % (self.pagina + 1, self.documento.page_count))
+        if self.griglia.get() and self.cliccabile:
+            prima = self.pagina * self.righe_per_pagina
+            for n in range(self.righe_per_pagina):
+                if prima + n >= len(self.editor.righe):
+                    break
+                y = MARGINE_IMMAGINE + self._y_riga(n) * scala
+                self.tela.create_line(MARGINE_IMMAGINE, y, MARGINE_IMMAGINE + pix.width, y, fill="#9fc5ff",
+                                      dash=(2, 4))
+                self.tela.create_text(MARGINE_IMMAGINE + 3, y + 1, anchor="nw", text=str(prima + n + 1),
+                                      fill="#3d7bd9", font=("Arial", max(6, int(6 * scala))))
+        self._disegna_cursore()
+
+    def mostra_cursore(self, riga, colonna):
+        """La riga del cursore dell'editor: va alla sua pagina e la evidenzia."""
+        self.cursore = (riga, colonna)
+        if self.documento is None or not self.cliccabile or not self.righe_per_pagina:
+            return
+        pagina = min(riga // self.righe_per_pagina, self.documento.page_count - 1)
+        if pagina != self.pagina:
+            self.pagina = pagina
+            self._mostra()
+        else:
+            self._disegna_cursore()
+
+    def _disegna_cursore(self):
+        self.tela.delete("cursore")
+        riga, colonna = self.cursore
+        if self.documento is None or not self.cliccabile or riga // self.righe_per_pagina != self.pagina:
+            return
+        scala = self._scala()
+        alto = MARGINE_IMMAGINE + self._y_riga(riga % self.righe_per_pagina) * scala
+        basso = alto + ALTEZZA_RIGA_PDF * 72 / 25.4 * scala
+        larghezza = self.documento[self.pagina].rect.width * scala
+        self.tela.create_rectangle(MARGINE_IMMAGINE, alto, MARGINE_IMMAGINE + larghezza, basso, outline="#ff8c00",
+                                   width=2, tags="cursore")
+        x = self._x_colonna(riga, colonna)
+        if x is not None:
+            x = MARGINE_IMMAGINE + x * scala
+            self.tela.create_line(x, alto - 2, x, basso + 2, fill="#e00000", width=2, tags="cursore")
+        # La riga del cursore resta visibile
+        altezza_tela = float(self.tela.cget("scrollregion").split()[3])
+        vista_alto, vista_basso = self.tela.yview()
+        if not (vista_alto * altezza_tela <= alto and basso <= vista_basso * altezza_tela):
+            self.tela.yview_moveto(max(0.0, (alto - 100) / altezza_tela))
+
+    def _x_colonna(self, riga, colonna):
+        """Posizione orizzontale (in punti) prima del carattere della colonna, se la riga ha testo."""
+        caratteri = self.caratteri[self.pagina].get(riga) if self.pagina < len(self.caratteri) else None
+        if not caratteri:
+            return None
+        if colonna < len(caratteri):
+            return caratteri[colonna][0]
+        return caratteri[-1][1]
+
+    def _clic(self, evento):
+        if self.documento is None or not self.cliccabile:
+            return
+        scala = self._scala()
+        x = (self.tela.canvasx(evento.x) - MARGINE_IMMAGINE) / scala
+        y = (self.tela.canvasy(evento.y) - MARGINE_IMMAGINE) / scala
+        riga_pagina = int((y - self.spostamento) / (72 / 25.4) - self.margine_alto) // ALTEZZA_RIGA_PDF
+        if y < self.spostamento or not 0 <= riga_pagina < self.righe_per_pagina:
+            return
+        riga = self.pagina * self.righe_per_pagina + int(riga_pagina)
+        if riga >= len(self.editor.righe):
+            return
+        caratteri = self.caratteri[self.pagina].get(riga, [])
+        # La colonna del primo carattere che sta (per più di metà) a destra del clic
+        colonna = sum(1 for x0, x1 in caratteri if (x0 + x1) / 2 < x)
+        colonna = min(colonna, len(self.editor.righe[riga]))
+        self.editor.vai_a(riga, colonna)
+
+    def _chiudi(self):
+        self.destroy()
+
+    def _pulisci(self):
+        # L'aggiornamento in attesa non serve più
+        if self.editor.attesa_filigrana is not None:
+            self.editor.after_cancel(self.editor.attesa_filigrana)
+            self.editor.attesa_filigrana = None
+        if self.documento is not None:
+            self.documento.close()
+            self.documento = None
+        shutil.rmtree(self.cartella, ignore_errors=True)
+        self.editor.finestra_filigrana = None
 
 
 if __name__ == "__main__":
