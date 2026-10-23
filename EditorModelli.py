@@ -37,8 +37,8 @@ from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
 from config_sicuro import carica_config
-from piattaforma import (SCALA_FINESTRE, apri_file, avvia_finestra, cartella_utente, console_sicura, leggi_testo,
-                         registra_font, scala_finestra)
+from piattaforma import (apri_file, avvia_finestra, cartella_utente, console_sicura, leggi_testo, registra_font,
+                         scala_finestra)
 
 # L'exe dell'editor non ha la console: i messaggi scritti su stdout/stderr (es. gli avvisi di
 # PyPDF2 nell'anteprima con un template) farebbero fallire l'operazione
@@ -93,12 +93,9 @@ def proposta_salvataggio(percorso_modello, percorso_testo, cartella_modelli):
 def dimensiona(finestra, larghezza, altezza, minima=None):
     """Dimensione iniziale della finestra: quella indicata, ma al massimo l'85% dello schermo
     (sui portatili e con lo zoom di Windows lo schermo è piccolo). La finestra va al centro,
-    un po' in alto per lasciare posto alla barra delle applicazioni. Su Linux le misure si riducono
-    come i caratteri (SCALA_FINESTRE)."""
+    un po' in alto per lasciare posto alla barra delle applicazioni. Anche su Linux, dove i caratteri
+    sono ridotti, la misura resta questa: lì i caratteri sono più larghi e i controlli non ci starebbero."""
     schermo_x, schermo_y = finestra.winfo_screenwidth(), finestra.winfo_screenheight()
-    larghezza, altezza = int(larghezza * SCALA_FINESTRE), int(altezza * SCALA_FINESTRE)
-    if minima:
-        minima = (int(minima[0] * SCALA_FINESTRE), int(minima[1] * SCALA_FINESTRE))
     larghezza = min(larghezza, int(schermo_x * 0.85))
     altezza = min(altezza, int(schermo_y * 0.85))
     finestra.geometry("%dx%d+%d+%d" % (larghezza, altezza, max(0, (schermo_x - larghezza) // 2),
@@ -2138,7 +2135,7 @@ class FinestraFiligrana(tk.Toplevel):
         super().__init__(editor)
         self.editor = editor
         self.title("Filigrana - " + os.path.basename(editor.percorso_modello or "nuovo modello"))
-        larghezza = min(int(720 * SCALA_FINESTRE), int(self.winfo_screenwidth() * 0.45))
+        larghezza = min(720, int(self.winfo_screenwidth() * 0.45))
         altezza = int(self.winfo_screenheight() * 0.85)
         # A destra dello schermo, per lasciare l'editor visibile
         self.geometry("%dx%d+%d+%d" % (larghezza, altezza, self.winfo_screenwidth() - larghezza - 20, 10))

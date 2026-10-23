@@ -9,7 +9,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import config_sicuro
 from config_sicuro import CAMPI, ConfigError
-from piattaforma import SCALA_FINESTRE, avvia_finestra, console_sicura, scala_finestra
+from piattaforma import avvia_finestra, console_sicura, scala_finestra
 
 # Senza console (exe di ConfigManager) i messaggi su stdout/stderr farebbero fallire l'operazione
 console_sicura()
@@ -54,8 +54,6 @@ class ConfigManager(tk.Tk):
         super().__init__()
         scala_finestra(self)
         self.title("FileGUY - Configurazione")
-        self.resizable(True, False)
-        self.minsize(int(640 * SCALA_FINESTRE), 0)
 
         self.variabili = {campo: tk.StringVar() for campo in CAMPI}
         self.tutto_il_pc = tk.BooleanVar(value=False)
@@ -63,14 +61,33 @@ class ConfigManager(tk.Tk):
         self._percorso_importato = None
 
         self._crea_interfaccia()
+        self._dimensiona()
         self._carica_iniziale()
         self.protocol("WM_DELETE_WINDOW", self._chiudi)
 
     # --- Interfaccia -------------------------------------------------------
 
     def _crea_interfaccia(self):
-        principale = ttk.Frame(self, padding=12)
-        principale.pack(fill="both", expand=True)
+        # In fondo, sempre visibili: pulsanti e messaggi
+        fondo = ttk.Frame(self, padding=(12, 8, 12, 12))
+        fondo.pack(side="bottom", fill="x")
+        # Sopra i campi, in un'area che scorre: con lo schermo basso (o i caratteri più grandi di Linux)
+        # la finestra non esce dallo schermo
+        area = ttk.Frame(self)
+        area.pack(side="top", fill="both", expand=True)
+        self.tela = tk.Canvas(area, highlightthickness=0, borderwidth=0)
+        self.barra = ttk.Scrollbar(area, orient="vertical", command=self.tela.yview)
+        self.tela.configure(yscrollcommand=self.barra.set)
+        self.tela.pack(side="left", fill="both", expand=True)
+        principale = ttk.Frame(self.tela, padding=(12, 12, 12, 0))
+        self.principale = principale
+        voce = self.tela.create_window((0, 0), window=principale, anchor="nw")
+        principale.bind("<Configure>", lambda e: self.tela.configure(scrollregion=self.tela.bbox("all")))
+        self.tela.bind("<Configure>", lambda e: self.tela.itemconfigure(voce, width=e.width))
+        # Rotellina del mouse: Windows e macOS (MouseWheel), Linux (pulsanti 4 e 5)
+        self.bind_all("<MouseWheel>", lambda e: self._scorri(-1 if e.delta > 0 else 1))
+        self.bind_all("<Button-4>", lambda e: self._scorri(-1))
+        self.bind_all("<Button-5>", lambda e: self._scorri(1))
         principale.columnconfigure(0, weight=1)
 
         riga = 0
@@ -92,15 +109,34 @@ class ConfigManager(tk.Tk):
         ).grid(row=riga, column=0, sticky="w", pady=(0, 8))
         riga += 1
 
-        pulsanti = ttk.Frame(principale)
-        pulsanti.grid(row=riga, column=0, sticky="ew")
+        pulsanti = ttk.Frame(fondo)
+        pulsanti.pack(fill="x")
         ttk.Button(pulsanti, text="Importa config.txt...", command=self._importa).pack(side="left")
         ttk.Button(pulsanti, text="Chiudi", command=self._chiudi).pack(side="right")
         ttk.Button(pulsanti, text="Salva", command=self._salva).pack(side="right", padx=(0, 6))
-        riga += 1
 
-        self.stato = ttk.Label(principale, text="", foreground="gray")
-        self.stato.grid(row=riga, column=0, sticky="w", pady=(8, 0))
+        self.stato = ttk.Label(fondo, text="", foreground="gray")
+        self.stato.pack(anchor="w", pady=(8, 0))
+
+    def _dimensiona(self):
+        """Larga quanto i campi e alta quanto serve, ma al massimo l'85% dello schermo: il resto
+        si vede scorrendo (la barra compare solo allora)."""
+        self.update_idletasks()
+        schermo_x, schermo_y = self.winfo_screenwidth(), self.winfo_screenheight()
+        larghezza = min(self.principale.winfo_reqwidth() + self.barra.winfo_reqwidth(), int(schermo_x * 0.95))
+        fondo = self.winfo_reqheight() - self.tela.winfo_reqheight()
+        altezza_campi = self.principale.winfo_reqheight()
+        altezza = min(altezza_campi + fondo, int(schermo_y * 0.85))
+        if altezza_campi + fondo > altezza:
+            self.barra.pack(side="right", fill="y")
+        self.geometry("%dx%d+%d+%d" % (larghezza, altezza, max(0, (schermo_x - larghezza) // 2),
+                                       max(0, (schermo_y - altezza) // 3)))
+        self.minsize(min(640, larghezza), min(300, altezza))
+
+    def _scorri(self, passo):
+        # Solo se i campi non ci stanno tutti
+        if self.principale.winfo_height() > self.tela.winfo_height():
+            self.tela.yview_scroll(passo * 2, "units")
 
     def _crea_campo(self, genitore, riga, campo, etichetta, tipo):
         if tipo == "spunta":

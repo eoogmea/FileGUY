@@ -82,11 +82,15 @@ controllarlo e cosa si potrebbe fare.
 
 ## Linux
 
-13. **Finestre all'80%.** Fatto senza poterlo vedere su uno schermo Linux: se sono ancora troppo
-    grandi o troppo piccole si cambia `SCALA_FINESTRE` in `piattaforma.py`.
+13. **Finestre su Linux.** Caratteri e controlli ridotti all'80% (`SCALA_FINESTRE` in
+    `piattaforma.py`). La prima prova (23/10) ha mostrato ConfigManager troppo alta ed EditorModelli
+    troppo stretta: ora le finestre partono con la misura di Windows (al massimo l'85% dello schermo)
+    e ConfigManager ha i campi in un'area che scorre, con Salva e Chiudi sempre visibili.
+    - Da ricontrollare su Linux: ConfigManager, EditorModelli, EditorExcel e le finestre secondarie
+      (anteprima, filigrana, barcode, nuovo template WhatsApp).
 
 ## Eseguibili
 
-14. **Exe in C:\prova da ricompilare.** Sono stati creati prima delle correzioni del salto pagina
-    e della larghezza delle colonne Excel (commit 8b83bf83): prima dei prossimi test
-    `python installa.py --compila` e copiarli in C:\prova.
+14. **Exe in C:\prova.** Ricompilati il 23/10/2026 con tutte le correzioni di quel giorno. Dopo
+    nuove modifiche: `python installa.py --compila` e copiare il contenuto di `dist` in C:\prova
+    (config.dat e le cartelle di C:\prova restano come sono).
