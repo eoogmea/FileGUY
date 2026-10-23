@@ -91,7 +91,7 @@ def colonne_del_modello():
 
 
 STILI = [
-    {"righe": "1", "nome": "Intestazione", "carattere": ("h", True, False, 11, "w"), "sfondo": None,
+    {"righe": "1", "nome": "Intestazione", "carattere": ("h", True, False, 11, "b"), "sfondo": "grigio",
      "allineamento": "centro", "testo": True},
     {"righe": "4", "nome": "Evidenziata", "carattere": None, "sfondo": "azzurro", "allineamento": None,
      "testo": False},
@@ -290,6 +290,11 @@ def controlla_libreoffice(percorso):
         converti(soffice, percorso, "pdf", cartella)
         import pymupdf
         with pymupdf.open(os.path.join(cartella, NOME + ".pdf")) as doc:
+            # ### = colonna troppo stretta per il numero (la larghezza automatica non basta)
+            stampato = "".join(pagina.get_text() for pagina in doc)
+            if "###" in stampato:
+                errori.append("nel foglio stampato da Calc ci sono %d celle con ###: colonne troppo strette per "
+                              "il numero (vedi l'immagine)" % stampato.count("###"))
             for p, pagina in enumerate(doc):
                 immagine = os.path.join(CARTELLA_RUN, "%s%s.png" % (NOME, "" if p == 0 else "_%d" % (p + 1)))
                 pagina.get_pixmap(dpi=110).save(immagine)

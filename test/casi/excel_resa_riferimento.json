@@ -11,8 +11,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "B1": {
@@ -23,8 +23,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "C1": {
@@ -35,8 +35,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "D1": {
@@ -47,8 +47,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "E1": {
@@ -59,8 +59,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "F1": {
@@ -71,8 +71,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "G1": {
@@ -83,8 +83,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "H1": {
@@ -95,8 +95,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "I1": {
@@ -107,8 +107,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "J1": {
@@ -119,8 +119,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "K1": {
@@ -131,8 +131,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "L1": {
@@ -143,8 +143,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "M1": {
@@ -155,8 +155,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "N1": {
@@ -167,8 +167,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "O1": {
@@ -179,8 +179,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "P1": {
@@ -191,8 +191,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "Q1": {
@@ -203,8 +203,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "R1": {
@@ -215,8 +215,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "S1": {
@@ -227,8 +227,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "T1": {
@@ -239,8 +239,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "U1": {
@@ -251,8 +251,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "V1": {
@@ -263,8 +263,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "W1": {
@@ -275,8 +275,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "X1": {
@@ -287,8 +287,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "Y1": {
@@ -299,8 +299,8 @@
    "dimensione": 11.0,
    "grassetto": true,
    "corsivo": false,
-   "colore": "FFFFFFFF",
-   "sfondo": null,
+   "colore": "FF0000FF",
+   "sfondo": "FFD9D9D9",
    "allineamento": "center"
   },
   "A2": {
@@ -1507,28 +1507,28 @@
  "larghezze": {
   "A": 14.0,
   "B": 8.0,
-  "C": 9.0,
-  "D": 11.0,
+  "C": 11.0,
+  "D": 13.0,
   "E": 18.0,
-  "F": 9.0,
-  "G": 9.0,
-  "H": 9.0,
+  "F": 14.0,
+  "G": 11.0,
+  "H": 11.0,
   "I": 17.0,
-  "J": 6.0,
-  "K": 7.0,
-  "L": 10.0,
+  "J": 7.0,
+  "K": 9.0,
+  "L": 16.0,
   "M": 16.0,
-  "N": 21.0,
-  "O": 21.0,
-  "P": 21.0,
+  "N": 16.0,
+  "O": 16.0,
+  "P": 16.0,
   "Q": 15.0,
-  "R": 10.0,
-  "S": 10.0,
-  "T": 10.0,
+  "R": 19.0,
+  "S": 9.0,
+  "T": 13.0,
   "U": 14.0,
-  "V": 8.0,
-  "W": 10.0,
-  "X": 7.0,
+  "V": 14.0,
+  "W": 13.0,
+  "X": 10.0,
   "Y": 18.0
  }
 }

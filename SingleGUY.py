@@ -17,6 +17,7 @@ import registro
 # EMAIL
 import email
 import html
+import math
 import re
 import mimetypes
 import smtplib
@@ -54,8 +55,9 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, PatternFill
 # Righe speciali, colonne e formati Excel del .gui, gli stessi dell'editor dei modelli Excel
-from modello_gui import (ALLINEAMENTI, FORMATI_EXCEL, PREFISSI_EMAIL, SFONDI, campi_excel, colonna_excel_vuota,
-                         immagine_barcode, leggi_excel, righe_excel, stile_riga_vuoto, valore_excel)
+from modello_gui import (ALLINEAMENTI, FORMATI_EXCEL, PREDEFINITO_EXCEL, PREFISSI_EMAIL, SFONDI, campi_excel,
+                         colonna_excel_vuota, immagine_barcode, leggi_excel, righe_excel, stile_riga_vuoto,
+                         valore_excel)
 
 #BARCODE (l'immagine la crea modello_gui.immagine_barcode, la stessa dell'editor)
 import pymupdf
@@ -676,6 +678,29 @@ def font_excel(formato):
                 color="FF%02X%02X%02X" % COLORI_TESTO.get(colore, (0, 0, 0)))
 
 
+def larghezza_mostrata(testo, formato, carattere):
+    """Larghezza di colonna (in caratteri di Excel) che serve a mostrare il testo con il suo formato
+    e carattere. Si parte dal testo del file (es. "1.234,56", come lo mostra il formato), più i
+    simboli che il formato aggiunge; i caratteri grandi o in grassetto occupano di più. Se la colonna
+    è stretta Excel e LibreOffice mostrano ### al posto dei numeri."""
+    lunghezza = len(testo.strip())
+    if "#,##" in formato and "." not in testo:
+        #I punti delle migliaia che il formato aggiunge (1234 -> 1.234)
+        cifre = len(testo.strip().split(",")[0].lstrip("-"))
+        lunghezza += max(0, (cifre - 1) // 3)
+    if '"€"' in formato:
+        lunghezza += 2
+    if "AM/PM" in formato:
+        lunghezza += 3
+    if "E+" in formato:
+        lunghezza = max(lunghezza, 9)
+    if "mmm" in formato:
+        lunghezza += 1
+    _, grassetto, corsivo, dimensione, _ = carattere
+    fattore = dimensione / 11 * (1.1 if grassetto else 1) * (1.05 if corsivo else 1)
+    return math.ceil(lunghezza * max(1, fattore)) + 2
+
+
 def excel(guida, config):
     #Salva in content il contenuto del file di testo
     content = leggi_righe(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
@@ -705,6 +730,8 @@ def excel(guida, config):
 
     num_colonne = max(len(r) for r in foglio) if len(foglio) > 0 else 0
     larghezze_fisse = {}
+    #Larghezza adatta al testo più lungo di ogni colonna (quando non è scritta nel .gui)
+    larghezze_testo = [0] * num_colonne
     for col in range(0, num_colonne):
         #Le colonne dopo "fine" hanno il formato generale
         colonna = colonne[col] if col < len(colonne) else colonna_excel_vuota()
@@ -734,19 +761,12 @@ def excel(guida, config):
             allineamento = stile["allineamento"] or colonna["allineamento"]
             if allineamento:
                 cella.alignment = Alignment(horizontal=ALLINEAMENTI[allineamento])
+            larghezze_testo[col] = max(larghezze_testo[col], larghezza_mostrata(
+                valore, "" if stile["testo"] else formato, carattere or PREDEFINITO_EXCEL))
 
     #Larghezza delle colonne: quella scritta nel .gui, altrimenti adatta al testo più lungo
-    column_widths = []
-    for row in sheet1.iter_rows():
-        for n, cell in enumerate(row):
-            larghezza = len(str(cell.value)) if cell.value is not None else 0
-            if n < len(column_widths):
-                column_widths[n] = max(column_widths[n], larghezza)
-            else:
-                column_widths.append(larghezza)
-    for n, column_width in enumerate(column_widths):
-        larghezza = larghezze_fisse[n] if n in larghezze_fisse else column_width + 2
-        sheet1.column_dimensions[get_column_letter(n + 1)].width = larghezza
+    for n, larghezza in enumerate(larghezze_testo):
+        sheet1.column_dimensions[get_column_letter(n + 1)].width = larghezze_fisse.get(n, larghezza)
 
     # Salva il file Excel
     wb.save(config["cartella_output"] + os.sep + guida[2].replace("\n", ""))
