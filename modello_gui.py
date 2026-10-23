@@ -297,7 +297,8 @@ def valore_excel(testo, codice):
         if codice in CODICI_NUMERO:
             #Numeri all'italiana: 1.234,56 -> 1234.56 (i punti delle migliaia si tolgono)
             numero = testo.replace("€", "").replace("%", "").strip()
-            if "," in numero:
+            # Con la virgola, o con più punti (1.000.000), i punti sono le migliaia
+            if "," in numero or numero.count(".") > 1:
                 numero = numero.replace(".", "").replace(",", ".")
             valore = float(numero)
             if codice in [9, 10] and "%" in testo:

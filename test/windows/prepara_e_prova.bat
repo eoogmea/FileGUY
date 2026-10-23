@@ -28,7 +28,7 @@ if errorlevel 1 (
 )
 
 set ESITO=0
-for %%T in (test_windows test_moduli test_editor_modelli test_editor_excel) do (
+for %%T in (test_windows test_moduli test_editor_modelli test_editor_excel test_excel_resa) do (
     echo.
     echo === test\%%T.py ===
     python -W ignore test\%%T.py || set ESITO=1
