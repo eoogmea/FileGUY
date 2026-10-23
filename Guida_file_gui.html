@@ -206,7 +206,10 @@ gestionale</a>.</div>
 <h3>Il file di testo</h3>
 <p><strong>PDF e Word</strong>: il testo così com'è, una riga del documento per ogni riga del file. Le colonne si
 mantengono se si usano caratteri a larghezza fissa (Courier, Consolas…). Su una pagina A4 verticale stanno 44
-righe (29 in orizzontale): poi il servizio passa da solo alla pagina successiva.</p>
+righe (29 in orizzontale): poi il servizio passa da solo alla pagina successiva. Il <strong>salto
+pagina</strong> (carattere <code>\f</code>, codice 12, quello che i gestionali mandano alla stampante tra una
+pagina e l'altra) fa iniziare una pagina nuova: così un file con più fatture diventa un PDF (o un Word) con una
+fattura per pagina. I salti pagina all'inizio e alla fine del file non creano pagine vuote.</p>
 <p><strong>Excel</strong>: una riga del foglio per ogni riga del file, con i campi separati da <code>;</code>.
 Ogni campo <strong>finisce</strong> con <code>;</code>, anche l'ultimo (il testo dopo l'ultimo <code>;</code> non
 è un campo):</p>
@@ -238,7 +241,8 @@ in allegato la fattura.</pre>
 <p>La linea 8 vale per la prima riga del testo, la 9 per la seconda e così via, nell'ordine. Ogni linea comincia
 con il numero della riga su tre cifre (serve a chi legge: il servizio usa l'ordine), poi un
 <strong>tabulatore</strong> e il codice. Se il testo ha più righe delle linee di formato si riparte dalla prima
-linea (utile per documenti di più pagine tutte uguali).</p>
+linea (utile per documenti di più pagine tutte uguali). Dopo ogni salto pagina (<code>\f</code>) si riparte
+sempre dalla prima linea: basta formattare la prima pagina, anche se le pagine hanno lunghezze diverse.</p>
 <pre>001                 <span class="c">nessun codice: la riga tiene il formato della riga precedente</span>
 002&lt;TAB&gt;tsn14       <span class="c">tutta la riga con un formato</span>
 003&lt;TAB&gt;cnn10 00 09&lt;TAB&gt;csn10r 09 20&lt;TAB&gt;cnn10 20 41

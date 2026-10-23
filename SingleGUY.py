@@ -48,6 +48,7 @@ from stampa_pdf import stampa_pdf
 from docx import Document
 from docx.shared import RGBColor
 from docx.enum.style import WD_STYLE_TYPE
+from docx.enum.text import WD_BREAK
 from docx.shared import Pt, Cm
 
 # EXCEL
@@ -342,6 +343,30 @@ def con_fine(guida):
     return list(guida) + ["fine\n"]
 
 
+#Al posto di una riga del testo: qui c'è un salto pagina
+SALTO_PAGINA = object()
+
+
+def righe_e_salti(content):
+    """Le righe del testo, con SALTO_PAGINA dove c'è un salto pagina (\\f, il carattere che il
+    gestionale manda alla stampante tra una pagina e l'altra, per esempio tra due fatture).
+    Il \\f non è una riga: quella che resta vuota togliendolo si salta. I salti all'inizio e alla
+    fine si ignorano, così non escono pagine vuote."""
+    risultato = []
+    for riga in content:
+        pezzi = riga.split("\f")
+        for n, pezzo in enumerate(pezzi):
+            if n > 0:
+                risultato.append(SALTO_PAGINA)
+            if len(pezzi) == 1 or pezzo.strip("\n") != "":
+                risultato.append(pezzo)
+    while risultato and risultato[0] is SALTO_PAGINA:
+        risultato.pop(0)
+    while risultato and risultato[-1] is SALTO_PAGINA:
+        risultato.pop()
+    return risultato
+
+
 def pdf(guida, config):
     guida = con_fine(guida)
 
@@ -383,7 +408,14 @@ def pdf(guida, config):
     codice = "tnn10"
     #For praticamente identico a quello della funzione word
     #vedi nota lì
-    for x in content:
+    for x in righe_e_salti(content):
+        #Salto pagina: pagina nuova e i formati ripartono dalla prima linea, così basta
+        #formattare la prima pagina (es. un file con più fatture)
+        if x is SALTO_PAGINA:
+            pdf.add_page()
+            i = linea_inizio_format_pdf
+            index = 0
+            continue
         arrcodici = []
         riga = x
         car1prec = 0
@@ -558,7 +590,13 @@ def docx(guida, config):
     #per ogni linea del file di testo va a leggere la corrispondente linea del file guida
     #se è presente applica una formattazione
     #aggiunge linea per linea il testo al documento Word
-    for x in content:
+    for x in righe_e_salti(content):
+        #Salto pagina, come nel pdf (il carattere \f nel Word non è ammesso)
+        if x is SALTO_PAGINA:
+            par.add_run().add_break(WD_BREAK.PAGE)
+            i = linea_inizio_format_pdf
+            index = 0
+            continue
         riga = x
         car1prec = 0
         arrcodici = []

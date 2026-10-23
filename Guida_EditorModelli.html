@@ -598,7 +598,8 @@ una cella.</p>
   <tr><td><strong>Carattere delle celle</strong></td><td>Carattere, dimensione, grassetto, corsivo e colore delle
       celle della colonna. Nelle righe speciali che hanno un carattere proprio vale quello della riga.</td></tr>
   <tr><td><strong>Larghezza</strong></td><td>In caratteri, da 1 a 255. Se la lasci vuota, la colonna si adatta al
-      testo più lungo.</td></tr>
+      testo più lungo così come viene mostrato (con punti delle migliaia, €, carattere grande o grassetto), per
+      non avere ### al posto dei numeri.</td></tr>
   <tr><td><strong>Allineamento</strong></td><td>Sinistra, centro o destra. Con <em>automatico</em> fa come Excel:
       numeri e date a destra, testo a sinistra.</td></tr>
 </table></div>
@@ -676,6 +677,11 @@ formato predefinito. Gli invii per email, Telegram e WhatsApp si impostano come 
       testo oltre l'ultimo pezzo formattato prende il formato di quel pezzo.</li>
   <li><strong>PDF su più pagine.</strong> Le righe che non stanno in una pagina passano alla successiva, sempre
       sullo stesso template.</li>
+  <li><strong>Più fatture in un file.</strong> Se il gestionale separa le pagine con il <em>salto pagina</em> (il
+      carattere che manda alla stampante tra una pagina e l'altra), ogni pagina del testo diventa una pagina del
+      PDF o del Word e i formati ripartono dalla prima riga: basta formattare la prima pagina e le altre la
+      copiano. I formati seguono il numero di riga, quindi le pagine devono avere la stessa struttura; una pagina
+      più corta non sposta quelle dopo.</li>
   <li><strong>Excel.</strong> I modelli Excel si preparano solo con EditorExcel: hanno un formato per ogni
       colonna più le righe speciali, invece di una linea di formato per ogni riga del testo.</li>
 </ul>

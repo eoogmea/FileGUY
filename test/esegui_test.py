@@ -66,6 +66,52 @@ FORMATI_DOCX = [
 ]
 
 
+# Tre fatture con il salto pagina (\f, anche in fondo e attaccato alla riga come nei file del gestionale);
+# la seconda ha 2 righe in meno: la terza deve comunque ripartire dal primo formato
+TESTO_PIU_FATTURE = ("\n".join(r.replace("123", "101") for r in TESTO_PDF) + "\n\f\n" +
+                     "\n".join(r.replace("123", "102") for r in TESTO_PDF[:5]) + "\f\n" +
+                     "\n".join(r.replace("123", "103") for r in TESTO_PDF) + "\n\f")
+W_RUN = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r"
+
+
+def controlla_piu_fatture_pdf(nome):
+    """3 pagine, una fattura per pagina, e su ogni pagina la prima riga in Times grassetto 14 (tsn14)."""
+    def controllo(config):
+        errori = []
+        with pymupdf.open(os.path.join(config["cartella_output"], nome)) as doc:
+            if doc.page_count != 3:
+                errori.append("%d pagine invece di 3" % doc.page_count)
+            for n, pagina in enumerate(doc):
+                if "Fattura n. %d" % (101 + n) not in pagina.get_text():
+                    errori.append("pagina %d: manca la fattura %d" % (n + 1, 101 + n))
+                parti = [s for b in pagina.get_text("dict")["blocks"] for l in b.get("lines", [])
+                         for s in l["spans"] if s["text"].strip()]
+                prima = next((s for s in parti if "INFAS" in s["text"]), None)
+                if prima is None or round(prima["size"]) != 14 or "Bold" not in prima["font"]:
+                    errori.append("pagina %d: prima riga %r invece di Times grassetto 14" % (
+                        n + 1, prima and (prima["font"], round(prima["size"]))))
+        return errori
+    return controllo
+
+
+def controlla_piu_fatture_docx(nome):
+    """2 salti pagina nel Word e la prima riga di ogni fattura in grassetto 14."""
+    def controllo(config):
+        from docx import Document
+        from docx.text.run import Run
+        corpo = Document(os.path.join(config["cartella_output"], nome)).element.body
+        errori = []
+        salti = corpo.xml.count('w:type="page"')
+        if salti != 2:
+            errori.append("%d salti pagina nel Word invece di 2" % salti)
+        prime = [Run(r, None) for r in corpo.iter(W_RUN) if Run(r, None).text.startswith("INFAS")]
+        if len(prime) != 3 or any(not r.font.bold or r.font.size.pt != 14 for r in prime):
+            errori.append("prime righe delle fatture: %r" % [(r.text, r.font.bold, r.font.size and r.font.size.pt)
+                                                              for r in prime])
+        return errori
+    return controllo
+
+
 def gui(testo, azione, uscita, template="", rotazione="0", invio="0", destinatario="",
         formati=None, coda=None):
     righe = [testo, azione, uscita, template, rotazione, invio, destinatario]
@@ -129,6 +175,14 @@ def casi(modelli=None):
          txt=testo_lungo, uscite=["pdf_piu_pagine_senza_template.pdf"],
          controllo=testo_pdf("pdf_piu_pagine_senza_template.pdf", "numero 1 ", "numero 61 ", "numero 120 ",
                              pagine=3))
+    # Più fatture in un file, separate dal salto pagina (\f) come le manda il gestionale alla stampante:
+    # ogni fattura su una pagina nuova e con i formati della prima pagina (la seconda è più corta)
+    caso("pdf_piu_fatture", gui("pdf_piu_fatture.txt", "file", "pdf_piu_fatture.pdf", "modello.pdf"),
+         txt=TESTO_PIU_FATTURE, uscite=["pdf_piu_fatture.pdf"],
+         controllo=controlla_piu_fatture_pdf("pdf_piu_fatture.pdf"))
+    caso("docx_piu_fatture", gui("docx_piu_fatture.txt", "docx", "docx_piu_fatture.docx", formati=FORMATI_DOCX),
+         txt=TESTO_PIU_FATTURE, uscite=["docx_piu_fatture.docx"],
+         controllo=controlla_piu_fatture_docx("docx_piu_fatture.docx"))
     caso("file", gui("file.txt", "file", "file.pdf", "modello.pdf"), uscite=["file.pdf"])
     caso("stampa", gui("stampa.txt", "stampa", "stampa.pdf", "modello.pdf"),
          uscite=["stampa.pdf"], chiamate=["stampa_pdf"])
