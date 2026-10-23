@@ -38,6 +38,8 @@ CAMPI = {
     # Firma in fondo a ogni email: testo (anche su più righe) e immagine (logo, firma scansionata)
     "email_firma": "",
     "email_firma_immagine": "",
+    # "1" = la firma è scritta in HTML (tag come <b>, <a href>, <table>) e va nell'email così com'è
+    "email_firma_html": "",
     "telegram_token": "",
     "whatsapp_token": "",
     "whatsapp_phone_number_id": "",

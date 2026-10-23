@@ -653,9 +653,7 @@ def applica(percorso_modello, file_testo, cartella_lavoro):
     """
     intestazione, linee = leggi_gui(percorso_modello)
     nome = os.path.splitext(os.path.basename(file_testo))[0]
-    intestazione = {k: (v.replace(SEGNAPOSTO, nome) if isinstance(v, str) else [r.replace(SEGNAPOSTO, nome)
-                                                                                   for r in v])
-                    for k, v in intestazione.items()}
+    intestazione = _con_nome(intestazione, nome)
     intestazione["testo"] = nome + ".txt"
     destinazione_testo = os.path.join(cartella_lavoro, nome + ".txt")
     if os.path.normcase(os.path.abspath(file_testo)) != os.path.normcase(os.path.abspath(destinazione_testo)):
@@ -666,6 +664,32 @@ def applica(percorso_modello, file_testo, cartella_lavoro):
     # Prima il testo e poi il .gui: il programma parte solo quando trova il .gui
     percorso_gui = os.path.join(cartella_lavoro, nome + ".gui")
     scrivi_gui(percorso_gui, intestazione, linee)
+    return percorso_gui
+
+
+def _con_nome(intestazione, nome):
+    """L'intestazione con nome al posto di {nome}."""
+    return {k: (v.replace(SEGNAPOSTO, nome) if isinstance(v, str) else [r.replace(SEGNAPOSTO, nome) for r in v])
+            for k, v in intestazione.items()}
+
+
+def applica_solo_invio(percorso_modello, cartella_lavoro):
+    """Mette nella cartella di lavoro un modello di solo invio (niente testo né documento): il servizio
+    lo elabora da solo, senza .txt. {nome} diventa il nome del modello; se nella cartella c'è già un
+    file con quel nome si usa nome_2, nome_3... Restituisce il percorso del .gui creato."""
+    intestazione, linee = leggi_gui(percorso_modello)
+    base = os.path.splitext(os.path.basename(percorso_modello))[0]
+    nome, n = base, 1
+    while any(os.path.exists(os.path.join(cartella_lavoro, nome + e)) for e in (".gui", ".txt", ".tmp")):
+        n += 1
+        nome = "%s_%d" % (base, n)
+    intestazione = _con_nome(intestazione, nome)
+    intestazione["testo"] = ""
+    # Scritto con un altro nome e poi rinominato: il servizio non deve leggere un .gui a metà
+    temporaneo = os.path.join(cartella_lavoro, nome + ".tmp")
+    percorso_gui = os.path.join(cartella_lavoro, nome + ".gui")
+    scrivi_gui(temporaneo, intestazione, linee)
+    os.replace(temporaneo, percorso_gui)
     return percorso_gui
 
 

@@ -20,6 +20,8 @@ righello delle colonne, modelli recenti e zoom.
 File > Barcode su un PDF: crea i .gui "barcode" (barcode da mettere su un PDF che c'è già),
 disegnandone la posizione sulla pagina.
 Il campo Documento creato vuoto = il modello non crea documenti e fa solo l'invio.
+File > Nuovo modello solo invio: un modello senza testo di esempio, che non crea documenti e manda solo
+email, Telegram o WhatsApp (con file già presenti sul computer); il servizio lo elabora anche senza .txt.
 La guida completa è Guida_EditorModelli.html (menu Aiuto, F1).
 """
 import base64
@@ -35,7 +37,8 @@ from tkinter import filedialog, messagebox, ttk
 
 import modello_gui
 from config_sicuro import carica_config
-from piattaforma import apri_file, avvia_finestra, cartella_utente, console_sicura, leggi_testo, registra_font
+from piattaforma import (SCALA_FINESTRE, apri_file, avvia_finestra, cartella_utente, console_sicura, leggi_testo,
+                         registra_font, scala_finestra)
 
 # L'exe dell'editor non ha la console: i messaggi scritti su stdout/stderr (es. gli avvisi di
 # PyPDF2 nell'anteprima con un template) farebbero fallire l'operazione
@@ -90,14 +93,26 @@ def proposta_salvataggio(percorso_modello, percorso_testo, cartella_modelli):
 def dimensiona(finestra, larghezza, altezza, minima=None):
     """Dimensione iniziale della finestra: quella indicata, ma al massimo l'85% dello schermo
     (sui portatili e con lo zoom di Windows lo schermo è piccolo). La finestra va al centro,
-    un po' in alto per lasciare posto alla barra delle applicazioni."""
+    un po' in alto per lasciare posto alla barra delle applicazioni. Su Linux le misure si riducono
+    come i caratteri (SCALA_FINESTRE)."""
     schermo_x, schermo_y = finestra.winfo_screenwidth(), finestra.winfo_screenheight()
+    larghezza, altezza = int(larghezza * SCALA_FINESTRE), int(altezza * SCALA_FINESTRE)
+    if minima:
+        minima = (int(minima[0] * SCALA_FINESTRE), int(minima[1] * SCALA_FINESTRE))
     larghezza = min(larghezza, int(schermo_x * 0.85))
     altezza = min(altezza, int(schermo_y * 0.85))
     finestra.geometry("%dx%d+%d+%d" % (larghezza, altezza, max(0, (schermo_x - larghezza) // 2),
                                        max(0, (schermo_y - altezza) // 3)))
     if minima:
         finestra.minsize(min(minima[0], larghezza), min(minima[1], altezza))
+
+
+# Al posto del testo di esempio in un modello di solo invio
+TESTO_SOLO_INVIO = ("Modello di solo invio: non crea documenti e non ha un testo di esempio.\n\n"
+                    "Scegli in alto il canale (email, Telegram o WhatsApp), il destinatario e cosa mandare: "
+                    "testo, allegati o file che ci sono già sul computer (con il percorso completo).\n\n"
+                    "Salvato, il .gui funziona anche da solo nella cartella di lavoro, senza il .txt: "
+                    "il servizio fa l'invio e lo cancella.")
 
 
 # Se un font non è installato (es. Consolas o Calibri su Linux) l'editor mostra quello che il servizio usa al
@@ -302,6 +317,7 @@ def chiedi_numeri(genitore, titolo, spiegazione, campi):
 class EditorModelli(tk.Tk):
     def __init__(self):
         super().__init__()
+        scala_finestra(self)
         dimensiona(self, 1060, 680, minima=(820, 460))
         try:
             self.config_servizio = carica_config()
@@ -310,6 +326,8 @@ class EditorModelli(tk.Tk):
         self.percorso_modello = None
         self.percorso_testo = None
         self.righe = []
+        # Modello di solo invio: niente testo di esempio e niente documento
+        self.solo_invio = False
         self.modificato = False
         # Il testo di esempio è stato cambiato nell'editor (va scritto al salvataggio)
         self.testo_cambiato = False
@@ -356,6 +374,7 @@ class EditorModelli(tk.Tk):
         file = tk.Menu(menu, tearoff=False)
         file.add_command(label="Nuovo da testo di esempio...", command=self.nuovo, accelerator="Ctrl+N")
         file.add_command(label="Nuovo da testo con segnaposto x...", command=self.nuovo_segnaposto)
+        file.add_command(label="Nuovo modello solo invio (senza testo)...", command=self.nuovo_solo_invio)
         file.add_command(label="Apri modello...", command=self.apri, accelerator="Ctrl+O")
         self.menu_recenti = tk.Menu(file, tearoff=False, postcommand=self._elenca_recenti)
         file.add_cascade(label="Modelli recenti", menu=self.menu_recenti)
@@ -433,8 +452,8 @@ class EditorModelli(tk.Tk):
         self.scelta_rotazione.grid(row=0, column=7, sticky="w")
 
         ttk.Label(riquadro, text="Documento creato").grid(row=1, column=0, sticky="w", pady=(4, 0))
-        ttk.Entry(riquadro, textvariable=self.uscita, width=24).grid(row=1, column=1, columnspan=3, sticky="we",
-                                                                     pady=(4, 0))
+        self.campo_uscita = ttk.Entry(riquadro, textvariable=self.uscita, width=24)
+        self.campo_uscita.grid(row=1, column=1, columnspan=3, sticky="we", pady=(4, 0))
         ttk.Label(riquadro, text="Invio").grid(row=1, column=4, sticky="w", padx=(16, 4), pady=(4, 0))
         SceltaDescritta(riquadro, self.invio, modello_gui.DESCRIZIONI_INVII, width=12).grid(row=1, column=5, sticky="w", pady=(4, 0))
         self.etichetta_destinatario = ttk.Label(riquadro, text="Destinatario")
@@ -1005,6 +1024,8 @@ class EditorModelli(tk.Tk):
 
     def _tasto(self, evento):
         # Senza la spunta "Modifica testo" passano solo spostamenti, selezione e copia
+        if self.solo_invio and evento.keysym not in TASTI_MOVIMENTO:
+            return "break"
         if self.modifica_testo.get() or evento.keysym in TASTI_MOVIMENTO:
             return None
         if evento.state & 0x4 and evento.keysym.lower() in TASTI_CONTROL:
@@ -1141,9 +1162,10 @@ class EditorModelli(tk.Tk):
         self.scelta_azione.imposta_scelte({a: modello_gui.DESCRIZIONI_AZIONI[a] for a in azioni})
         if self.azione.get() not in self.scelta_azione.codici():
             self.azione.set("docx" if word else "file")
-        stato = "disabled" if word else "normal"
+        # Senza documento (solo invio) template e rotazione non servono
+        stato = "disabled" if word or self.solo_invio else "normal"
         self.scelta_template.configure(state=stato)
-        self.scelta_rotazione.configure(state="disabled" if word else "readonly")
+        self.scelta_rotazione.configure(state="disabled" if word or self.solo_invio else "readonly")
         uscita = self.uscita.get()
         if word and uscita.lower().endswith(".pdf"):
             self.uscita.set(uscita[:-4] + ".docx")
@@ -1203,11 +1225,39 @@ class EditorModelli(tk.Tk):
             return False
         self.percorso_testo = percorso
         self.percorso_modello = None
+        self._imposta_solo_invio(False)
         self._imposta_intestazione(modello_gui.nuovo_modello(self.word.get()))
         self._mostra_testo(self._leggi_testo(percorso))
         self.modificato = False
         self._aggiorna_titolo()
         return True
+
+    def nuovo_solo_invio(self):
+        """Nuovo modello che non crea documenti e fa solo l'invio (email, Telegram, WhatsApp, anche con
+        file che ci sono già sul computer): non serve un testo di esempio e il servizio lo elabora
+        anche senza .txt. False se si è rinunciato."""
+        if not self._conferma_perdita():
+            return False
+        self.percorso_testo = None
+        self.percorso_modello = None
+        intestazione = modello_gui.nuovo_modello(False)
+        intestazione.update(testo="", uscita="", invio="email")
+        self._imposta_solo_invio(True)
+        self._imposta_intestazione(intestazione)
+        self.modificato = False
+        self._aggiorna_titolo()
+        self._messaggio("Modello solo invio: scegli il canale, il destinatario e cosa mandare, poi salva")
+        return True
+
+    def _imposta_solo_invio(self, solo_invio):
+        """Passa al modello di solo invio (al posto del testo una spiegazione) o a quello normale."""
+        self.solo_invio = solo_invio
+        self.campo_uscita.configure(state="disabled" if solo_invio else "normal")
+        if solo_invio:
+            self._mostra_testo([])
+            self.testo.tag_configure("spiegazione", foreground="gray")
+            self.testo.insert("1.0", TESTO_SOLO_INVIO, "spiegazione")
+            self.testo.edit_modified(False)
 
     def apri(self):
         if not self._conferma_perdita():
@@ -1226,20 +1276,29 @@ class EditorModelli(tk.Tk):
             return
         if intestazione["azione"] == "barcode":
             return FinestraBarcode(self, percorso)
+        solo_invio = False
         if percorso_testo is None:
             # Il testo di esempio è salvato accanto al modello con lo stesso nome
             percorso_testo = os.path.splitext(percorso)[0] + ".txt"
-            if not os.path.isfile(percorso_testo):
+            if os.path.isfile(percorso_testo):
+                pass
+            elif not intestazione["uscita"].strip():
+                # Non crea documenti: è un modello di solo invio, il testo non serve
+                solo_invio = True
+                percorso_testo = None
+            else:
                 messagebox.showinfo("Testo di esempio", "Scegli un file di testo di esempio per questo modello.",
                                     parent=self)
                 percorso_testo = filedialog.askopenfilename(parent=self, title="Testo di esempio",
                                                             filetypes=[("File di testo", "*.txt")])
                 if not percorso_testo:
                     return
-        righe = self._leggi_testo(percorso_testo)
         email_aggiornata = modello_gui.aggiorna_email(intestazione)
+        self._imposta_solo_invio(solo_invio)
         self._imposta_intestazione(intestazione)
-        self._mostra_testo(righe, modello_gui.leggi_formati(linee, righe, self.word.get()))
+        if not solo_invio:
+            righe = self._leggi_testo(percorso_testo)
+            self._mostra_testo(righe, modello_gui.leggi_formati(linee, righe, self.word.get()))
         self.percorso_modello = percorso
         self.percorso_testo = percorso_testo
         # Un modello email di prima, portato al formato nuovo, va salvato
@@ -1257,10 +1316,15 @@ class EditorModelli(tk.Tk):
             return None
 
     def salva(self, con_nome=False):
-        if not self.righe:
+        if not self.righe and not self.solo_invio:
             self._messaggio("Prima apri un testo di esempio")
             return False
-        linee = self._linee_formato()
+        if self.solo_invio and self.invio.get() == "0":
+            messagebox.showerror("Salva", "Il modello non crea documenti: scegli un invio (email, Telegram o "
+                                 "WhatsApp).", parent=self)
+            return False
+        # Senza testo non ci sono formati: subito "fine" e poi i dati dell'invio
+        linee = ["fine"] if self.solo_invio else self._linee_formato()
         if linee is None:
             return False
         percorso = self.percorso_modello
@@ -1277,12 +1341,15 @@ class EditorModelli(tk.Tk):
                 "Salva", "Il campo Documento creato è vuoto e non c'è nessun invio: il modello non farà niente.\n"
                          "Salvare comunque?", parent=self):
             return False
-        # Nella prima riga il testo con lo stesso nome del modello (applicandolo diventa quello del file)
-        intestazione["testo"] = os.path.splitext(os.path.basename(percorso))[0] + ".txt"
+        # Nella prima riga il testo con lo stesso nome del modello (applicandolo diventa quello del file);
+        # vuota nel solo invio, che non ha testo
+        intestazione["testo"] = "" if self.solo_invio else os.path.splitext(os.path.basename(percorso))[0] + ".txt"
         modello_gui.scrivi_gui(percorso, intestazione, linee)
         # Copia del testo di esempio accanto al modello, per poterlo riaprire
         copia_testo = os.path.splitext(percorso)[0] + ".txt"
-        if self.testo_cambiato:
+        if self.solo_invio:
+            pass
+        elif self.testo_cambiato:
             # Testo modificato nell'editor: si salva quello, con la stessa codifica con cui si legge
             with open(copia_testo, "w", errors="replace") as f:
                 f.write("\n".join(self.righe))
@@ -1309,6 +1376,14 @@ class EditorModelli(tk.Tk):
         if not os.path.isdir(lavoro):
             messagebox.showerror("Applica", "Cartella di lavoro non trovata: imposta la configurazione con "
                                  "ConfigManager.py", parent=self)
+            return
+        if self.solo_invio:
+            # Niente testo: il .gui va da solo nella cartella di lavoro e il servizio fa l'invio
+            if not messagebox.askokcancel("Applica", "Il modello verrà copiato nella cartella di lavoro\n%s\n"
+                                          "e il servizio farà l'invio. Continuare?" % lavoro, parent=self):
+                return
+            creato = modello_gui.applica_solo_invio(self.percorso_modello, lavoro)
+            messagebox.showinfo("Applica", "Creato:\n" + os.path.basename(creato), parent=self)
             return
         file_testo = filedialog.askopenfilenames(parent=self, title="File di testo a cui applicare il modello",
                                                  filetypes=[("File di testo", "*.txt")])
@@ -1373,6 +1448,9 @@ class EditorModelli(tk.Tk):
         return os.path.join(cartella, "anteprima" + estensione)
 
     def anteprima(self):
+        if self.solo_invio:
+            self._messaggio("Il modello fa solo l'invio: non crea documenti da vedere")
+            return
         if not self.righe:
             self._messaggio("Prima apri un testo di esempio")
             return
@@ -1395,6 +1473,9 @@ class EditorModelli(tk.Tk):
             FinestraAnteprima(self, percorso)
 
     def filigrana(self):
+        if self.solo_invio:
+            self._messaggio("Il modello fa solo l'invio: non crea documenti da vedere")
+            return
         if not self.righe:
             self._messaggio("Prima apri un testo di esempio")
             return
@@ -1443,7 +1524,7 @@ class EditorModelli(tk.Tk):
     # --- Stato, titolo, chiusura -------------------------------------------
 
     def _segna_modificato(self):
-        if self.righe:
+        if self.righe or self.solo_invio:
             self.modificato = True
             self._aggiorna_titolo()
             self._programma_filigrana()
@@ -1732,11 +1813,20 @@ class PannelloInvio(ttk.Frame):
         campo.bind("<KeyRelease>", lambda e: self._aggiorna_anteprima())
         campo.bind("<FocusIn>", lambda e: self._attiva_campo(0))
         campo.bind("<FocusOut>", lambda e: self._attiva_campo(None))
+        ttk.Button(cornice, text="Scegli file...", command=self._scegli_documento).pack(side="left", padx=(6, 0))
         uscita = self.editor.uscita.get().strip()
-        ttk.Label(cornice, text="vuoto = il documento creato (%s)" % uscita if uscita else
-                  "vuoto = nessun documento (il modello non ne crea)", foreground="gray").pack(side="left",
-                                                                                                padx=(8, 0))
+        ttk.Label(cornice, text="vuoto = il documento creato (%s); un altro file con il percorso completo" % uscita
+                  if uscita else "vuoto = nessun documento; un file già sul computer con il percorso completo",
+                  foreground="gray").pack(side="left", padx=(8, 0))
         return riga + 1
+
+    def _scegli_documento(self):
+        """Un file che c'è già sul computer dove gira il servizio, da mandare al posto del documento creato."""
+        percorso = filedialog.askopenfilename(parent=self.winfo_toplevel(), title="File da mandare")
+        if percorso:
+            self.manda_documento.set(True)
+            self.documento.set(os.path.normpath(percorso))
+            self._aggiorna_anteprima()
 
     def _casella_testo(self, riga):
         self._etichetta(riga, "Testo")
@@ -2048,7 +2138,7 @@ class FinestraFiligrana(tk.Toplevel):
         super().__init__(editor)
         self.editor = editor
         self.title("Filigrana - " + os.path.basename(editor.percorso_modello or "nuovo modello"))
-        larghezza = min(720, int(self.winfo_screenwidth() * 0.45))
+        larghezza = min(int(720 * SCALA_FINESTRE), int(self.winfo_screenwidth() * 0.45))
         altezza = int(self.winfo_screenheight() * 0.85)
         # A destra dello schermo, per lasciare l'editor visibile
         self.geometry("%dx%d+%d+%d" % (larghezza, altezza, self.winfo_screenwidth() - larghezza - 20, 10))

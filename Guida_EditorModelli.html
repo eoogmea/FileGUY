@@ -425,7 +425,10 @@ campi puoi usare <code>{nome}</code>. EditorExcel ha gli stessi campi.</p>
 </ul>
 <p>Indirizzo del mittente e server di posta si impostano in ConfigManager, e lì anche la <strong>firma</strong>:
 un testo (anche su più righe) e un'immagine, per esempio il logo o una firma scansionata, che vanno in fondo a
-ogni email. Con immagini o firma l'email viene mandata in HTML, insieme alla versione solo testo.</p>
+ogni email. Con immagini o firma l'email viene mandata in HTML, insieme alla versione solo testo. Con la spunta
+<em>Firma scritta in HTML</em> il testo della firma è codice HTML (per esempio
+<code>&lt;b&gt;Mario Rossi&lt;/b&gt;&lt;br&gt;&lt;a href="https://..."&gt;sito&lt;/a&gt;</code>) e va nell'email
+così com'è; la versione solo testo si ricava togliendo i tag.</p>
 <div class="nota">Con Gmail la password da mettere in ConfigManager non è quella dell'account ma una
 <strong>password per le app</strong> (16 lettere): si crea nell'account Google, in Sicurezza, dopo aver attivato
 la verifica in due passaggi.</div>
@@ -438,14 +441,15 @@ in più; salvali per aggiornarli.</div>
   <li><strong>Chat Telegram</strong>: l'identificativo della chat, per esempio <code>123456789</code>.</li>
   <li><strong>Documento</strong>: con <em>Manda il documento</em> spuntato il bot manda anche un file; lascia il
       nome vuoto per mandare il documento creato, oppure scrivi il nome di un altro file della cartella di
-      output.</li>
+      output, o con <em>Scegli file…</em> un file che c'è già sul computer (percorso completo).</li>
   <li><strong>Testo</strong>: il messaggio.</li>
 </ul>
 
 <h3>WhatsApp</h3>
 <p>Nel campo <strong>Numero WhatsApp</strong> scrivi il numero con il prefisso internazionale, per esempio
 <code>393331234567</code> o <code>+39 333 1234567</code>. In <strong>Cosa mandare</strong> scegli:</p>
-<p><strong>Messaggio libero</strong>: il <em>Documento</em> (come per Telegram) e il <em>Testo</em>.</p>
+<p><strong>Messaggio libero</strong>: il <em>Documento</em> (come per Telegram) e il <em>Testo</em>. Le immagini
+JPEG e PNG arrivano come foto nella chat, gli altri file come documento.</p>
 <p><strong>Template approvato da Meta</strong>: un messaggio preparato su Meta, con dei valori da riempire. Scegli il
 template nella tendina (l'elenco si scarica da Meta la prima volta che scegli Template; <em>Scarica elenco</em> lo
 aggiorna) e la lingua. Sotto compaiono:</p>
@@ -537,6 +541,16 @@ stampa o lo spedisce) e infine cancella il testo e il <code>.gui</code> dalla ca
 <p>Lo stesso lavoro può farlo in automatico il programma che oggi prepara i <code>.gui</code>: basta che copi il
 modello e sostituisca <code>{nome}</code> con il nome del file di testo (vedi l'<a href="#tecnico">appendice
 tecnica</a>).</p>
+<h3 id="solo-invio">Modelli di solo invio, senza testo</h3>
+<p>Per mandare solo un'email, un messaggio Telegram o WhatsApp, senza creare documenti (per esempio un promemoria,
+oppure un file che c'è già sul computer), usa <strong>File &gt; Nuovo modello solo invio (senza testo)…</strong>:
+non serve un testo di esempio e il campo <em>Documento creato</em> resta vuoto. Scegli il canale, il destinatario
+e cosa mandare (testo, allegati, immagini, file con il percorso completo) e salva: il <code>.gui</code> ha la
+prima riga vuota e subito <code>fine</code>. Riaprendolo, se accanto non c'è un testo, l'editor lo riconosce da
+solo.</p>
+<p><em>Applica</em> su un modello di solo invio non chiede file di testo: copia il <code>.gui</code> nella cartella
+di lavoro (con <code>{nome}</code> sostituito dal nome del modello; se c'è già, con <code>_2</code>,
+<code>_3</code>…) e il servizio fa l'invio e lo cancella, anche senza <code>.txt</code>.</p>
 
 <h2 id="excel">12. I modelli Excel (EditorExcel)</h2>
 <p>Per i fogli Excel c'è un editor a parte, <strong>EditorExcel</strong>. Qui il file di testo non è un documento

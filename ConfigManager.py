@@ -9,14 +9,14 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import config_sicuro
 from config_sicuro import CAMPI, ConfigError
-from piattaforma import avvia_finestra, console_sicura
+from piattaforma import SCALA_FINESTRE, avvia_finestra, console_sicura, scala_finestra
 
 # Senza console (exe di ConfigManager) i messaggi su stdout/stderr farebbero fallire l'operazione
 console_sicura()
 
 
-# (campo, etichetta, tipo) - tipo: "cartella", "file", "immagine", "stampante", "segreto", "testo"
-# o "testo_lungo" (più righe)
+# (campo, etichetta, tipo) - tipo: "cartella", "file", "immagine", "stampante", "segreto", "testo",
+# "testo_lungo" (più righe) o "spunta" (valore "1" se spuntata, vuoto se no)
 SEZIONI = [
     ("Cartelle", [
         ("cartella_lavoro", "Cartella di lavoro (.txt e .gui)", "cartella"),
@@ -32,7 +32,8 @@ SEZIONI = [
         ("email_password", "Password (per Gmail: password per le app)", "segreto"),
         ("email_smtp_server", "Server SMTP (SSL)", "testo"),
         ("email_smtp_porta", "Porta SMTP", "testo"),
-        ("email_firma", "Firma in fondo a ogni email (testo)", "testo_lungo"),
+        ("email_firma", "Firma in fondo a ogni email", "testo_lungo"),
+        ("email_firma_html", "Firma scritta in HTML (es. <b>Nome</b><br><a href=\"...\">sito</a>)", "spunta"),
         ("email_firma_immagine", "Immagine della firma (logo, firma scansionata)", "immagine"),
     ]),
     ("Telegram", [
@@ -51,9 +52,10 @@ SEZIONI = [
 class ConfigManager(tk.Tk):
     def __init__(self):
         super().__init__()
+        scala_finestra(self)
         self.title("FileGUY - Configurazione")
         self.resizable(True, False)
-        self.minsize(640, 0)
+        self.minsize(int(640 * SCALA_FINESTRE), 0)
 
         self.variabili = {campo: tk.StringVar() for campo in CAMPI}
         self.tutto_il_pc = tk.BooleanVar(value=False)
@@ -101,6 +103,10 @@ class ConfigManager(tk.Tk):
         self.stato.grid(row=riga, column=0, sticky="w", pady=(8, 0))
 
     def _crea_campo(self, genitore, riga, campo, etichetta, tipo):
+        if tipo == "spunta":
+            ttk.Checkbutton(genitore, text=etichetta, variable=self.variabili[campo], onvalue="1",
+                            offvalue="").grid(row=riga, column=1, sticky="w", pady=2)
+            return
         ttk.Label(genitore, text=etichetta).grid(row=riga, column=0, sticky="w", padx=(0, 8), pady=2)
         if tipo == "stampante":
             # Si può anche scrivere il nome; l'elenco si legge solo quando si apre la tendina

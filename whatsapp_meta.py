@@ -15,6 +15,8 @@ import re
 import requests
 
 GRAPH_URL = "https://graph.facebook.com"
+# Le sole immagini che WhatsApp mostra nella chat (le altre si mandano come documento)
+TIPI_IMMAGINE = ("image/jpeg", "image/png")
 
 
 class WhatsAppError(Exception):
@@ -212,6 +214,13 @@ class WhatsApp:
         return self._invia(destinatario, "text", {"body": testo, "preview_url": False})
 
     def invia_documento(self, destinatario, percorso, didascalia=""):
+        """Manda un file. Le immagini JPEG e PNG si mandano come immagine (si vedono nella chat),
+        gli altri file come documento."""
+        if mimetypes.guess_type(percorso)[0] in TIPI_IMMAGINE:
+            immagine = {"id": self.carica_media(percorso)}
+            if didascalia != "":
+                immagine["caption"] = didascalia
+            return self._invia(destinatario, "image", immagine)
         documento = {"id": self.carica_media(percorso), "filename": os.path.basename(percorso)}
         if didascalia != "":
             documento["caption"] = didascalia

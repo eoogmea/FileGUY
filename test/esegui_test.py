@@ -176,6 +176,20 @@ def casi(modelli=None):
                               coda=["", "Solo il messaggio"]),
          chiamate=["wa_testo"],
          controllo=lambda config: [] if "wa_documento" not in [n for n, _ in chiamate] else ["mandato un documento"])
+    # .gui di solo invio senza .txt (prima riga vuota): il servizio lo elabora da solo; Telegram e
+    # WhatsApp mandano un file che c'è già sul computer (percorso completo)
+    caso("gui_solo_email", gui("", "file", "", invio="email", destinatario="cliente@example.com", formati=["fine"],
+                               coda=["Senza testo", "allegato: @ALLEGATO2@", "", "Messaggio"]),
+         txt=None, chiamate=["smtp_sendmail"],
+         controllo=lambda config: controlla_email("Senza testo", ["allegato2.txt"], "Messaggio"))
+    caso("gui_solo_telegram", gui("", "file", "", invio="telegram", destinatario="123456789", formati=["fine"],
+                                  coda=["@ALLEGATO2@", "Il listino"]),
+         txt=None, chiamate=["tg_sendMessage", "tg_sendDocument"])
+    caso("gui_solo_whatsapp", gui("", "file", "", invio="whatsapp", destinatario="393331234567", formati=["fine"],
+                                  coda=["@ALLEGATO2@", "Il listino"]),
+         txt=None, chiamate=["wa_testo", "wa_documento"],
+         controllo=lambda config: [] if [d[2] for n, d in chiamate if n == "wa_documento"] == [True]
+         else ["documento non trovato: %r" % chiamate])
     # Senza linee di formato (subito "fine") le righe dell'invio non vanno lette come formati
     caso("pdf_solo_fine_email", gui("pdf_solo_fine_email.txt", "file", "pdf_solo_fine_email.pdf", invio="email",
                                     destinatario="cliente@example.com", formati=["fine"],

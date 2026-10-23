@@ -855,6 +855,101 @@ def finestra_barcode():
         app.destroy()
 
 
+@prova
+def finestra_solo_invio_senza_testo():
+    """Modello di solo invio senza testo di esempio: salvataggio, riapertura, applica e servizio senza .txt."""
+    import EditorModelli
+    from tkinter import filedialog, messagebox
+    lavoro = os.path.join(cartella, "lavoro_solo_invio")
+    os.makedirs(lavoro)
+    allegato = os.path.join(cartella, "listino.txt")
+    with open(allegato, "w") as f:
+        f.write("listino\n")
+    percorso = os.path.join(cartella, "modelli_solo", "promemoria.gui")
+    os.makedirs(os.path.dirname(percorso))
+    filedialog.asksaveasfilename = lambda *a, **k: percorso
+    filedialog.askopenfilename = lambda *a, **k: allegato
+    messaggi = []
+    for nome in ("showinfo", "showerror"):
+        setattr(messagebox, nome, lambda titolo, testo, _n=nome, **k: messaggi.append((_n, testo)))
+    messagebox.askokcancel = lambda *a, **k: True
+    app = EditorModelli.EditorModelli()
+    app.config_servizio = {"cartella_lavoro": lavoro, "cartella_template": CARTELLA_TEMPLATE,
+                           "cartella_output": lavoro}
+    try:
+        assert app.nuovo_solo_invio() and app.solo_invio and app.invio.get() == "email"
+        assert str(app.campo_uscita.cget("state")) == "disabled"
+        app.destinatario.set("cliente@example.com")
+        app.pannello.oggetto.set("Promemoria {nome}")
+        app.pannello.allegati.append(allegato)
+        app.pannello.ricostruisci()
+        app.pannello.casella_testo.insert("1.0", "Buongiorno")
+        assert app.modificato
+        assert app.salva(), messaggi
+        assert not os.path.exists(os.path.splitext(percorso)[0] + ".txt")
+        with open(percorso) as f:
+            righe = f.read().split("\n")
+        assert righe[:8] == ["", "file", "", "", "0", "email", "cliente@example.com", "fine"], righe
+        assert righe[8:12] == ["Promemoria {nome}", "allegato: " + allegato, "", "Buongiorno"], righe
+        # Riaperto senza .txt accanto: torna solo invio, senza chiedere il testo
+        app.nuovo_solo_invio()
+        app.invio.set("telegram")
+        app.destinatario.set("123")
+        app.pannello._scegli_documento()
+        assert app.pannello.righe()[0] == os.path.normpath(allegato), app.pannello.righe()
+        app.modificato = False
+        app.apri_modello(percorso)
+        assert app.solo_invio and app.pannello.allegati == [allegato] and app.destinatario.get() == "cliente@example.com"
+        # Senza invio non si salva
+        app.invio.set("0")
+        assert not app.salva() and messaggi[-1][0] == "showerror"
+        app.invio.set("email")
+        # Applica: il .gui da solo nella cartella di lavoro, due volte con nomi diversi
+        app.applica()
+        app.applica()
+        assert sorted(os.listdir(lavoro)) == ["promemoria.gui", "promemoria_2.gui"], os.listdir(lavoro)
+        # Il servizio lo elabora senza .txt e poi lo cancella
+        inviate = []
+
+        class FintoSMTP:
+            def __init__(self, *a, **k):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def login(self, *a):
+                pass
+
+            def sendmail(self, da, a, testo):
+                inviate.append((a, testo))
+        modulo = servizio()
+        smtp_originale = modulo.smtplib
+        modulo.smtplib = type("smtplib", (), {"SMTP_SSL": FintoSMTP, "SMTPAuthenticationError": Exception,
+                                              "SMTPServerDisconnected": Exception})
+        try:
+            config = dict(app.config_servizio, email_mittente="prova@example.com", email_password="x",
+                          email_smtp_server="smtp.example.com", email_smtp_porta="465")
+            modulo.main("promemoria.gui", config)
+        finally:
+            modulo.smtplib = smtp_originale
+        assert os.listdir(lavoro) == ["promemoria_2.gui"], os.listdir(lavoro)
+        assert len(inviate) == 1 and inviate[0][0] == "cliente@example.com"
+        assert "Subject: Promemoria promemoria" in inviate[0][1] and 'filename="listino.txt"' in inviate[0][1]
+        # Un .gui che crea un documento aspetta il suo .txt
+        intestazione = modello_gui.nuovo_modello(False)
+        intestazione.update(testo="fattura.txt", uscita="fattura.pdf")
+        modello_gui.scrivi_gui(os.path.join(lavoro, "fattura.gui"), intestazione, ["fine"])
+        modulo.main("fattura.gui", config)
+        assert os.path.isfile(os.path.join(lavoro, "fattura.gui"))
+    finally:
+        app.modificato = False
+        app.destroy()
+
+
 shutil.rmtree(cartella, ignore_errors=True)
 for nome, errore in risultati:
     print("[%s] %s" % ("OK " if errore is None else "ERR", nome))

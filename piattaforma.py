@@ -57,6 +57,26 @@ def errori_in_finestra(finestra):
     finestra.report_callback_exception = mostra
 
 
+# Su Linux le finestre di Tk vengono più grandi che su Windows (caratteri e controlli): si riducono all'80%
+SCALA_FINESTRE = 1.0 if WINDOWS or MACOS else 0.8
+
+
+def scala_finestra(finestra, scala=None):
+    """Riduce caratteri e controlli di tutto il programma secondo SCALA_FINESTRE. Va chiamata subito
+    dopo tk.Tk(), prima di creare i controlli. I caratteri in punti seguono "tk scaling"; quelli di
+    sistema di Linux (TkDefaultFont...) sono in pixel (dimensione negativa) e si riducono a parte."""
+    scala = SCALA_FINESTRE if scala is None else scala
+    if scala == 1.0:
+        return
+    from tkinter import font
+    finestra.tk.call("tk", "scaling", float(finestra.tk.call("tk", "scaling")) * scala)
+    for nome in font.names(finestra):
+        carattere = font.nametofont(nome, root=finestra)
+        dimensione = int(carattere.cget("size"))
+        if dimensione < 0:
+            carattere.configure(size=min(-1, round(dimensione * scala)))
+
+
 def avvia_finestra(crea, *argomenti):
     """Crea la finestra principale e la fa girare; se non si può aprire (es. Linux senza schermo
     grafico) lo dice in una riga, senza traceback, ed esce con codice 1."""

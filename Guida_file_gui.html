@@ -326,17 +326,18 @@ su più righe.</pre>
       allegati.</li>
   <li>La <strong>firma</strong> (testo e immagine, per esempio il logo o una firma scansionata) si imposta una
       volta sola in ConfigManager e va in fondo a ogni email. Con immagini o firma l'email è in HTML, con la
-      versione solo testo per i programmi che non mostrano l'HTML.</li>
+      versione solo testo per i programmi che non mostrano l'HTML. Con la spunta <em>Firma scritta in HTML</em>
+      la firma è codice HTML e va nell'email così com'è.</li>
   <li>Un allegato o un'immagine che non esiste blocca quell'email (errore nel log); un'immagine della firma che
       non esiste no: l'email parte senza e nel log c'è un avviso.</li>
 </ul>
 
 <h3>Telegram</h3>
-<pre>FT_2026_123.pdf             <span class="c">documento da mandare: nome nella cartella di output; riga vuota = nessuno</span>
+<pre>FT_2026_123.pdf             <span class="c">documento da mandare: nome nella cartella di output, o percorso completo di un file già sul computer; riga vuota = nessuno</span>
 Ecco la fattura             <span class="c">testo del messaggio, anche su più righe</span></pre>
 
 <h3>WhatsApp, messaggio libero</h3>
-<pre>FT_2026_123.pdf             <span class="c">documento: nome nella cartella di output; riga vuota = nessuno</span>
+<pre>FT_2026_123.pdf             <span class="c">documento: nome nella cartella di output o percorso completo; riga vuota = nessuno (jpg e png arrivano come foto)</span>
 Buongiorno,                 <span class="c">testo del messaggio</span>
 in allegato la fattura.</pre>
 <div class="nota">Regola di Meta: un messaggio libero arriva solo se il destinatario ha scritto al numero
@@ -352,8 +353,14 @@ FT 2026/123                 <span class="c">valore di {{2}}, e così via (le rig
 
 <h2 id="solo-invio">7. Solo invio, senza documento</h2>
 <p>Con la riga 3 <strong>vuota</strong> il servizio non crea nessun documento e fa solo l'invio: per esempio un
-promemoria di pagamento per email o un avviso su WhatsApp. Il file di testo serve comunque (è quello che fa partire
-l'elaborazione) ma il suo contenuto non viene usato; le linee di formato possono essere solo <code>fine</code>.</p>
+promemoria di pagamento per email o un avviso su WhatsApp. Il contenuto del file di testo non viene usato; le linee
+di formato possono essere solo <code>fine</code>.</p>
+<p>Il file di testo <strong>non serve</strong>: un <code>.gui</code> di solo invio da solo nella cartella di lavoro
+viene elaborato e cancellato, se il suo testo non c'è (prima riga vuota, oppure il file indicato e quello con lo
+stesso nome del <code>.gui</code> non esistono). Se il <code>.txt</code> c'è, si usa come sempre la coppia. Conviene
+scrivere il <code>.gui</code> con un altro nome (es. <code>.tmp</code>) e poi rinominarlo, così il servizio non lo
+legge a metà. Un <code>.gui</code> che crea un documento invece aspetta sempre il suo <code>.txt</code>.</p>
+<p>Nell'esempio qui sotto la prima riga (<code>promemoria_4711.txt</code>) può anche restare vuota.</p>
 <pre>promemoria_4711.txt
 file
 

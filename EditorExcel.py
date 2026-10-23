@@ -34,7 +34,7 @@ from EditorModelli import (CARTELLA_MODELLI, DIMENSIONI, ETICHETTE_DESTINATARIO,
 from config_sicuro import carica_config
 from modello_gui import (COLORI, FONT, FORMATI_EXCEL, PREDEFINITO_EXCEL, SFONDI, campi_excel,
                          colonna_excel_vuota, righe_excel, stile_riga_vuoto, valore_excel)
-from piattaforma import avvia_finestra, console_sicura, leggi_testo
+from piattaforma import avvia_finestra, console_sicura, leggi_testo, scala_finestra
 
 # Senza console (exe dell'editor) i messaggi su stdout/stderr farebbero fallire l'operazione
 console_sicura()
@@ -192,6 +192,7 @@ class GruppoCarattere(ttk.LabelFrame):
 class EditorExcel(tk.Tk):
     def __init__(self):
         super().__init__()
+        scala_finestra(self)
         dimensiona(self, 1100, 690, minima=(880, 560))
         try:
             self.config_servizio = carica_config()

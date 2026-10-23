@@ -17,6 +17,7 @@ import registro
 # EMAIL
 import email
 import html
+import re
 import mimetypes
 import smtplib
 import ssl
@@ -81,7 +82,13 @@ def main(name, config):
         return
 
     if name[-3:] == "gui":
-        return
+        # Un .gui da solo si elabora solo se non crea documenti (linea 3 vuota) e il suo testo non c'è:
+        # è un invio senza documento (email, Telegram, WhatsApp). Altrimenti aspetta il .txt
+        testo = guida[0].strip()
+        if not (len(guida) >= 7 and guida[2].strip() == "" and
+                not os.path.isfile(config["cartella_lavoro"] + os.sep + name[:-4] + ".txt") and
+                (testo == "" or not os.path.isfile(config["cartella_lavoro"] + os.sep + testo))):
+            return
     if len(guida) < 7:
         raise ValueError("il .gui ha %d righe: ne servono almeno 7 (testo, azione, documento, template, "
                          "rotazione, invio, destinatario) e poi i formati fino a \"fine\"" % len(guida))
@@ -126,9 +133,11 @@ def main(name, config):
         funzione = {"email": email_send, "telegram": telegram, "whatsapp": whatsapp}[invio]
         passo_secondario(name, "invio " + descrizione, funzione, guida, config)
 
-    # Rimuove i file dopo l'uso
+    # Rimuove i file dopo l'uso (un .gui di solo invio può non avere il testo)
     os.remove(path_gui)
-    os.remove(config["cartella_lavoro"] + os.sep + guida[0].replace("\n", ""))
+    testo = guida[0].strip()
+    if testo != "" and os.path.isfile(config["cartella_lavoro"] + os.sep + testo):
+        os.remove(config["cartella_lavoro"] + os.sep + testo)
 
 
 def passo(nome_file, descrizione, funzione, *argomenti):
@@ -233,6 +242,14 @@ def exe(guida, config) :
         subprocess.call([os.path.abspath(path)], env=ambiente_esterno())
 
 
+def percorso_documento(documento, config):
+    """Il file da mandare con Telegram o WhatsApp: il nome di un documento creato (nella cartella di
+    output) oppure il percorso completo di un file che c'è già sul computer."""
+    if os.path.isabs(documento):
+        return documento
+    return config["cartella_output"] + os.sep + documento
+
+
 def telegram(guida, config):
     #Legge il token del bot
     #Per creare un bot si usa TheBotFather su telegram
@@ -247,7 +264,8 @@ def telegram(guida, config):
     bot = telepot.Bot(TOKEN)
 
     #legge le ultime linee del file dopo "fine"
-    #la prima linea è l'url del documento
+    #la prima linea è il documento: il nome nella cartella di output o il percorso completo di un
+    #file già sul computer (vuota = nessun documento)
     #la seconda e seguenti sono il testo del messaggio
 
     for x in guida:
@@ -261,7 +279,7 @@ def telegram(guida, config):
             i += 1
     bot_message = body
     bot_chatID = guida[6].replace("\n", "").replace("telegram ", "")
-    doc_path = config["cartella_output"] + os.sep + document
+    doc_path = percorso_documento(document, config)
 
     #manda il messaggio
     bot.sendMessage(bot_chatID, bot_message)
@@ -274,7 +292,8 @@ def whatsapp(guida, config):
     #La settima linea del .gui è "whatsapp <numero>" (la parola whatsapp si può omettere)
     #il numero va con il prefisso internazionale (es. 393331234567 o +39 333 1234567)
     #legge le ultime linee del file dopo "fine"
-    #la prima linea è il nome del documento nella cartella di output (vuota = nessun documento)
+    #la prima linea è il nome del documento nella cartella di output o il percorso completo di un
+    #file già sul computer (vuota = nessun documento)
     #Messaggio: la seconda e seguenti sono il testo del messaggio.
     #Senza template il messaggio arriva solo se il destinatario ha scritto al numero
     #aziendale nelle ultime 24 ore (regola di Meta).
@@ -296,7 +315,7 @@ def whatsapp(guida, config):
         if template == "":
             raise WhatsAppError("nome del template mancante nella riga \"template:\"")
     lingua = lingua or config["whatsapp_lingua"]
-    doc_path = config["cartella_output"] + os.sep + document if document != "" else None
+    doc_path = percorso_documento(document, config) if document != "" else None
 
     #Gli errori (WhatsAppError, rete, file mancante) vanno nel log tramite passo_secondario()
     messenger = WhatsApp(config["whatsapp_token"], config["whatsapp_phone_number_id"],
@@ -806,10 +825,20 @@ def immagine_email(percorso, cid, larghezza_massima):
     return parte, '<img src="cid:%s"%s alt="" style="max-width:100%%">' % (cid, larghezza)
 
 
-def corpo_email(testo, immagini, firma, immagine_firma):
+def testo_da_html(codice):
+    """La versione solo testo di un pezzo di HTML (la firma scritta in HTML): a capo al posto di
+    <br>, </p>, </div>, </tr>, senza gli altri tag."""
+    codice = re.sub(r"\s*\n\s*", " ", codice)
+    codice = re.sub(r"(?i)<br\s*/?>|</?(p|div|tr|li|table|h[1-6])\b[^>]*>", "\n", codice)
+    codice = re.sub(r"(?is)<(style|script)\b.*?</\1\s*>|<[^>]*>", "", codice)
+    righe = [" ".join(html.unescape(r).split()) for r in codice.split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(righe)).strip()
+
+
+def corpo_email(testo, immagini, firma, immagine_firma, firma_html=False):
     """Il testo dell'email: solo testo se non ci sono immagini né firma, altrimenti HTML con le
     immagini dentro il messaggio (non come allegati) più la versione solo testo per i programmi
-    che non mostrano l'HTML."""
+    che non mostrano l'HTML. firma_html=True: la firma è già HTML e va così com'è."""
     firma = firma.strip()
     immagine_firma = immagine_firma.strip()
     if not immagini and not firma and not immagine_firma:
@@ -824,15 +853,17 @@ def corpo_email(testo, immagini, firma, immagine_firma):
         parti.append(parte)
         pezzi.append("<p>" + tag + "</p>")
     if firma or immagine_firma:
-        pezzi.append('<p style="margin-top:16px">' + paragrafo(firma))
+        # In un <div>: la firma in HTML può contenere tabelle e paragrafi, che in un <p> non vanno
+        pezzi.append('<div style="margin-top:16px">' + (firma if firma_html else paragrafo(firma)))
         if immagine_firma:
             parte, tag = immagine_email(immagine_firma, "firma", LARGHEZZA_FIRMA_EMAIL)
             parti.append(parte)
             pezzi.append(("<br>" if firma else "") + tag)
-        pezzi.append("</p>")
+        pezzi.append("</div>")
     pezzi.append("</div>")
+    firma_testo = testo_da_html(firma) if firma_html else firma
     alternative = MIMEMultipart("alternative")
-    alternative.attach(MIMEText(testo + ("\n\n" + firma if firma else ""), "plain"))
+    alternative.attach(MIMEText(testo + ("\n\n" + firma_testo if firma_testo else ""), "plain"))
     alternative.attach(MIMEText("\n".join(pezzi), "html"))
     if not parti:
         return alternative
@@ -879,7 +910,8 @@ def email_send(guida, config):
         registro.registra(guida[0].strip(), "immagine della firma non trovata, email mandata senza: " +
                           immagine_firma, "AVVISO")
         immagine_firma = ""
-    message.attach(corpo_email(body, immagini, config.get("email_firma", ""), immagine_firma))
+    message.attach(corpo_email(body, immagini, config.get("email_firma", ""), immagine_firma,
+                               config.get("email_firma_html", "") == "1"))
 
     # Il documento creato e poi gli altri allegati
     for percorso in allegati:
